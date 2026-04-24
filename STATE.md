@@ -2,34 +2,34 @@
 
 ## Current Task
 
-- task: `Bootstrap the empty selfdex repository as an aggressive autonomous Codex harness.`
-- phase: `implementation`
-- scope: `initial scaffold, imported analysis scripts, autopilot policy, campaign state`
-- verification_target: `python compile, planner smoke, git diff --check`
+- task: `apply_git_history_metrics + apply_duplication_metrics 중복 정리`
+- phase: `closeout`
+- scope: `narrow refactor in scripts/collect_repo_metrics.py to share metric payload rebuilding logic`
+- verification_target: `compileall scripts and tests, unittest discover, collect metrics smoke, planner json/markdown, budget checker json, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `6`
+- score_total: `4`
 - score_breakdown:
-  - `new_repository_bootstrap`: 1
-  - `multi_file_scaffold`: 1
-  - `policy_surface`: 1
-  - `script_import`: 1
+  - `single_file_refactor`: 1
+  - `duplicate_block_reduction`: 1
+  - `core_scan_tool`: 1
   - `verification_required`: 1
-  - `future_delegation_contract`: 1
 - hard_triggers:
-  - `policy_and_authority_wording`
+  - `none`
 - selected_rules:
-  - `aggressive_autopilot_scaffold`
+  - `narrow_refactor`
+  - `preserve_collect_metrics_schema`
   - `preserve_guardrails`
   - `verification_required`
 - selected_skills:
   - `none`
 - execution_topology: `autopilot-single`
-- orchestration_value: `low_for_this_bootstrap`
+- orchestration_value: `low`
 - agent_budget: `0`
-- spawn_decision: `do_not_spawn; current host policy requires explicit subagent request and bootstrap write sets are tightly coupled`
-- selection_reason: `Initial scaffold touches policy and repository shape, but all writes are one coherent bootstrap slice.`
+- efficiency_basis: `one duplicate block inside one file; no independent write sets or parallel verification target`
+- spawn_decision: `do_not_spawn; local refactor is cheaper than handoff`
+- selection_reason: `Campaign queue is empty; planner fell back to scan-based refactor candidate with priority_score=54.05.`
 
 ## Evaluation Plan
 
@@ -39,62 +39,81 @@
   - `Destructive commands, secrets, deploys, paid calls, DB migrations, and cross-workspace edits remain approval-gated.`
   - `Imported scripts should remain runnable without external dependencies.`
 - task_acceptance:
-  - `Repository has AGENTS.md, AUTOPILOT.md, CAMPAIGN_STATE.md, STATE.md, README.md, scripts, docs, profiles, and runs scaffold.`
-  - `Next-task planner can produce markdown and JSON.`
-  - `Core Python scripts compile.`
+  - `Duplicate FileMetrics rebuilding code in apply_git_history_metrics and apply_duplication_metrics is shared through one helper.`
+  - `collect_repo_metrics.py output schema remains unchanged.`
+  - `No behavior change outside the duplicate block refactor.`
 - non_goals:
-  - `Do not import conservative global installer behavior.`
-  - `Do not create a deployment path.`
-  - `Do not grant destructive or credential authority.`
+  - `Do not edit codex_multiagent.`
+  - `Do not touch installers or global Codex config.`
+  - `Do not touch secrets, deploys, paid APIs, or databases.`
+  - `Do not scan or write other projects in this task.`
 - hard_checks:
-  - `python -m compileall -q scripts`
-  - `python scripts/plan_next_task.py --root . --format json`
+  - `python -m compileall -q scripts tests`
+  - `python -m unittest discover -s tests`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . --pretty`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/collect_repo_metrics.py --changed-path STATE.md --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether the policy is meaningfully more aggressive while preserving hard approval gates.`
-  - `Check whether imported assets are useful without dragging in installer-specific scope.`
+  - `Check whether the helper preserves every FileMetrics field exactly.`
+  - `Check whether the refactor really reduces the duplicated update pattern.`
 - evidence_required:
   - `verification command output`
+  - `selected planner candidate`
   - `git status summary`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `initial repository scaffold`
+- write_set: `collect repo metrics refactor`
 - write_sets:
   - `main`:
-    - `AGENTS.md`
-    - `AUTOPILOT.md`
+    - `scripts/collect_repo_metrics.py`
+    - `runs/20260424-140813-collect-metrics-refactor.md`
     - `CAMPAIGN_STATE.md`
     - `STATE.md`
-    - `README.md`
-    - `scripts/**`
-    - `docs/**`
-    - `profiles/**`
-    - `examples/**`
-    - `runs/**`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Keep selfdex as an aggressive autonomous harness, not a conservative installer kit.
-- Import analysis assets from codex_multiagent only when they support scanning, ranking, planning, or verification.
-- Keep hard approval zones explicit.
+- Refactor only the duplicated FileMetrics reconstruction pattern.
+- Preserve field names, data types, and JSON output shape.
+- Do not introduce shared helper modules for this small change.
+- Record the completed run under `runs/` and update the latest campaign run summary.
+- Do not touch installers, global Codex config, codex_multiagent, secrets, deploys, paid APIs, or DB files.
 
 ## Reviewer
 
 - reviewer: `none`
 - reviewer_target: `n/a`
-- reviewer_focus: `manual policy and scaffold review`
+- reviewer_focus: `manual collect_repo_metrics field-preservation review`
 
 ## Last Update
 
-- timestamp: `2026-04-24T00:00:00+09:00`
+- timestamp: `2026-04-24T14:08:56+09:00`
 - phase: `closeout`
-- status: `Initial aggressive autopilot scaffold created.`
+- status: `collect_repo_metrics duplicate refactor completed.`
 - verification_result:
-  - `python -m compileall -q scripts`: `passed`
-  - `python scripts/plan_next_task.py --root . --format json`: `passed`
-  - `python scripts/plan_next_task.py --root . --format markdown`: `passed`
-  - `git diff --check`: `passed`
-- note: `PowerShell wildcard py_compile was replaced with compileall for cross-shell verification.`
+  - `python -m compileall -q scripts tests`: `passed`
+  - `python -m unittest discover -s tests`: `passed; 28 tests`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . --pretty`: `passed; file_count=41`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/collect_repo_metrics.py --changed-path runs/20260424-140813-collect-metrics-refactor.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=scripts/normalize_quality_signals.py 책임 분리와 경계 정리`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed`
+  - `git diff --check`: `passed with LF-to-CRLF warnings for scripts/collect_repo_metrics.py and scripts/plan_next_task.py`
+- note: `This task followed scan fallback after campaign queue completion.`
+
+## Retrospective
+
+- task: `collect_repo_metrics duplicate refactor`
+- score_total: `4`
+- evaluation_fit: `good; smoke metrics and planner fallback verified the refactor`
+- orchestration_fit: `good; single-session matched one-file refactor scope`
+- predicted_topology: `autopilot-single`
+- actual_topology: `autopilot-single`
+- spawn_count: `0`
+- rework_or_reclassification: `none`
+- reviewer_findings: `manual review only; no subagent spawned`
+- verification_outcome: `passed`
+- next_gate_adjustment: `Next candidate is scripts/normalize_quality_signals.py 책임 분리와 경계 정리.`

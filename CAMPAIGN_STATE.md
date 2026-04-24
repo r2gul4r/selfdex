@@ -3,7 +3,7 @@
 ## Campaign
 
 - name: `selfdex-bootstrap`
-- goal: `Build an aggressive autonomous Codex improvement harness that can scan, rank, plan, implement, verify, repair, and record repository improvements.`
+- goal: `Build a bounded recursive improvement harness that can register projects, scan, ask Socratic questions, classify work, rank candidates, orchestrate agents when useful, implement, verify, record, and repeat.`
 - risk_appetite: `medium-high`
 - default_agent_budget: `2`
 - max_agent_budget: `4`
@@ -27,13 +27,21 @@
 
 ## Candidate Queue
 
+none
+
+## Completed Queue Items
+
 - Add real unit tests for `scripts/plan_next_task.py`.
-- Add fixture-based tests for candidate extractors.
-- Add generated report drift checks for Selfdex docs.
+- Add `work_type` classification to planner candidates.
+- Add a Socratic evaluator for candidate decisions.
 - Add a run recorder that writes `runs/YYYYMMDD-HHMMSS-<slug>.md`.
+- Add a project registry for read-only multi-project analysis.
+- Add an orchestration planner that records spawn decisions and write sets.
+- Add fixture-based tests for candidate extractors.
 - Add a campaign budget checker that rejects out-of-contract work.
+- Add generated report drift checks for Selfdex docs.
 
 ## Latest Run
 
-- status: `bootstrap`
-- summary: `Initial aggressive autopilot scaffold created from codex_multiagent analysis assets.`
+- status: `collect-metrics-refactor`
+- summary: `Reduced duplicated FileMetrics rebuilding in collect_repo_metrics.py; planner now falls back to normalize_quality_signals.py refactor next.`

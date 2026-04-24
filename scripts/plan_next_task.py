@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -16,12 +17,109 @@ from typing import Any
 @dataclass(frozen=True)
 class Candidate:
     source: str
+    work_type: str
     title: str
     decision: str
     priority_score: float
     risk: str
     rationale: list[str]
     suggested_checks: list[str]
+
+
+CAMPAIGN_QUEUE_SOURCE = "campaign_queue"
+CAMPAIGN_QUEUE_BASE_SCORE = 80.0
+CAMPAIGN_QUEUE_ORDER_STEP = 2.0
+CAMPAIGN_GOAL_MATCH_BONUS = 6.0
+CAMPAIGN_GOAL_MATCH_BONUS_CAP = 18.0
+
+STOP_WORDS = {
+    "and",
+    "can",
+    "for",
+    "from",
+    "into",
+    "that",
+    "the",
+    "this",
+    "with",
+}
+
+WORK_TYPE_KEYWORDS = {
+    "repair": {
+        "bug",
+        "broken",
+        "failing",
+        "failure",
+        "fix",
+        "regression",
+        "repair",
+        "restore",
+    },
+    "hardening": {
+        "budget",
+        "check",
+        "checker",
+        "coverage",
+        "drift",
+        "fixture",
+        "guard",
+        "reject",
+        "test",
+        "tests",
+        "validation",
+        "verify",
+    },
+    "automation": {
+        "automate",
+        "automation",
+        "generated",
+        "record",
+        "recorder",
+        "refresh",
+        "run",
+        "runs",
+        "write",
+        "writes",
+    },
+    "capability": {
+        "analysis",
+        "classification",
+        "classify",
+        "evaluator",
+        "multi",
+        "orchestration",
+        "planner",
+        "project",
+        "registry",
+        "socratic",
+        "work_type",
+    },
+    "improvement": {
+        "cleanup",
+        "docs",
+        "improve",
+        "improvement",
+        "refactor",
+        "reduce",
+        "simplify",
+    },
+}
+
+WORK_TYPE_PRIORITY = (
+    "repair",
+    "hardening",
+    "automation",
+    "capability",
+    "improvement",
+)
+
+WORK_TYPE_DESCRIPTIONS = {
+    "repair": "restore broken behavior",
+    "hardening": "make existing behavior harder to break",
+    "improvement": "improve quality without adding a new capability",
+    "capability": "add a new system ability",
+    "automation": "automate repeated coordination work",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +132,175 @@ def parse_args() -> argparse.Namespace:
         help="Output format.",
     )
     return parser.parse_args()
+
+
+def clean_markdown_value(value: str) -> str:
+    value = value.strip()
+    if value.startswith("`") and value.endswith("`") and len(value) >= 2:
+        value = value[1:-1]
+    return value.replace("`", "").strip()
+
+
+def extract_markdown_section(text: str, heading: str) -> list[str]:
+    lines: list[str] = []
+    in_section = False
+    heading_level = 0
+    heading_pattern = re.compile(r"^(#+)\s+(.+?)\s*$")
+
+    for line in text.splitlines():
+        match = heading_pattern.match(line)
+        if match:
+            level = len(match.group(1))
+            name = match.group(2).strip().lower()
+            if in_section and level <= heading_level:
+                break
+            if name == heading.lower():
+                in_section = True
+                heading_level = level
+                continue
+        if in_section:
+            lines.append(line)
+    return lines
+
+
+def parse_campaign_goal(text: str) -> str:
+    for line in extract_markdown_section(text, "Campaign"):
+        match = re.match(r"^\s*-\s*goal:\s*(.+?)\s*$", line)
+        if match:
+            return clean_markdown_value(match.group(1))
+    return ""
+
+
+def parse_campaign_queue(text: str) -> list[str]:
+    candidates: list[str] = []
+    for line in extract_markdown_section(text, "Candidate Queue"):
+        match = re.match(r"^\s*-\s+(.+?)\s*$", line)
+        if not match:
+            continue
+        title = clean_markdown_value(match.group(1))
+        if title:
+            candidates.append(title)
+    return candidates
+
+
+def normalize_goal_token(token: str) -> str:
+    if len(token) > 5 and token.endswith("ing"):
+        return token[:-3]
+    if len(token) > 4 and token.endswith("ed"):
+        return token[:-2]
+    if len(token) > 4 and token.endswith("er"):
+        return token[:-2]
+    if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
+def meaningful_tokens(value: str) -> set[str]:
+    tokens: set[str] = set()
+    for raw_token in re.split(r"[^a-z0-9]+", value.lower()):
+        if len(raw_token) < 3 or raw_token in STOP_WORDS:
+            continue
+        tokens.add(normalize_goal_token(raw_token))
+    return tokens
+
+
+def campaign_goal_matches(goal: str, title: str) -> list[str]:
+    if not goal:
+        return []
+    return sorted(meaningful_tokens(goal) & meaningful_tokens(title))
+
+
+def classify_work_type(title: str, default: str = "improvement") -> str:
+    tokens = meaningful_tokens(title)
+    for work_type in WORK_TYPE_PRIORITY:
+        keywords = {normalize_goal_token(keyword) for keyword in WORK_TYPE_KEYWORDS[work_type]}
+        if tokens & keywords:
+            return work_type
+    return default
+
+
+def build_socratic_evaluation(candidate: Candidate, campaign_goal: str) -> list[dict[str, str]]:
+    matches = campaign_goal_matches(campaign_goal, candidate.title)
+    if matches:
+        goal_fit = f"Direct campaign overlap: {', '.join(matches)}."
+    elif candidate.source == CAMPAIGN_QUEUE_SOURCE:
+        goal_fit = "Explicit campaign queue item; no direct keyword overlap found."
+    else:
+        goal_fit = f"Indirect fit through {candidate.source} repository signals."
+
+    evidence = candidate.rationale[0] if candidate.rationale else f"Produced by {candidate.source}."
+    primary_check = candidate.suggested_checks[0] if candidate.suggested_checks else "No check suggested."
+    work_description = WORK_TYPE_DESCRIPTIONS.get(candidate.work_type, "unclassified work")
+
+    return [
+        {
+            "question": "Does this serve the current campaign goal?",
+            "answer": goal_fit,
+        },
+        {
+            "question": "What kind of work is this?",
+            "answer": f"{candidate.work_type}: {work_description}.",
+        },
+        {
+            "question": "What evidence supports doing it?",
+            "answer": evidence,
+        },
+        {
+            "question": "What is the smallest useful scope?",
+            "answer": candidate.title,
+        },
+        {
+            "question": "How can it be verified locally?",
+            "answer": primary_check,
+        },
+        {
+            "question": "Should orchestration be considered?",
+            "answer": "Consider subagents only if discovery, implementation, or review can be split into independently verified write sets.",
+        },
+    ]
+
+
+def collect_campaign_candidates(root: Path) -> tuple[list[Candidate], str]:
+    campaign_path = root / "CAMPAIGN_STATE.md"
+    if not campaign_path.exists():
+        return [], ""
+
+    text = campaign_path.read_text(encoding="utf-8")
+    goal = parse_campaign_goal(text)
+    queue_titles = parse_campaign_queue(text)
+    queue_count = len(queue_titles)
+    candidates: list[Candidate] = []
+
+    for index, title in enumerate(queue_titles):
+        matches = campaign_goal_matches(goal, title)
+        order_bonus = (queue_count - index) * CAMPAIGN_QUEUE_ORDER_STEP
+        goal_bonus = min(
+            len(matches) * CAMPAIGN_GOAL_MATCH_BONUS,
+            CAMPAIGN_GOAL_MATCH_BONUS_CAP,
+        )
+        priority_score = CAMPAIGN_QUEUE_BASE_SCORE + order_bonus + goal_bonus
+        alignment = ", ".join(matches) if matches else "no direct keyword overlap"
+        candidates.append(
+            Candidate(
+                source=CAMPAIGN_QUEUE_SOURCE,
+                work_type=classify_work_type(title, default="capability"),
+                title=title,
+                decision="pick",
+                priority_score=round(priority_score, 2),
+                risk="guarded",
+                rationale=[
+                    f"Candidate Queue item {index + 1} from CAMPAIGN_STATE.md.",
+                    f"Campaign goal alignment: {alignment}.",
+                    "Campaign queue candidates have a higher base score than imported refactor candidates.",
+                ],
+                suggested_checks=[
+                    "python -m compileall -q scripts",
+                    "$env:PYTHONIOENCODING='utf-8'; python .\\scripts\\plan_next_task.py --root . --format json",
+                    "$env:PYTHONIOENCODING='utf-8'; python .\\scripts\\plan_next_task.py --root . --format markdown",
+                ],
+            )
+        )
+    return candidates, goal
 
 
 def run_json(root: Path, script_name: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -88,6 +355,7 @@ def collect_test_gap_candidates(payload: dict[str, Any]) -> list[Candidate]:
         candidates.append(
             Candidate(
                 source="test_gap",
+                work_type="hardening",
                 title=title,
                 decision="pick" if severity == "high" else "monitor",
                 priority_score=score,
@@ -114,6 +382,7 @@ def collect_refactor_candidates(payload: dict[str, Any]) -> list[Candidate]:
         candidates.append(
             Candidate(
                 source="refactor",
+                work_type="improvement",
                 title=title,
                 decision=decision,
                 priority_score=round(score * decision_multiplier(decision), 2),
@@ -140,6 +409,7 @@ def collect_feature_candidates(payload: dict[str, Any]) -> list[Candidate]:
         candidates.append(
             Candidate(
                 source="feature_gap",
+                work_type="capability",
                 title=title,
                 decision=decision,
                 priority_score=round(score * decision_multiplier(decision), 2),
@@ -160,7 +430,8 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         ("extract_refactor_candidates.py", collect_refactor_candidates),
         ("extract_feature_gap_candidates.py", collect_feature_candidates),
     )
-    all_candidates: list[Candidate] = []
+    campaign_candidates, campaign_goal = collect_campaign_candidates(root)
+    all_candidates: list[Candidate] = list(campaign_candidates)
     errors: list[str] = []
 
     for script_name, collector in loaders:
@@ -185,24 +456,31 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         "schema_version": 1,
         "analysis_kind": "selfdex_next_task_plan",
         "candidate_count": len(ranked),
+        "campaign_goal": campaign_goal,
+        "campaign_queue_candidate_count": len(campaign_candidates),
         "errors": errors,
-        "selected": candidate_to_dict(selected) if selected else None,
-        "top_candidates": [candidate_to_dict(item) for item in ranked[:5]],
+        "selected": candidate_to_dict(selected, campaign_goal) if selected else None,
+        "top_candidates": [candidate_to_dict(item, campaign_goal) for item in ranked[:5]],
         "recommended_topology": recommend_topology(selected),
     }
 
 
-def candidate_to_dict(candidate: Candidate | None) -> dict[str, Any] | None:
+def candidate_to_dict(
+    candidate: Candidate | None,
+    campaign_goal: str = "",
+) -> dict[str, Any] | None:
     if candidate is None:
         return None
     return {
         "source": candidate.source,
+        "work_type": candidate.work_type,
         "title": candidate.title,
         "decision": candidate.decision,
         "priority_score": candidate.priority_score,
         "risk": candidate.risk,
         "rationale": candidate.rationale,
         "suggested_checks": candidate.suggested_checks,
+        "socratic_evaluation": build_socratic_evaluation(candidate, campaign_goal),
     }
 
 
@@ -212,23 +490,39 @@ def recommend_topology(candidate: Candidate | None) -> dict[str, Any]:
             "execution_topology": "autopilot-single",
             "agent_budget": 0,
             "reason": "No candidate was produced.",
+            "spawn_decision": "no_spawn",
+            "write_sets": ["main: no candidate to implement"],
         }
     if candidate.source == "test_gap":
         return {
             "execution_topology": "autopilot-parallel",
             "agent_budget": 2,
             "reason": "A test or verification gap can use explorer/reviewer lanes while the main thread scopes the fix.",
+            "spawn_decision": "consider_spawn",
+            "write_sets": [
+                "main: freeze test contract and integrate fixes",
+                "worker: add focused verification coverage",
+                "reviewer: check regression risk and missing cases",
+            ],
         }
     if candidate.decision == "pick":
         return {
             "execution_topology": "autopilot-mixed",
             "agent_budget": 3,
             "reason": "A picked implementation candidate should freeze the contract, then fan out implementation and review.",
+            "spawn_decision": "spawn_worthy_when_write_sets_are_disjoint",
+            "write_sets": [
+                "main: freeze contract and own integration",
+                "worker: implement the selected candidate in one bounded write set",
+                "reviewer: verify contract, tests, and regression risk",
+            ],
         }
     return {
         "execution_topology": "autopilot-serial",
         "agent_budget": 1,
         "reason": "Candidate needs clarification or guarded handling before implementation.",
+        "spawn_decision": "no_spawn_until_contract_is_clear",
+        "write_sets": ["main: clarify contract before delegation"],
     }
 
 
@@ -241,11 +535,13 @@ def render_markdown(payload: dict[str, Any]) -> str:
             [
                 f"- selected: `{selected['title']}`",
                 f"- source: `{selected['source']}`",
+                f"- work_type: `{selected['work_type']}`",
                 f"- decision: `{selected['decision']}`",
                 f"- priority_score: `{selected['priority_score']}`",
                 f"- risk: `{selected['risk']}`",
                 f"- execution_topology: `{topology.get('execution_topology')}`",
                 f"- agent_budget: `{topology.get('agent_budget')}`",
+                f"- spawn_decision: `{topology.get('spawn_decision')}`",
                 f"- reason: {topology.get('reason')}",
                 "",
                 "## Rationale",
@@ -254,9 +550,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
         )
         for item in selected.get("rationale", []) or ["No rationale captured."]:
             lines.append(f"- {item}")
+        lines.extend(["", "## Socratic Evaluation", ""])
+        for item in selected.get("socratic_evaluation", []):
+            lines.append(f"- {item['question']} {item['answer']}")
         lines.extend(["", "## Suggested Checks", ""])
         for item in selected.get("suggested_checks", []):
             lines.append(f"- `{item}`")
+
+        lines.extend(["", "## Write Sets", ""])
+        for item in topology.get("write_sets", []):
+            lines.append(f"- {item}")
     else:
         lines.append("- selected: `none`")
 
@@ -267,7 +570,10 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
     lines.extend(["", "## Top Candidates", ""])
     for item in payload.get("top_candidates", []):
-        lines.append(f"- `{item['priority_score']}` {item['source']}: {item['title']}")
+        lines.append(
+            f"- `{item['priority_score']}` {item['source']} "
+            f"[{item['work_type']}]: {item['title']}"
+        )
     return "\n".join(lines) + "\n"
 
 

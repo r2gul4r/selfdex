@@ -8,7 +8,7 @@ import json
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
@@ -473,6 +473,10 @@ def collect_git_history_for_path(git_root: Path, target: Path) -> GitHistoryMetr
     )
 
 
+def rebuild_file_metrics(item: FileMetrics, **updates: object) -> FileMetrics:
+    return replace(item, **updates)
+
+
 def apply_git_history_metrics(root: Path, metrics: list[FileMetrics]) -> list[FileMetrics]:
     git_root = resolve_git_root(root)
     if git_root is None:
@@ -483,28 +487,7 @@ def apply_git_history_metrics(root: Path, metrics: list[FileMetrics]) -> list[Fi
         for item in metrics
     }
 
-    return [
-        FileMetrics(
-            path=item.path,
-            language=item.language,
-            bytes_size=item.bytes_size,
-            total_lines=item.total_lines,
-            blank_lines=item.blank_lines,
-            comment_lines=item.comment_lines,
-            code_lines=item.code_lines,
-            max_line_length=item.max_line_length,
-            function_like_blocks=item.function_like_blocks,
-            class_like_blocks=item.class_like_blocks,
-            decision_points=item.decision_points,
-            cyclomatic_estimate=item.cyclomatic_estimate,
-            max_indent_level=item.max_indent_level,
-            duplication_group_count=item.duplication_group_count,
-            duplicated_line_instances=item.duplicated_line_instances,
-            max_duplicate_block_lines=item.max_duplicate_block_lines,
-            git_history=per_path[item.path],
-        )
-        for item in metrics
-    ]
+    return [rebuild_file_metrics(item, git_history=per_path[item.path]) for item in metrics]
 
 
 def extend_duplicate_block(
@@ -667,20 +650,8 @@ def apply_duplication_metrics(metrics: list[FileMetrics], groups: list[Duplicate
             )
 
     return [
-        FileMetrics(
-            path=item.path,
-            language=item.language,
-            bytes_size=item.bytes_size,
-            total_lines=item.total_lines,
-            blank_lines=item.blank_lines,
-            comment_lines=item.comment_lines,
-            code_lines=item.code_lines,
-            max_line_length=item.max_line_length,
-            function_like_blocks=item.function_like_blocks,
-            class_like_blocks=item.class_like_blocks,
-            decision_points=item.decision_points,
-            cyclomatic_estimate=item.cyclomatic_estimate,
-            max_indent_level=item.max_indent_level,
+        rebuild_file_metrics(
+            item,
             duplication_group_count=per_path[item.path]["group_count"],
             duplicated_line_instances=per_path[item.path]["duplicated_line_instances"],
             max_duplicate_block_lines=per_path[item.path]["max_duplicate_block_lines"],

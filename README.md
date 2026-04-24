@@ -2,11 +2,12 @@
 
 Selfdex is an aggressive autonomous Codex operating harness.
 
-The goal is not to replace safety. The goal is to make the default loop more
-proactive:
+The final goal is a bounded recursive improvement harness, defined in
+`docs/SELFDEX_FINAL_GOAL.md`. The goal is not to replace safety. The goal is to
+make the default loop more proactive:
 
 ```text
-scan -> rank -> plan -> delegate -> implement -> verify -> repair -> record
+register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
 `codex_multiagent` stays the conservative safety baseline. This repository is
@@ -31,16 +32,24 @@ appetite for exploration, parallel work, and bounded repair.
 | `AUTOPILOT.md` | Long-running autopilot policy and loop design |
 | `CAMPAIGN_STATE.md` | Current campaign goal, budget, locks, and guardrails |
 | `STATE.md` | Current task contract and write ownership |
+| `PROJECT_REGISTRY.md` | Registered projects for read-only multi-project analysis |
+| `docs/SELFDEX_FINAL_GOAL.md` | Final goal, roadmap, and recursive improvement contract |
 | `runs/` | Per-run records and evidence |
 | `scripts/plan_next_task.py` | Selects the next candidate from repository signals |
+| `scripts/check_campaign_budget.py` | Rejects campaign budget and write-contract violations |
+| `scripts/check_doc_drift.py` | Checks README drift against generated-report scripts |
+| `scripts/list_project_registry.py` | Lists registered projects without scanning or writing to them |
 | `scripts/collect_repo_metrics.py` | Repository metric scanner |
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
 | `scripts/normalize_quality_signals.py` | Normalizes scan outputs into priority signals |
+| `scripts/record_run.py` | Writes compact run evidence under `runs/` |
 
 ## Quick Start
 
 ```bash
 python scripts/plan_next_task.py --root . --format markdown
+python scripts/check_campaign_budget.py --root . --format markdown
+python scripts/check_doc_drift.py --root . --format markdown
 python scripts/collect_repo_metrics.py --root . --pretty
 python scripts/extract_test_gap_candidates.py --root . --format markdown
 ```

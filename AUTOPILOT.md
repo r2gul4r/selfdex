@@ -2,17 +2,32 @@
 
 Selfdex runs as an aggressive but bounded improvement loop.
 
+## Final Goal Contract
+
+`docs/SELFDEX_FINAL_GOAL.md` is the north-star contract. It defines Selfdex as
+a user-invoked recursive improvement harness:
+
+```text
+register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+```
+
+The loop may analyze explicitly registered projects read-only, but
+cross-project writes stay approval-gated.
+
 ## Loop
 
 1. Scan repository signals.
-2. Rank gaps by goal fit, leverage, risk, and reversibility.
-3. Pick the smallest high-leverage task.
-4. Freeze acceptance, non-goals, write sets, and checks.
-5. Fan out to agents when host policy and budget allow it.
-6. Integrate outputs.
-7. Verify.
-8. Repair inside the same contract when checks fail.
-9. Record the run.
+2. Ask the Socratic evaluation questions for non-trivial candidates.
+3. Classify each candidate as repair, hardening, improvement, capability, or
+   automation.
+4. Rank gaps by goal fit, leverage, risk, reversibility, and verification fit.
+5. Pick the smallest high-leverage task.
+6. Freeze acceptance, non-goals, write sets, and checks.
+7. Fan out to agents when host policy, authorization, and budget allow it.
+8. Integrate outputs.
+9. Verify.
+10. Repair inside the same contract when checks fail.
+11. Record the run and advance the campaign queue.
 
 ## Campaign State
 
@@ -54,6 +69,7 @@ The autopilot must stop for explicit approval before:
 Prefer candidates that:
 
 - directly improve the autonomous loop
+- add missing capability needed for recursive improvement
 - reduce verification blind spots
 - shrink future handoff cost
 - add missing tests for core scripts
