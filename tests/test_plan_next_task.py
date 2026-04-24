@@ -208,13 +208,126 @@ class PlanNextTaskTests(unittest.TestCase):
             markdown = plan_next_task.render_markdown(payload)
 
         topology = payload["recommended_topology"]
+        fit = topology["orchestration_fit"]
         self.assertEqual(
             topology["spawn_decision"],
-            "spawn_worthy_when_write_sets_are_disjoint",
+            "concurrent_state_recommended_when_contract_frozen",
         )
-        self.assertIn("main: freeze contract and own integration", topology["write_sets"])
-        self.assertIn("- spawn_decision: `spawn_worthy_when_write_sets_are_disjoint`", markdown)
+        self.assertEqual(fit["task_size_class"], "large")
+        self.assertEqual(fit["orchestration_value"], "high")
+        self.assertIn("main: own root STATE.md", topology["write_sets"][0])
+        self.assertIn("- spawn_decision: `concurrent_state_recommended_when_contract_frozen`", markdown)
+        self.assertIn("## Orchestration Fit", markdown)
+        self.assertIn("- orchestration_value: `high`", markdown)
         self.assertIn("## Write Sets", markdown)
+
+    def test_small_refactor_candidate_stays_single_session(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_campaign(root, "Build a harness that can improve safely.", [])
+            write_extractors(
+                root,
+                refactor_payload={
+                    "refactor_candidates": [
+                        {
+                            "title": "extract_markdown_section 중복 정리",
+                            "decision": "pick",
+                            "priority_score": 50,
+                            "selection_rationale": ["small helper duplicate"],
+                            "source_signals": {
+                                "candidate_source": "duplicate_block",
+                                "paths": ["scripts/check_doc_drift.py", "scripts/markdown_utils.py"],
+                                "normalized_line_count": 10,
+                                "occurrence_count": 2,
+                            },
+                        }
+                    ]
+                },
+            )
+
+            payload = plan_next_task.choose_candidate(root)
+
+        topology = payload["recommended_topology"]
+        fit = topology["orchestration_fit"]
+        self.assertEqual(fit["task_size_class"], "small")
+        self.assertEqual(fit["handoff_cost"], "high")
+        self.assertEqual(fit["orchestration_value"], "low")
+        self.assertEqual(topology["execution_topology"], "autopilot-single")
+        self.assertEqual(topology["agent_budget"], 0)
+        self.assertEqual(topology["spawn_decision"], "no_spawn_handoff_cost_exceeds_gain")
+
+    def test_large_single_file_hotspot_uses_sidecars_not_parallel_workers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_campaign(root, "Build a harness that can improve safely.", [])
+            write_extractors(
+                root,
+                refactor_payload={
+                    "refactor_candidates": [
+                        {
+                            "title": "scripts/collect_repo_metrics.py 책임 분리와 경계 정리",
+                            "decision": "pick",
+                            "priority_score": 50,
+                            "selection_rationale": ["single-file hotspot"],
+                            "source_signals": {
+                                "candidate_source": "complexity_hotspot",
+                                "path": "scripts/collect_repo_metrics.py",
+                                "code_lines": 700,
+                                "cyclomatic_estimate": 120,
+                            },
+                        }
+                    ]
+                },
+            )
+
+            payload = plan_next_task.choose_candidate(root)
+
+        topology = payload["recommended_topology"]
+        fit = topology["orchestration_fit"]
+        self.assertEqual(fit["task_size_class"], "large")
+        self.assertEqual(fit["shared_file_collision_risk"], "high")
+        self.assertEqual(fit["orchestration_value"], "medium")
+        self.assertEqual(topology["execution_topology"], "autopilot-mixed")
+        self.assertEqual(topology["agent_budget"], 2)
+        self.assertEqual(topology["spawn_decision"], "sidecar_recommended_freeze_write_sets_first")
+
+    def test_large_disjoint_duplicate_can_recommend_concurrent_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_campaign(root, "Build a harness that can improve safely.", [])
+            write_extractors(
+                root,
+                refactor_payload={
+                    "refactor_candidates": [
+                        {
+                            "title": "three extractor duplicate cleanup",
+                            "decision": "pick",
+                            "priority_score": 50,
+                            "selection_rationale": ["disjoint duplicate paths"],
+                            "source_signals": {
+                                "candidate_source": "duplicate_block",
+                                "paths": [
+                                    "scripts/a.py",
+                                    "scripts/b.py",
+                                    "scripts/c.py",
+                                ],
+                                "normalized_line_count": 30,
+                                "occurrence_count": 3,
+                            },
+                        }
+                    ]
+                },
+            )
+
+            payload = plan_next_task.choose_candidate(root)
+
+        topology = payload["recommended_topology"]
+        fit = topology["orchestration_fit"]
+        self.assertEqual(fit["task_size_class"], "large")
+        self.assertEqual(fit["estimated_write_set_count"], 3)
+        self.assertEqual(fit["shared_file_collision_risk"], "low")
+        self.assertEqual(fit["orchestration_value"], "high")
+        self.assertEqual(topology["execution_topology"], "autopilot-parallel")
 
     def test_campaign_titles_are_classified_by_work_type(self) -> None:
         cases = {

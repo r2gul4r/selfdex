@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `doc-drift-markdown-helper`
-- summary: `Reused scripts/markdown_utils.py section parsing in scripts/check_doc_drift.py; planner now selects scripts/collect_repo_metrics.py responsibility split next.`
+- status: `orchestration-fit-planner`
+- summary: `Added planner orchestration_fit fields so task size, collision risk, handoff cost, parallel gain, and verification independence drive topology; planner now selects scripts/plan_next_task.py responsibility split next.`
