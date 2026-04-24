@@ -61,6 +61,15 @@ class FileRecord:
     definitions: list[SymbolLocation]
 
 
+@dataclass(frozen=True)
+class RefactorScoring:
+    common_score: int
+    specific_score: int
+    priority_score: int
+    priority_grade: str
+    decision: str
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract goal-aligned refactor candidates from repository analysis signals."
@@ -270,6 +279,65 @@ def determine_refactor_decision(
     return "pick", grade_priority(priority_score)
 
 
+def score_refactor_candidate(common_axes: dict[str, str], rubric: dict[str, int]) -> RefactorScoring:
+    common_score = compute_common_score(common_axes)
+    specific_score = rubric["specific_score"]
+    priority_score = (common_score * 2) + specific_score
+    decision, priority_grade = determine_refactor_decision(
+        common_axes,
+        rubric["quality_impact"],
+        rubric["risk"],
+        rubric["maintainability"],
+        rubric["feature_goal_contribution"],
+        priority_score,
+    )
+    return RefactorScoring(
+        common_score=common_score,
+        specific_score=specific_score,
+        priority_score=priority_score,
+        priority_grade=priority_grade,
+        decision=decision,
+    )
+
+
+def build_refactor_candidate_payload(
+    *,
+    proposal_id: str,
+    candidate_kind: str,
+    title: str,
+    functional_area: str,
+    functional_area_label: str,
+    problem_signals: list[str],
+    expected_improvement: list[str],
+    selection_rationale: list[str],
+    evidence_locations: list[str],
+    common_axes: dict[str, str],
+    refactor_rubric: dict[str, int],
+    scoring: RefactorScoring,
+    source_signals: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "proposal_id": proposal_id,
+        "candidate_kind": candidate_kind,
+        "title": title,
+        "linked_gap": "quality_gap",
+        "functional_area": functional_area,
+        "functional_area_label": functional_area_label,
+        "problem_signals": problem_signals,
+        "expected_improvement": expected_improvement,
+        "selection_rationale": selection_rationale,
+        "evidence_locations": evidence_locations,
+        "common_axes": common_axes,
+        "refactor_rubric": refactor_rubric,
+        "common_score": scoring.common_score,
+        "specific_score": scoring.specific_score,
+        "priority_score": scoring.priority_score,
+        "priority_grade": scoring.priority_grade,
+        "decision": scoring.decision,
+        "source_signals": source_signals,
+    }
+
+
 def format_location(path: str, start_line: int, end_line: int) -> str:
     return f"{path}:{start_line}-{end_line}"
 
@@ -359,17 +427,7 @@ def build_duplicate_candidate(
 
     common_axes = build_duplicate_common_axes(area_id, group, file_metrics)
     rubric = build_duplicate_rubric(group, area_id, file_metrics)
-    common_score = compute_common_score(common_axes)
-    specific_score = rubric["specific_score"]
-    priority_score = (common_score * 2) + specific_score
-    decision, priority_grade = determine_refactor_decision(
-        common_axes,
-        rubric["quality_impact"],
-        rubric["risk"],
-        rubric["maintainability"],
-        rubric["feature_goal_contribution"],
-        priority_score,
-    )
+    scoring = score_refactor_candidate(common_axes, rubric)
 
     excerpt = " / ".join(group.get("excerpt", [])[:2])
     evidence_locations = [
@@ -398,32 +456,27 @@ def build_duplicate_candidate(
         "중복 신호와 변경 빈도 신호가 함께 보여 변경 안정성 개선 효과를 설명하기 쉬움",
     ]
 
-    return {
-        "proposal_id": f"refactor:duplicate:{group['fingerprint']}",
-        "candidate_kind": "refactor",
-        "title": build_duplicate_title(paths, symbols),
-        "linked_gap": "quality_gap",
-        "functional_area": area_id,
-        "functional_area_label": area_label,
-        "problem_signals": problem_signals,
-        "expected_improvement": expected_improvement,
-        "selection_rationale": selection_rationale,
-        "evidence_locations": evidence_locations,
-        "common_axes": common_axes,
-        "refactor_rubric": rubric,
-        "common_score": common_score,
-        "specific_score": specific_score,
-        "priority_score": priority_score,
-        "priority_grade": priority_grade,
-        "decision": decision,
-        "source_signals": {
+    return build_refactor_candidate_payload(
+        proposal_id=f"refactor:duplicate:{group['fingerprint']}",
+        candidate_kind="refactor",
+        title=build_duplicate_title(paths, symbols),
+        functional_area=area_id,
+        functional_area_label=area_label,
+        problem_signals=problem_signals,
+        expected_improvement=expected_improvement,
+        selection_rationale=selection_rationale,
+        evidence_locations=evidence_locations,
+        common_axes=common_axes,
+        refactor_rubric=rubric,
+        scoring=scoring,
+        source_signals={
             "candidate_source": "duplicate_block",
             "paths": paths,
             "normalized_line_count": group["normalized_line_count"],
             "occurrence_count": group["occurrence_count"],
             "max_commit_count": max(item["change_frequency"]["commit_count"] for item in file_metrics),
         },
-    }
+    )
 
 
 def symbol_spans(record: FileRecord) -> list[tuple[SymbolLocation, int]]:
@@ -492,17 +545,7 @@ def build_hotspot_candidate(
     area_label = AREA_LABELS.get(area_id, area_id)
     common_axes = build_hotspot_common_axes(area_id, metrics)
     rubric = build_hotspot_rubric(area_id, metrics)
-    common_score = compute_common_score(common_axes)
-    specific_score = rubric["specific_score"]
-    priority_score = (common_score * 2) + specific_score
-    decision, priority_grade = determine_refactor_decision(
-        common_axes,
-        rubric["quality_impact"],
-        rubric["risk"],
-        rubric["maintainability"],
-        rubric["feature_goal_contribution"],
-        priority_score,
-    )
+    scoring = score_refactor_candidate(common_axes, rubric)
 
     representative_symbols: list[str] = []
     evidence_locations = [metrics["path"]]
@@ -534,25 +577,20 @@ def build_hotspot_candidate(
         "복잡도, 파일 크기, 중복 지표가 같이 높아 단일 파일에 책임이 몰린 신호가 분명함",
     ]
 
-    return {
-        "proposal_id": f"refactor:hotspot:{metrics['path']}",
-        "candidate_kind": "refactor",
-        "title": f"{metrics['path']} 책임 분리와 경계 정리",
-        "linked_gap": "quality_gap",
-        "functional_area": area_id,
-        "functional_area_label": area_label,
-        "problem_signals": problem_signals,
-        "expected_improvement": expected_improvement,
-        "selection_rationale": selection_rationale,
-        "evidence_locations": unique_preserve_order(evidence_locations),
-        "common_axes": common_axes,
-        "refactor_rubric": rubric,
-        "common_score": common_score,
-        "specific_score": specific_score,
-        "priority_score": priority_score,
-        "priority_grade": priority_grade,
-        "decision": decision,
-        "source_signals": {
+    return build_refactor_candidate_payload(
+        proposal_id=f"refactor:hotspot:{metrics['path']}",
+        candidate_kind="refactor",
+        title=f"{metrics['path']} 책임 분리와 경계 정리",
+        functional_area=area_id,
+        functional_area_label=area_label,
+        problem_signals=problem_signals,
+        expected_improvement=expected_improvement,
+        selection_rationale=selection_rationale,
+        evidence_locations=unique_preserve_order(evidence_locations),
+        common_axes=common_axes,
+        refactor_rubric=rubric,
+        scoring=scoring,
+        source_signals={
             "candidate_source": "complexity_hotspot",
             "path": metrics["path"],
             "cyclomatic_estimate": cyclomatic,
@@ -560,7 +598,7 @@ def build_hotspot_candidate(
             "duplication_group_count": duplication_groups,
             "commit_count": metrics["change_frequency"]["commit_count"],
         },
-    }
+    )
 
 
 def build_refactor_candidates(root: Path, metrics_payload: dict[str, Any], limit: int) -> list[dict[str, Any]]:

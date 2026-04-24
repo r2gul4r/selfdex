@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `normalizer-helper-extraction`
-- summary: `Moved repo quality scoring and tool-result parsing out of scripts/normalize_quality_signals.py; planner now selects build_duplicate_candidate + build_hotspot_candidate duplicate cleanup next.`
+- status: `refactor-candidate-builder-cleanup`
+- summary: `Shared refactor candidate scoring and payload assembly in scripts/extract_refactor_candidates.py; planner now selects extract_markdown_section duplicate cleanup next.`

@@ -2,31 +2,27 @@
 
 ## Current Task
 
-- task: `scripts/normalize_quality_signals.py 책임 분리와 경계 정리`
+- task: `build_duplicate_candidate + build_hotspot_candidate 중복 정리`
 - phase: `closeout`
-- scope: `split normalizer scoring and parsing helpers out of normalize_quality_signals.py without schema changes`
-- verification_target: `compileall scripts and tests, unittest discover, doc drift, normalizer smoke checks, planner json/markdown, budget checker json, git diff --check`
+- scope: `share refactor candidate scoring and assembly helpers without output schema changes`
+- verification_target: `compileall scripts and tests, unittest discover, refactor extractor smoke checks, planner json/markdown, budget checker json, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `8`
+- score_total: `6`
 - score_breakdown:
-  - `large_single_file_hotspot`: 1
-  - `shared_quality_signal_scoring`: 1
-  - `tool_result_parsing_boundaries`: 1
-  - `schema_preservation_risk`: 1
-  - `new_helper_module`: 1
+  - `single_file_duplicate_reduction`: 1
+  - `refactor_candidate_schema_risk`: 1
+  - `shared_scoring_helpers`: 1
   - `focused_test_update`: 1
-  - `doc_drift_update`: 1
+  - `planner_followup_required`: 1
   - `verification_required`: 1
 - hard_triggers:
-  - `single_large_file_responsibility_split`
   - `behavior_schema_preservation`
 - selected_rules:
   - `narrow_refactor`
-  - `preserve_normalized_quality_signal_schema`
-  - `preserve_cli_behavior`
-  - `preserve_doc_drift`
+  - `preserve_refactor_candidate_json_schema`
+  - `preserve_markdown_report_shape`
   - `preserve_guardrails`
   - `verification_required`
 - selected_skills:
@@ -34,9 +30,9 @@
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `planner suggested mixed, but the actual implementation remains one tightly coupled normalizer helper extraction with shared schema-preservation checks; parallel write ownership would overlap`
-- spawn_decision: `do_not_spawn; helper boundaries are coupled through normalize_payload and one regression suite, so handoff would add merge risk`
-- selection_reason: `Planner selected scripts/normalize_quality_signals.py responsibility split with priority_score=51.75 after commit c1770fb.`
+- efficiency_basis: `duplicate and hotspot candidate builders share scoring/assembly logic inside one file; write ownership is tightly coupled and tests are one fixture surface`
+- spawn_decision: `do_not_spawn; no disjoint write set worth the handoff`
+- selection_reason: `Planner selected build_duplicate_candidate + build_hotspot_candidate duplicate cleanup with priority_score=50.6 after commit e365cf4.`
 
 ## Evaluation Plan
 
@@ -46,30 +42,29 @@
   - `Destructive commands, secrets, deploys, paid calls, DB migrations, and cross-workspace edits remain approval-gated.`
   - `Imported scripts should remain runnable without external dependencies.`
 - task_acceptance:
-  - `Repo metric caps, axis weights, score rounding, metric normalization, priority grading, and quality signal assembly move into a focused helper.`
-  - `Tool-result parsing and coverage extraction move into focused helpers or imports while keeping public normalizer function names available where tests expect them.`
-  - `normalize_quality_signals.py keeps the same CLI behavior and output schema.`
-  - `Focused tests cover the extracted helper behavior and existing normalizer tests stay green.`
-  - `README documents the new helper so doc drift stays clean.`
-  - `Planner advances to a different candidate after the refactor.`
+  - `Common refactor scoring flow is extracted from duplicate and hotspot candidate builders.`
+  - `Duplicate-block and hotspot candidates keep the same JSON fields and source_signals shape.`
+  - `Focused tests cover duplicate and hotspot candidates through fixture metrics.`
+  - `Refactor extractor JSON and Markdown smoke checks pass.`
+  - `Planner advances or has a clear next candidate after the refactor.`
 - non_goals:
   - `Do not edit codex_multiagent.`
   - `Do not touch installers or global Codex config.`
   - `Do not touch secrets, deploys, paid APIs, or databases.`
-  - `Do not change normalizer JSON schemas except internal code ownership.`
+  - `Do not change candidate scoring semantics except shared internal ownership.`
   - `Do not scan or write other projects in this task.`
 - hard_checks:
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . | python .\scripts\normalize_quality_signals.py --pretty`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/repo_quality_signal_utils.py --changed-path scripts/tool_result_utils.py --changed-path scripts/normalize_quality_signals.py --changed-path tests/test_repo_quality_signal_utils.py --changed-path tests/test_tool_result_utils.py --changed-path tests/test_normalize_quality_signals.py --changed-path README.md --changed-path runs/20260424-145351-normalizer-helper-extraction.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format markdown`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/extract_refactor_candidates.py --changed-path tests/test_candidate_extractors.py --changed-path runs/20260424-145920-refactor-candidate-builder-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether repo metric scoring constants and helper outputs are identical after extraction.`
-  - `Check whether normalize_quality_signals.py remains the CLI/schema owner while helpers own scoring and parsing internals.`
+  - `Check whether common scoring extraction preserves priority_score, priority_grade, decision, and common_axes.`
+  - `Check whether duplicate and hotspot source_signals remain candidate-kind specific.`
 - evidence_required:
   - `verification command output`
   - `selected planner candidate`
@@ -78,27 +73,22 @@
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `repo quality signal helper extraction`
+- write_set: `refactor candidate builder duplicate cleanup`
 - write_sets:
   - `main`:
-    - `scripts/repo_quality_signal_utils.py`
-    - `scripts/tool_result_utils.py`
-    - `scripts/normalize_quality_signals.py`
-    - `tests/test_repo_quality_signal_utils.py`
-    - `tests/test_tool_result_utils.py`
-    - `tests/test_normalize_quality_signals.py`
-    - `README.md`
-    - `runs/20260424-145351-normalizer-helper-extraction.md`
+    - `scripts/extract_refactor_candidates.py`
+    - `tests/test_candidate_extractors.py`
+    - `runs/20260424-145920-refactor-candidate-builder-cleanup.md`
     - `CAMPAIGN_STATE.md`
     - `STATE.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Extract normalizer helper logic from `scripts/normalize_quality_signals.py` into focused scoring and parsing modules.
-- Preserve normalizer CLI flags, history behavior, and JSON output schema.
-- Add focused helper tests and keep existing normalizer tests passing.
-- Do not introduce external dependencies.
+- Extract only shared scoring/assembly helpers inside `scripts/extract_refactor_candidates.py`.
+- Preserve refactor extractor CLI flags, JSON schema, Markdown report shape, and candidate ranking semantics.
+- Add or update focused fixture tests for duplicate and hotspot candidates.
+- Do not introduce new dependencies or new generated-report scripts.
 - Record the completed run under `runs/` and update the latest campaign run summary.
 - Do not touch installers, global Codex config, codex_multiagent, secrets, deploys, paid APIs, or DB files.
 
@@ -106,34 +96,34 @@
 
 - reviewer: `none`
 - reviewer_target: `n/a`
-- reviewer_focus: `manual schema-preservation review against existing tests and smoke output`
+- reviewer_focus: `manual refactor-candidate schema preservation review`
 
 ## Last Update
 
-- timestamp: `2026-04-24T14:53:51+09:00`
+- timestamp: `2026-04-24T14:59:20+09:00`
 - phase: `closeout`
-- status: `normalizer helper extraction completed.`
+- status: `refactor candidate builder duplicate cleanup completed.`
 - verification_result:
   - `python -m compileall -q scripts tests`: `passed`
-  - `python -m unittest discover -s tests`: `passed; 42 tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`: `passed; finding_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . | python .\scripts\normalize_quality_signals.py --pretty`: `passed`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/repo_quality_signal_utils.py --changed-path scripts/tool_result_utils.py --changed-path scripts/normalize_quality_signals.py --changed-path tests/test_repo_quality_signal_utils.py --changed-path tests/test_tool_result_utils.py --changed-path tests/test_normalize_quality_signals.py --changed-path README.md --changed-path runs/20260424-145351-normalizer-helper-extraction.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=build_duplicate_candidate + build_hotspot_candidate 중복 정리`
+  - `python -m unittest discover -s tests`: `passed; 43 tests`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`: `passed`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format markdown`: `passed`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/extract_refactor_candidates.py --changed-path tests/test_candidate_extractors.py --changed-path runs/20260424-145920-refactor-candidate-builder-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=extract_markdown_section 중복 정리`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed`
-  - `git diff --check`: `passed with LF-to-CRLF warning for scripts/normalize_quality_signals.py`
-- note: `This task starts after commit c1770fb and expanded once when repo quality-signal extraction alone did not clear the hotspot.`
+  - `git diff --check`: `passed with LF-to-CRLF warnings for scripts/extract_refactor_candidates.py and tests/test_candidate_extractors.py`
+- note: `This task starts after commit e365cf4.`
 
 ## Retrospective
 
-- task: `normalizer helper extraction`
-- score_total: `8`
-- evaluation_fit: `good; helper tests, normalizer smoke, doc drift, planner, and budget checker all pass`
-- orchestration_fit: `good; single-session handled coupled helper extraction without cross-agent merge risk`
+- task: `refactor candidate builder duplicate cleanup`
+- score_total: `6`
+- evaluation_fit: `good; fixture tests, extractor smoke checks, planner, and budget checker all pass`
+- orchestration_fit: `good; single-session matched the one-file schema-preserving cleanup`
 - predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
 - spawn_count: `0`
-- rework_or_reclassification: `one bounded repair: added tool-result parsing split after first planner check still selected normalize_quality_signals.py`
+- rework_or_reclassification: `none`
 - reviewer_findings: `manual review only; no subagent spawned`
 - verification_outcome: `passed`
-- next_gate_adjustment: `Next candidate is build_duplicate_candidate + build_hotspot_candidate duplicate cleanup.`
+- next_gate_adjustment: `Next candidate is extract_markdown_section duplicate cleanup.`

@@ -100,6 +100,65 @@ class CandidateExtractorFixtureTests(unittest.TestCase):
         self.assertEqual(candidates[0]["source_signals"]["candidate_source"], "complexity_hotspot")
         self.assertEqual(candidates[0]["source_signals"]["path"], "scripts/hotspot.py")
 
+    def test_refactor_extractor_builds_duplicate_candidate_from_metrics_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            duplicate_body = "\n".join(
+                [
+                    "def shared_flow():",
+                    "    value = 1",
+                    "    value += 1",
+                    "    value += 2",
+                    "    value += 3",
+                    "    value += 4",
+                    "    value += 5",
+                    "    value += 6",
+                    "    value += 7",
+                    "    value += 8",
+                    "    value += 9",
+                    "    return value",
+                    "",
+                ]
+            )
+            write_file(root, "scripts/alpha.py", duplicate_body)
+            write_file(root, "scripts/beta.py", duplicate_body)
+            base_metrics = {
+                "language": "python",
+                "complexity": {"cyclomatic_estimate": 20},
+                "module_size": {"code_lines": 12},
+                "duplication": {"group_count": 1},
+                "change_frequency": {"commit_count": 2},
+            }
+            metrics_payload = {
+                "summary": {"file_count": 2},
+                "files": [
+                    {"path": "scripts/alpha.py", **base_metrics},
+                    {"path": "scripts/beta.py", **base_metrics},
+                ],
+                "duplication": {
+                    "groups": [
+                        {
+                            "fingerprint": "fixture-shared-flow",
+                            "normalized_line_count": 12,
+                            "occurrence_count": 2,
+                            "excerpt": ["value += 1", "return value"],
+                            "modules": [
+                                {"path": "scripts/alpha.py", "start_line": 1, "end_line": 12},
+                                {"path": "scripts/beta.py", "start_line": 1, "end_line": 12},
+                            ],
+                        }
+                    ]
+                },
+            }
+
+            candidates = refactor.build_refactor_candidates(root, metrics_payload, limit=3)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["candidate_kind"], "refactor")
+        self.assertEqual(candidates[0]["source_signals"]["candidate_source"], "duplicate_block")
+        self.assertEqual(candidates[0]["source_signals"]["paths"], ["scripts/alpha.py", "scripts/beta.py"])
+        self.assertEqual(candidates[0]["common_score"], refactor.compute_common_score(candidates[0]["common_axes"]))
+
 
 if __name__ == "__main__":
     unittest.main()
