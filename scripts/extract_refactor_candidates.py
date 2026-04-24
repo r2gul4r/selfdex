@@ -12,6 +12,16 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+try:
+    from argparse_utils import add_format_argument, add_pretty_argument, add_root_argument
+except ModuleNotFoundError:
+    from scripts.argparse_utils import add_format_argument, add_pretty_argument, add_root_argument
+
+try:
+    from repo_area_utils import AREA_LABELS, classify_area
+except ModuleNotFoundError:
+    from scripts.repo_area_utils import AREA_LABELS, classify_area
+
 
 SCHEMA_VERSION = 1
 DEFAULT_LIMIT = 5
@@ -19,16 +29,6 @@ DEFAULT_LIMIT = 5
 CODE_LANGUAGES = {"python", "shell", "powershell", "makefile", "rules", "toml"}
 SKIP_DIRS = {".git", ".codex", "__pycache__"}
 SKIP_FILENAMES = {"STATE.md", "MULTI_AGENT_LOG.md", "ERROR_LOG.md"}
-
-AREA_LABELS = {
-    "installer": "설치기와 작업공간 스캐폴딩",
-    "root_tooling": "루트 도구/자동화",
-    "documentation": "문서와 평가 기준",
-    "agent_profiles": "에이전트 프로필/설정",
-    "rules_and_skills": "규칙과 스킬 자산",
-    "examples_and_snapshots": "예시와 스냅샷",
-    "other": "기타 영역",
-}
 
 COMMON_AXIS_POINTS = {
     "goal_alignment": {"pass": 3, "borderline": 1, "fail": 0},
@@ -65,47 +65,20 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract goal-aligned refactor candidates from repository analysis signals."
     )
-    parser.add_argument("--root", default=".", help="Repository root to inspect.")
+    add_root_argument(parser, help_text="Repository root to inspect.")
     parser.add_argument(
         "--metrics-input",
         help="Optional JSON file produced by scripts/collect_repo_metrics.py. Defaults to collecting fresh metrics.",
     )
-    parser.add_argument(
-        "--format",
-        choices=("json", "markdown"),
-        default="json",
-        help="Output format. Defaults to json.",
-    )
+    add_format_argument(parser)
     parser.add_argument(
         "--limit",
         type=int,
         default=DEFAULT_LIMIT,
         help=f"Maximum number of ranked candidates to emit. Defaults to {DEFAULT_LIMIT}.",
     )
-    parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
+    add_pretty_argument(parser)
     return parser.parse_args()
-
-
-def classify_area(path: Path) -> str:
-    parts = path.parts
-    if not parts:
-        return "other"
-    head = parts[0]
-    if head == "installer":
-        return "installer"
-    if head == "docs":
-        return "documentation"
-    if head in {"codex_agents", "profiles"}:
-        return "agent_profiles"
-    if head in {"codex_rules", "codex_skills"}:
-        return "rules_and_skills"
-    if head == "examples":
-        return "examples_and_snapshots"
-    if head == "scripts":
-        return "root_tooling"
-    if len(parts) == 1:
-        return "root_tooling"
-    return "other"
 
 
 def should_skip_repo_path(path: str) -> bool:

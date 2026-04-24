@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `shared-markdown-helper`
-- summary: `Moved duplicated markdown value and section parsing helpers into scripts/markdown_utils.py; planner now selects parse_args duplicate cleanup next.`
+- status: `shared-extractor-helpers`
+- summary: `Moved duplicated extractor argparse options and area classification into shared helpers; planner now selects scripts/normalize_quality_signals.py responsibility split next.`
