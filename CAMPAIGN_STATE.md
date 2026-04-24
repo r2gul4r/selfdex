@@ -42,8 +42,9 @@ none
 - Add generated report drift checks for Selfdex docs.
 - Clean stale verification entrypoints and document the quality signal sample payload.
 - Add MCP connection autonomy rules for ordinary server connection commands.
+- Broaden command autonomy to all ordinary non-destructive workflow commands.
 
 ## Latest Run
 
-- status: `mcp-connection-autonomy`
-- summary: `Added AGENTS.md policy that ordinary MCP server list/status/ping/connect/reconnect/diagnostic commands should run automatically, while dangerous drive, destructive Git, global config, secrets, deploy, paid API, and DB operations remain approval-gated.`
+- status: `general-command-autonomy`
+- summary: `Broadened AGENTS.md policy so ordinary non-destructive commands run automatically across inspection, Git reads, local scripts, verification, formatting, builds, diagnostics, and MCP connection checks, while destructive drive, destructive Git, global config, secrets, deploy, paid API, and DB operations remain approval-gated.`

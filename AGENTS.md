@@ -26,27 +26,32 @@ current user request says otherwise.
 - Spend the configured `agent_budget` before shrinking back to local-only work.
 - Use bounded repair loops when verification fails inside the pinned scope.
 
-## MCP Connection Autonomy
+## Command Autonomy
 
-- Ordinary MCP server connection commands should run automatically when they
-  are needed for the current task and stay inside the active workspace or
-  configured MCP tool boundary.
-- Ordinary commands include read-only or low-risk actions such as list, status,
-  ping, connect, reconnect, health check, capability discovery, server metadata
-  reads, and non-secret diagnostic checks.
-- Do not stop for confirmation just because the command contacts a configured
-  MCP server or checks whether that server is reachable.
+- Ordinary non-destructive commands should run automatically when they are
+  needed for the current task and stay inside the active workspace, declared
+  write set, or configured tool boundary.
+- Ordinary commands include read-only inspection, search, file listing, Git
+  status/diff/log/show, local script execution, compile, lint, test, format,
+  type-check, build checks, non-secret diagnostics, and configured MCP
+  list/status/ping/connect/reconnect/health/capability commands.
+- Do not stop for confirmation just because a command reads repository state,
+  runs a local verification target, checks a configured MCP server, or writes
+  inside the frozen task write set.
 - This rule does not bypass host-level approval prompts. If the host asks for
   approval, follow the host policy.
+- When a command may write, keep it inside the active task contract and declared
+  write set. If the write target is unclear, inspect first and update `STATE.md`
+  before running the write-capable command.
 - Never auto-run commands that delete, format, repartition, unmount, wipe, or
   recursively modify drives, volumes, repository files, user data, or shared
   workspaces.
-- Never auto-run destructive Git operations, installer changes, global Codex
-  config edits, secret/token reads, deploys, paid API calls, database writes, or
-  production mutations.
-- If an MCP connection needs a missing token, paid service, install step, global
-  config edit, or production endpoint, report the blocker instead of trying to
-  work around it.
+- Never auto-run destructive Git operations, force pushes, installer changes,
+  global Codex config edits, secret/token reads, deploys, paid API calls,
+  database writes, or production mutations.
+- If a command needs a missing token, paid service, install step, global config
+  edit, destructive cleanup, or production endpoint, report the blocker instead
+  of trying to work around it.
 
 ## Non-Negotiable Guardrails
 
