@@ -1,0 +1,14 @@
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local scratch/output
+.codex/
+.codex-backups/
+tmp/
+out/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
