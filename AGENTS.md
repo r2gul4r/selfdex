@@ -26,6 +26,28 @@ current user request says otherwise.
 - Spend the configured `agent_budget` before shrinking back to local-only work.
 - Use bounded repair loops when verification fails inside the pinned scope.
 
+## MCP Connection Autonomy
+
+- Ordinary MCP server connection commands should run automatically when they
+  are needed for the current task and stay inside the active workspace or
+  configured MCP tool boundary.
+- Ordinary commands include read-only or low-risk actions such as list, status,
+  ping, connect, reconnect, health check, capability discovery, server metadata
+  reads, and non-secret diagnostic checks.
+- Do not stop for confirmation just because the command contacts a configured
+  MCP server or checks whether that server is reachable.
+- This rule does not bypass host-level approval prompts. If the host asks for
+  approval, follow the host policy.
+- Never auto-run commands that delete, format, repartition, unmount, wipe, or
+  recursively modify drives, volumes, repository files, user data, or shared
+  workspaces.
+- Never auto-run destructive Git operations, installer changes, global Codex
+  config edits, secret/token reads, deploys, paid API calls, database writes, or
+  production mutations.
+- If an MCP connection needs a missing token, paid service, install step, global
+  config edit, or production endpoint, report the blocker instead of trying to
+  work around it.
+
 ## Non-Negotiable Guardrails
 
 - Never hardcode secrets, tokens, credentials, or private keys.

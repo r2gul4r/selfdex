@@ -2,30 +2,29 @@
 
 ## Current Task
 
-- task: `repo-wide review and safe useless-file cleanup`
+- task: `mcp connection command auto-run policy`
 - phase: `closeout`
-- scope: `review tracked files, ignored generated artifacts, script/test coverage, and stale verification documentation`
-- verification_target: `compileall scripts/tests, unittest discover, planner json/markdown, doc drift, campaign budget, git diff --check`
+- scope: `allow ordinary MCP server connection/status/diagnostic commands to run automatically while keeping dangerous operations approval-gated`
+- verification_target: `campaign budget check, doc drift check, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `7`
+- score_total: `6`
 - score_breakdown:
-  - `repo_wide_review`: 1
-  - `cleanup_deletion_guardrails`: 1
-  - `tracked_vs_ignored_file_audit`: 1
-  - `script_test_relationship_check`: 1
-  - `stale_verification_docs_found`: 1
+  - `permission_policy_change`: 1
+  - `mcp_connection_workflow`: 1
+  - `dangerous_command_boundary`: 1
+  - `state_and_run_record_required`: 1
   - `verification_required`: 1
   - `commit_required`: 1
 - hard_triggers:
-  - `destructive_filesystem_guardrail`
-  - `broad_repo_scouting`
+  - `permission_semantics`
+  - `workflow_policy_change`
 - selected_rules:
-  - `review_before_cleanup`
-  - `do_not_touch_codex_multiagent`
-  - `no_destructive_git`
-  - `no_installers_or_global_config`
+  - `describe_existing_authority_not_host_bypass`
+  - `dangerous_drive_operations_remain_approval_gated`
+  - `no_global_config_edit`
+  - `no_installers`
   - `no_secrets_deploy_paid_api_db`
   - `verification_required`
 - selected_skills:
@@ -33,109 +32,93 @@
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `the repository is small enough for local review, write ownership overlaps around README/Makefile/docs verification wording, and cleanup decisions benefit from one accountable lane`
-- spawn_decision: `do_not_spawn; keep cleanup decisions local and auditable`
-- selection_reason: `Review found no tracked throwaway source files, but did find stale verification docs and an orphaned example reference, so cleanup stayed local and documentation/entrypoint focused.`
+- efficiency_basis: `the change is one tightly coupled policy wording update plus state/run records; delegation would add handoff cost without independent verification`
+- spawn_decision: `do_not_spawn; implement policy wording locally`
+- selection_reason: `User explicitly asked to auto-run ordinary MCP server connection commands except dangerous commands such as drive deletion. This is permission wording, so keep scope narrow and guardrail-heavy.`
 
 ## Evaluation Plan
 
 - evaluation_need: `full`
 - project_invariants:
-  - `Selfdex remains an aggressive but bounded recursive improvement harness.`
+  - `Selfdex remains aggressive but bounded.`
+  - `Repository rules cannot bypass host-level approval requirements.`
+  - `Dangerous filesystem, drive, volume, partition, format, destructive Git, installer/global config, secrets, deploy, paid API, and DB operations remain gated.`
   - `Only C:\lsh\git\selfdex may be modified.`
-  - `Destructive git, installer/global config, secrets, deploy, paid API, and DB work remain out of scope.`
-  - `Generated caches are ignored and may be removed only by exact confirmed repository paths.`
 - task_acceptance:
-  - `Review tracked files for obvious dead, duplicate, placeholder, or generated content.`
-  - `Review ignored generated artifacts separately from tracked files.`
-  - `Make the Makefile test/check targets reflect actual repository checks.`
-  - `Document the examples payload instead of leaving it orphaned.`
-  - `Replace stale docs/REPO_METRICS.md verification commands that reference missing make targets.`
-  - `Record review evidence and verification result.`
-  - `Commit the completed bounded cleanup.`
+  - `AGENTS.md defines ordinary MCP connection commands that may run automatically.`
+  - `AGENTS.md explicitly blocks dangerous drive/delete/format/partition operations from auto-run.`
+  - `The wording does not grant permission to edit global Codex config or installers.`
+  - `The wording does not weaken secret/deploy/paid API/DB guardrails.`
+  - `CAMPAIGN_STATE.md and runs/ record the policy update.`
 - non_goals:
-  - `Do not refactor planner internals in this task.`
-  - `Do not edit codex_multiagent or any other repository.`
-  - `Do not install dependencies or edit global Codex config.`
-  - `Do not touch secrets, deploys, paid APIs, databases, or production systems.`
+  - `Do not edit global Codex config.`
+  - `Do not install or modify MCP servers.`
+  - `Do not touch codex_multiagent or any other repository.`
+  - `Do not run destructive commands.`
 - hard_checks:
-  - `python -m compileall -q scripts tests`
-  - `python -m unittest discover -s tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path AGENTS.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --changed-path runs/20260424-161000-mcp-connection-autonomy.md --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\normalize_quality_signals.py --input .\examples\quality_signal_samples.json --pretty`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path Makefile --changed-path README.md --changed-path docs/REPO_METRICS.md --changed-path runs/20260424-153500-repo-review-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether any cleanup removes source-of-truth or audit artifacts.`
-  - `Check whether ignored generated artifacts are handled without weakening verification.`
-  - `Check whether review findings are actionable instead of speculative.`
+  - `Check whether the new autonomy wording could be misread as approval for destructive drive or data operations.`
+  - `Check whether secret and global-config boundaries remain explicit.`
+  - `Check whether ordinary MCP connection commands are clear enough to reduce unnecessary prompts.`
 - evidence_required:
-  - `tracked file inventory`
-  - `ignored/generated artifact inventory`
-  - `verification command output`
+  - `diff review`
+  - `campaign budget result`
+  - `doc drift result`
   - `git status summary`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `repo review cleanup`
+- write_set: `mcp connection autonomy policy`
 - write_sets:
   - `main`:
-    - `./Makefile`
-    - `README.md`
-    - `docs/REPO_METRICS.md`
-    - `runs/20260424-153500-repo-review-cleanup.md`
+    - `AGENTS.md`
     - `CAMPAIGN_STATE.md`
     - `STATE.md`
+    - `runs/20260424-161000-mcp-connection-autonomy.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Review first, clean second.
-- Treat tracked source, docs, tests, and run records as retained unless there is direct evidence they are useless.
-- Fix stale verification entrypoints and orphaned examples before considering deletion.
-- Do not use destructive git commands.
-- Do not use wildcard-dependent cleanup commands for verification.
-- Record the result in `STATE.md` and `runs/`.
-- Commit the completed bounded cleanup.
+- Add a narrow MCP connection autonomy rule to `AGENTS.md`.
+- Ordinary read-only/status/list/ping/connect/reconnect/diagnose MCP commands can run automatically.
+- Dangerous drive, volume, partition, format, recursive delete, destructive Git, installer/global config, secrets, deploy, paid API, and DB commands remain blocked or approval-gated.
+- Do not edit global config or installer files.
+- Record and commit the change.
 
 ## Reviewer
 
 - reviewer: `none`
 - reviewer_target: `n/a`
-- reviewer_focus: `manual cleanup safety review`
+- reviewer_focus: `manual permission-boundary review`
 
 ## Last Update
 
-- timestamp: `2026-04-24T15:50:00+09:00`
+- timestamp: `2026-04-24T16:18:00+09:00`
 - phase: `closeout`
-- status: `repo review cleanup completed.`
+- status: `MCP connection autonomy policy completed.`
 - verification_result:
-  - `tracked inventory`: `reviewed; no tracked throwaway/generated files found`
-  - `ignored inventory`: `scripts/__pycache__ and tests/__pycache__ found as ignored generated artifacts; removed after exact path check`
-  - `rg scan`: `not used after access denied; replaced with git grep and PowerShell inventory`
-  - `python -m compileall -q scripts tests`: `passed`
-  - `python -m unittest discover -s tests`: `passed; 46 tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=scripts/plan_next_task.py responsibility split; topology=autopilot-mixed`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed`
+  - `manual policy review`: `passed; wording permits ordinary MCP connection diagnostics but does not bypass host approval`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path AGENTS.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --changed-path runs/20260424-161000-mcp-connection-autonomy.md --format json`: `passed; violation_count=0`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`: `passed; finding_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\normalize_quality_signals.py --input .\examples\quality_signal_samples.json --pretty`: `passed`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path Makefile --changed-path README.md --changed-path docs/REPO_METRICS.md --changed-path runs/20260424-153500-repo-review-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
-  - `git diff --check`: `passed with LF-to-CRLF warning for Makefile`
-- note: `Cleanup retained the sample payload by documenting it, fixed stale make target references, and upgraded Makefile checks from planner smoke to unit-test-backed verification.`
+  - `git diff --check`: `passed`
+  - `git status --short`: `only declared task files changed before commit`
+  - `commit`: `ready after final staging`
+- note: `This policy reduces prompts for ordinary MCP server connection work while preserving dangerous-command, secret, deploy, paid API, DB, installer, and global-config boundaries.`
 
 ## Retrospective
 
-- task: `repo-wide review and safe useless-file cleanup`
-- score_total: `7`
-- evaluation_fit: `good; review separated tracked files from ignored generated artifacts and avoided speculative deletion`
-- orchestration_fit: `good; local single-writer cleanup was cheaper and safer than delegation`
+- task: `mcp connection command auto-run policy`
+- score_total: `6`
+- evaluation_fit: `good; verification focused on contract/budget and wording review`
+- orchestration_fit: `good; single-session was appropriate for one policy document plus state/run records`
 - predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
 - spawn_count: `0`
-- rework_or_reclassification: `scope shifted from deletion to stale verification/documentation cleanup after inventory`
-- reviewer_findings: `manual review only; no subagent spawned`
+- rework_or_reclassification: `none`
+- reviewer_findings: `manual permission-boundary review only`
 - verification_outcome: `passed`
-- next_gate_adjustment: `Next planner-selected task remains scripts/plan_next_task.py responsibility split with sidecar-first topology.`
+- next_gate_adjustment: `Next planner-selected implementation remains scripts/plan_next_task.py responsibility split.`
