@@ -16,8 +16,8 @@
 예시:
 
 ```bash
-python3 scripts/collect_repo_metrics.py --pretty
-python3 scripts/collect_repo_metrics.py --paths scripts/normalize_quality_signals.py scripts/collect_repo_metrics.py --pretty
+python scripts/collect_repo_metrics.py --pretty
+python scripts/collect_repo_metrics.py --paths scripts/normalize_quality_signals.py scripts/collect_repo_metrics.py --pretty
 ```
 
 ## 출력 기준
@@ -102,8 +102,8 @@ Git 변경 빈도도 같은 맥락이다.
 예시:
 
 ```bash
-python3 scripts/collect_repo_metrics.py --paths scripts/normalize_quality_signals.py scripts/collect_repo_metrics.py --pretty > /tmp/repo-metrics.json
-python3 scripts/normalize_quality_signals.py --input /tmp/repo-metrics.json --pretty
+python scripts/collect_repo_metrics.py --paths scripts/normalize_quality_signals.py scripts/collect_repo_metrics.py --pretty > out/repo-metrics.json
+python scripts/normalize_quality_signals.py --input out/repo-metrics.json --pretty
 ```
 
 출력은 `analysis_kind=repo_metrics` 형태로 나가고, 파일별로 아래 필드를 담는다.
@@ -155,12 +155,14 @@ python3 scripts/normalize_quality_signals.py --input /tmp/repo-metrics.json --pr
 재현 가능한 저장소 검증 엔트리포인트:
 
 ```bash
-make test-quality-normalizer
-make test-repo-metrics
+python -m compileall -q scripts tests
+python -m unittest discover -s tests
+python scripts/collect_repo_metrics.py --root . --pretty
+python scripts/normalize_quality_signals.py --input examples/quality_signal_samples.json --pretty
 ```
 
-`make test-quality-normalizer` 는 도구 실행 결과 정규화뿐 아니라,
-임시 fixture Git 저장소에서 뽑은 repository metrics 를 다시 품질 신호로 정규화하고
-우선순위 랭킹과 history 저장/조회까지 같이 검사한다.
+`python -m unittest discover -s tests` 는 도구 실행 결과 정규화뿐 아니라,
+fixture repository metrics 를 다시 품질 신호로 정규화하고 우선순위 랭킹을 검사한다.
 
-`make test-repo-metrics` 는 임시 fixture Git 저장소를 만든 뒤 메트릭 JSON 형태와 핵심 수치가 예상대로 나오는지 검사한다.
+`examples/quality_signal_samples.json` 는 실제 품질 도구 결과처럼 생긴 샘플 입력이다.
+정규화기 문서와 수동 확인에 쓰되, 자동 검증의 기준은 `tests/` 아래 유닛 테스트로 둔다.

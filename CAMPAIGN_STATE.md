@@ -40,8 +40,9 @@ none
 - Add fixture-based tests for candidate extractors.
 - Add a campaign budget checker that rejects out-of-contract work.
 - Add generated report drift checks for Selfdex docs.
+- Clean stale verification entrypoints and document the quality signal sample payload.
 
 ## Latest Run
 
-- status: `orchestration-fit-planner`
-- summary: `Added planner orchestration_fit fields so task size, collision risk, handoff cost, parallel gain, and verification independence drive topology; planner now selects scripts/plan_next_task.py responsibility split next.`
+- status: `repo-review-cleanup`
+- summary: `Reviewed tracked files and ignored artifacts, found no tracked throwaway file to delete, cleaned stale Makefile/docs verification guidance, documented examples/quality_signal_samples.json, and kept planner selection on scripts/plan_next_task.py responsibility split next.`

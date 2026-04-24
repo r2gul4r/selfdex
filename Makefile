@@ -3,24 +3,33 @@ SHELL := /bin/sh
 .RECIPEPREFIX := >
 .SILENT:
 
-.PHONY: help lint test check plan
+PYTHON ?= python
+
+.PHONY: help lint test check plan budget drift
 
 help:
 >printf '%s\n' \
 >  'Available targets:' \
->  '  make lint  - Compile Python scripts' \
->  '  make test  - Run planner smoke tests' \
+>  '  make lint   - Compile Python scripts and tests' \
+>  '  make test   - Run unit tests' \
 >  '  make plan  - Print next task plan' \
->  '  make check - Run lint + test'
+>  '  make budget - Check campaign budget' \
+>  '  make drift  - Check documentation drift' \
+>  '  make check  - Run lint + test + plan + budget + drift'
 
 lint:
->python3 -m compileall -q scripts
+>$(PYTHON) -m compileall -q scripts tests
 
 test:
->python3 scripts/plan_next_task.py --root . --format json >/dev/null
->python3 scripts/plan_next_task.py --root . --format markdown >/dev/null
+>$(PYTHON) -m unittest discover -s tests
 
 plan:
->python3 scripts/plan_next_task.py --root . --format markdown
+>$(PYTHON) scripts/plan_next_task.py --root . --format markdown
 
-check: lint test
+budget:
+>$(PYTHON) scripts/check_campaign_budget.py --root . --format markdown
+
+drift:
+>$(PYTHON) scripts/check_doc_drift.py --root . --format markdown
+
+check: lint test plan budget drift

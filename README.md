@@ -49,6 +49,7 @@ appetite for exploration, parallel work, and bounded repair.
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
 | `scripts/normalize_quality_signals.py` | Normalizes scan outputs into priority signals |
 | `scripts/record_run.py` | Writes compact run evidence under `runs/` |
+| `examples/quality_signal_samples.json` | Sample quality-tool payload for normalizer demos |
 
 ## Quick Start
 
@@ -57,12 +58,18 @@ python scripts/plan_next_task.py --root . --format markdown
 python scripts/check_campaign_budget.py --root . --format markdown
 python scripts/check_doc_drift.py --root . --format markdown
 python scripts/collect_repo_metrics.py --root . --pretty
+python scripts/normalize_quality_signals.py --input examples/quality_signal_samples.json --pretty
 python scripts/extract_test_gap_candidates.py --root . --format markdown
 ```
 
 ## Verification
 
 ```bash
-python -m compileall -q scripts
+python -m compileall -q scripts tests
+python -m unittest discover -s tests
 python scripts/plan_next_task.py --root . --format json
+python scripts/plan_next_task.py --root . --format markdown
+python scripts/check_campaign_budget.py --root . --format json
+python scripts/check_doc_drift.py --root . --format json
+git diff --check
 ```

@@ -2,137 +2,140 @@
 
 ## Current Task
 
-- task: `오케스트레이션 크기/효율/안전 판단 개선`
+- task: `repo-wide review and safe useless-file cleanup`
 - phase: `closeout`
-- scope: `planner emits task size, collision risk, parallel gain, verification independence, and orchestration value before recommending subagents`
-- verification_target: `compileall scripts and tests, unittest discover, planner json/markdown, budget checker json, doc drift, git diff --check`
+- scope: `review tracked files, ignored generated artifacts, script/test coverage, and stale verification documentation`
+- verification_target: `compileall scripts/tests, unittest discover, planner json/markdown, doc drift, campaign budget, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `8`
+- score_total: `7`
 - score_breakdown:
-  - `planner_policy_change`: 1
-  - `orchestration_decision_fields`: 1
-  - `task_size_classification`: 1
-  - `parallel_gain_collision_model`: 1
-  - `safety_gate_semantics`: 1
-  - `test_update_required`: 1
-  - `documentation_required`: 1
+  - `repo_wide_review`: 1
+  - `cleanup_deletion_guardrails`: 1
+  - `tracked_vs_ignored_file_audit`: 1
+  - `script_test_relationship_check`: 1
+  - `stale_verification_docs_found`: 1
   - `verification_required`: 1
+  - `commit_required`: 1
 - hard_triggers:
-  - `workflow_policy_change`
-  - `orchestration_semantics`
+  - `destructive_filesystem_guardrail`
+  - `broad_repo_scouting`
 - selected_rules:
-  - `preserve_campaign_queue_priority`
-  - `score_is_not_spawn_decision`
-  - `concurrent_state_only_when_write_sets_split`
-  - `main_owns_campaign_state_and_runs`
-  - `preserve_guardrails`
+  - `review_before_cleanup`
+  - `do_not_touch_codex_multiagent`
+  - `no_destructive_git`
+  - `no_installers_or_global_config`
+  - `no_secrets_deploy_paid_api_db`
   - `verification_required`
 - selected_skills:
   - `none`
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `the change is planner logic plus tests/docs in one coupled write set; a sidecar reviewer would not have an independent write target`
-- spawn_decision: `do_not_spawn; implement locally and verify planner behavior with focused tests`
-- selection_reason: `User asked to turn the discussion into an improvement plan and implement it. Current planner can rank candidates but cannot strongly distinguish tiny/small/large work for safe multi-agent use.`
+- efficiency_basis: `the repository is small enough for local review, write ownership overlaps around README/Makefile/docs verification wording, and cleanup decisions benefit from one accountable lane`
+- spawn_decision: `do_not_spawn; keep cleanup decisions local and auditable`
+- selection_reason: `Review found no tracked throwaway source files, but did find stale verification docs and an orphaned example reference, so cleanup stayed local and documentation/entrypoint focused.`
 
 ## Evaluation Plan
 
 - evaluation_need: `full`
 - project_invariants:
-  - `Selfdex should be more aggressive than codex_multiagent.`
-  - `Destructive commands, secrets, deploys, paid calls, DB migrations, and cross-workspace edits remain approval-gated.`
-  - `score_total and priority_score must not become automatic spawn buttons.`
-  - `Concurrent state is a large-task accelerator, not the default path.`
+  - `Selfdex remains an aggressive but bounded recursive improvement harness.`
+  - `Only C:\lsh\git\selfdex may be modified.`
+  - `Destructive git, installer/global config, secrets, deploy, paid API, and DB work remain out of scope.`
+  - `Generated caches are ignored and may be removed only by exact confirmed repository paths.`
 - task_acceptance:
-  - `plan_next_task.py emits orchestration_fit fields: task_size_class, estimated_write_set_count, shared_file_collision_risk, handoff_cost, parallel_gain, verification_independence, orchestration_value.`
-  - `recommended_topology uses orchestration_fit instead of decision=pick alone.`
-  - `tiny/small helper tasks recommend autopilot-single with no spawn.`
-  - `large tasks with high collision risk recommend sidecar/mixed, not blind parallel workers.`
-  - `large tasks with disjoint write-set signals can recommend concurrent-state parallelization.`
-  - `Markdown output shows the fit fields so the decision is auditable.`
-  - `A durable doc records the plan, decision model, and safety gates.`
+  - `Review tracked files for obvious dead, duplicate, placeholder, or generated content.`
+  - `Review ignored generated artifacts separately from tracked files.`
+  - `Make the Makefile test/check targets reflect actual repository checks.`
+  - `Document the examples payload instead of leaving it orphaned.`
+  - `Replace stale docs/REPO_METRICS.md verification commands that reference missing make targets.`
+  - `Record review evidence and verification result.`
+  - `Commit the completed bounded cleanup.`
 - non_goals:
-  - `Do not implement background loops or daemon behavior.`
-  - `Do not change installer or global Codex config.`
-  - `Do not edit codex_multiagent.`
-  - `Do not spawn subagents in this implementation task.`
-  - `Do not touch secrets, deploys, paid APIs, or databases.`
+  - `Do not refactor planner internals in this task.`
+  - `Do not edit codex_multiagent or any other repository.`
+  - `Do not install dependencies or edit global Codex config.`
+  - `Do not touch secrets, deploys, paid APIs, databases, or production systems.`
 - hard_checks:
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/plan_next_task.py --changed-path tests/test_plan_next_task.py --changed-path docs/ORCHESTRATION_DECISION_PLAN.md --changed-path README.md --changed-path runs/20260424-152019-orchestration-fit-planner.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\normalize_quality_signals.py --input .\examples\quality_signal_samples.json --pretty`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path Makefile --changed-path README.md --changed-path docs/REPO_METRICS.md --changed-path runs/20260424-153500-repo-review-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether score and priority remain ranking inputs, not direct spawn authorization.`
-  - `Check whether small tasks are blocked from wasteful concurrent-state overhead.`
-  - `Check whether large single-file tasks prefer explorer/reviewer sidecars instead of parallel workers.`
+  - `Check whether any cleanup removes source-of-truth or audit artifacts.`
+  - `Check whether ignored generated artifacts are handled without weakening verification.`
+  - `Check whether review findings are actionable instead of speculative.`
 - evidence_required:
+  - `tracked file inventory`
+  - `ignored/generated artifact inventory`
   - `verification command output`
-  - `selected planner candidate and orchestration_fit`
   - `git status summary`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `planner orchestration fit`
+- write_set: `repo review cleanup`
 - write_sets:
   - `main`:
-    - `scripts/plan_next_task.py`
-    - `tests/test_plan_next_task.py`
-    - `docs/ORCHESTRATION_DECISION_PLAN.md`
+    - `./Makefile`
     - `README.md`
-    - `runs/20260424-152019-orchestration-fit-planner.md`
+    - `docs/REPO_METRICS.md`
+    - `runs/20260424-153500-repo-review-cleanup.md`
     - `CAMPAIGN_STATE.md`
     - `STATE.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Add orchestration fit fields to planner JSON and Markdown output.
-- Preserve candidate ranking, campaign queue priority, and existing collector fallback behavior.
-- Make topology recommendation depend on task size, estimated write-set separability, collision risk, handoff cost, parallel gain, and verification independence.
-- Document the model as a durable Selfdex plan.
-- Do not introduce external dependencies.
-- Record the completed run under `runs/` and update the latest campaign run summary.
-- Do not touch installers, global Codex config, codex_multiagent, secrets, deploys, paid APIs, or DB files.
+- Review first, clean second.
+- Treat tracked source, docs, tests, and run records as retained unless there is direct evidence they are useless.
+- Fix stale verification entrypoints and orphaned examples before considering deletion.
+- Do not use destructive git commands.
+- Do not use wildcard-dependent cleanup commands for verification.
+- Record the result in `STATE.md` and `runs/`.
+- Commit the completed bounded cleanup.
 
 ## Reviewer
 
 - reviewer: `none`
 - reviewer_target: `n/a`
-- reviewer_focus: `manual planner topology and safety-gate review`
+- reviewer_focus: `manual cleanup safety review`
 
 ## Last Update
 
-- timestamp: `2026-04-24T15:20:19+09:00`
+- timestamp: `2026-04-24T15:50:00+09:00`
 - phase: `closeout`
-- status: `planner orchestration fit improvement completed.`
+- status: `repo review cleanup completed.`
 - verification_result:
+  - `tracked inventory`: `reviewed; no tracked throwaway/generated files found`
+  - `ignored inventory`: `scripts/__pycache__ and tests/__pycache__ found as ignored generated artifacts; removed after exact path check`
+  - `rg scan`: `not used after access denied; replaced with git grep and PowerShell inventory`
   - `python -m compileall -q scripts tests`: `passed`
   - `python -m unittest discover -s tests`: `passed; 46 tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=scripts/plan_next_task.py 책임 분리와 경계 정리; fit=large/high-collision/medium-value`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=scripts/plan_next_task.py responsibility split; topology=autopilot-mixed`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`: `passed; finding_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/plan_next_task.py --changed-path tests/test_plan_next_task.py --changed-path docs/ORCHESTRATION_DECISION_PLAN.md --changed-path README.md --changed-path runs/20260424-152019-orchestration-fit-planner.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
-  - `git diff --check`: `passed with LF-to-CRLF warnings for scripts/plan_next_task.py and tests/test_plan_next_task.py`
-- note: `This task turns the discussion about efficiency, speed, and safety into planner behavior.`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\normalize_quality_signals.py --input .\examples\quality_signal_samples.json --pretty`: `passed`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path Makefile --changed-path README.md --changed-path docs/REPO_METRICS.md --changed-path runs/20260424-153500-repo-review-cleanup.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
+  - `git diff --check`: `passed with LF-to-CRLF warning for Makefile`
+- note: `Cleanup retained the sample payload by documenting it, fixed stale make target references, and upgraded Makefile checks from planner smoke to unit-test-backed verification.`
 
 ## Retrospective
 
-- task: `planner orchestration fit improvement`
-- score_total: `8`
-- evaluation_fit: `good; unit tests cover small single, large high-collision sidecar, and disjoint concurrent-state recommendations`
-- orchestration_fit: `good; planner no longer uses decision=pick alone as a spawn trigger`
+- task: `repo-wide review and safe useless-file cleanup`
+- score_total: `7`
+- evaluation_fit: `good; review separated tracked files from ignored generated artifacts and avoided speculative deletion`
+- orchestration_fit: `good; local single-writer cleanup was cheaper and safer than delegation`
 - predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
 - spawn_count: `0`
-- rework_or_reclassification: `none`
+- rework_or_reclassification: `scope shifted from deletion to stale verification/documentation cleanup after inventory`
 - reviewer_findings: `manual review only; no subagent spawned`
 - verification_outcome: `passed`
-- next_gate_adjustment: `Next candidate is scripts/plan_next_task.py responsibility split; planner recommends sidecar-first because collision risk is high.`
+- next_gate_adjustment: `Next planner-selected task remains scripts/plan_next_task.py responsibility split with sidecar-first topology.`
