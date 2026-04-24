@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `refactor-candidate-builder-cleanup`
-- summary: `Shared refactor candidate scoring and payload assembly in scripts/extract_refactor_candidates.py; planner now selects extract_markdown_section duplicate cleanup next.`
+- status: `doc-drift-markdown-helper`
+- summary: `Reused scripts/markdown_utils.py section parsing in scripts/check_doc_drift.py; planner now selects scripts/collect_repo_metrics.py responsibility split next.`

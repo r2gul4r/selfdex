@@ -12,6 +12,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+try:
+    from markdown_utils import extract_markdown_section
+except ModuleNotFoundError:
+    from scripts.markdown_utils import extract_markdown_section
+
 
 CORE_PATHS = (
     "AGENTS.md",
@@ -58,28 +63,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Output format.",
     )
     return parser.parse_args(argv)
-
-
-def extract_markdown_section(text: str, heading: str) -> str:
-    lines: list[str] = []
-    in_section = False
-    heading_level = 0
-    heading_pattern = re.compile(r"^(#+)\s+(.+?)\s*$")
-
-    for line in text.splitlines():
-        match = heading_pattern.match(line)
-        if match:
-            level = len(match.group(1))
-            name = match.group(2).strip().lower()
-            if in_section and level <= heading_level:
-                break
-            if name == heading.lower():
-                in_section = True
-                heading_level = level
-                continue
-        if in_section:
-            lines.append(line)
-    return "\n".join(lines)
 
 
 def documented_code_paths(text: str) -> list[str]:
@@ -146,7 +129,7 @@ def find_doc_drift(root: Path) -> tuple[list[DriftFinding], dict[str, Any]]:
     readme_path = root / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
     documented_paths = documented_code_paths(readme_text)
-    quick_start = extract_markdown_section(readme_text, "Quick Start")
+    quick_start = "\n".join(extract_markdown_section(readme_text, "Quick Start"))
     core_paths = existing_core_paths(root)
     report_scripts = generated_report_scripts(root)
 
