@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `collect-metrics-refactor`
-- summary: `Reduced duplicated FileMetrics rebuilding in collect_repo_metrics.py; planner now falls back to normalize_quality_signals.py refactor next.`
+- status: `normalize-quality-signals-refactor`
+- summary: `Split repo metric contribution, axis breakdown, and quality signal assembly in normalize_quality_signals.py with focused regression coverage.`

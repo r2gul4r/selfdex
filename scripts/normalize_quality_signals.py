@@ -655,10 +655,34 @@ def summarize_repo_hotspot(entry: dict[str, Any]) -> str:
     )
 
 
-def normalize_repo_metric_file(
-    item: dict[str, Any], observed_maxima: dict[str, float]
-) -> dict[str, Any]:
-    metric_inputs = build_repo_metric_inputs(item)
+def build_repo_metric_contribution(
+    axis_name: str,
+    metric_name: str,
+    metric_weight: float,
+    metric_inputs: dict[str, float],
+    observed_maxima: dict[str, float],
+) -> tuple[float, dict[str, Any], dict[str, Any]]:
+    raw_value = metric_inputs[metric_name]
+    normalized_value = normalize_repo_metric(
+        raw_value,
+        observed_maxima.get(metric_name, 0.0),
+        float(REPO_METRIC_CAPS[metric_name]),
+    )
+    contribution = normalized_value * metric_weight
+    metric_entry = {
+        "metric": metric_name,
+        "raw": raw_value,
+        "normalized": normalized_value,
+        "weight": metric_weight,
+        "axis_contribution": round_score(contribution),
+    }
+    signal_entry = {"axis": axis_name, **metric_entry}
+    return contribution, metric_entry, signal_entry
+
+
+def build_repo_axis_breakdown(
+    metric_inputs: dict[str, float], observed_maxima: dict[str, float]
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     axis_breakdown: dict[str, dict[str, Any]] = {}
     signal_contributions: list[dict[str, Any]] = []
 
@@ -666,33 +690,16 @@ def normalize_repo_metric_file(
         axis_score = 0.0
         metrics: list[dict[str, Any]] = []
         for metric_name, metric_weight in axis_weights.items():
-            raw_value = metric_inputs[metric_name]
-            normalized_value = normalize_repo_metric(
-                raw_value,
-                observed_maxima.get(metric_name, 0.0),
-                float(REPO_METRIC_CAPS[metric_name]),
+            contribution, metric_entry, signal_entry = build_repo_metric_contribution(
+                axis_name,
+                metric_name,
+                metric_weight,
+                metric_inputs,
+                observed_maxima,
             )
-            contribution = normalized_value * metric_weight
             axis_score += contribution
-            metrics.append(
-                {
-                    "metric": metric_name,
-                    "raw": raw_value,
-                    "normalized": normalized_value,
-                    "weight": metric_weight,
-                    "axis_contribution": round_score(contribution),
-                }
-            )
-            signal_contributions.append(
-                {
-                    "axis": axis_name,
-                    "metric": metric_name,
-                    "raw": raw_value,
-                    "normalized": normalized_value,
-                    "weight": metric_weight,
-                    "axis_contribution": round_score(contribution),
-                }
-            )
+            metrics.append(metric_entry)
+            signal_contributions.append(signal_entry)
 
         axis_breakdown[axis_name] = {
             "weight": REPO_SIGNAL_WEIGHTS[axis_name],
@@ -701,6 +708,14 @@ def normalize_repo_metric_file(
             "metrics": metrics,
         }
 
+    return axis_breakdown, signal_contributions
+
+
+def build_repo_quality_signal(
+    path: str,
+    axis_breakdown: dict[str, dict[str, Any]],
+    signal_contributions: list[dict[str, Any]],
+) -> dict[str, Any]:
     weighted_score = sum(
         axis_info["weighted_contribution"] for axis_info in axis_breakdown.values()
     )
@@ -716,31 +731,44 @@ def normalize_repo_metric_file(
     )[:3]
 
     return {
-        "path": as_text(item.get("path")),
+        "profile_version": QUALITY_SIGNAL_PROFILE_VERSION,
+        "weighted_score": round_score(weighted_score),
+        "priority_score": priority_score,
+        "priority_grade": priority_grade,
+        "priority_decision": repo_priority_decision(priority_grade),
+        "axis_breakdown": axis_breakdown,
+        "top_signals": top_signals,
+        "summary": summarize_repo_hotspot(
+            {
+                "path": path,
+                "quality_signal": {
+                    "priority_score": priority_score,
+                    "priority_grade": priority_grade,
+                    "top_signals": top_signals or [{"metric": "none"}],
+                },
+            }
+        ),
+    }
+
+
+def normalize_repo_metric_file(
+    item: dict[str, Any], observed_maxima: dict[str, float]
+) -> dict[str, Any]:
+    metric_inputs = build_repo_metric_inputs(item)
+    path = as_text(item.get("path"))
+    axis_breakdown, signal_contributions = build_repo_axis_breakdown(
+        metric_inputs,
+        observed_maxima,
+    )
+
+    return {
+        "path": path,
         "language": as_text(item.get("language")),
         "module_size": item.get("module_size"),
         "complexity": item.get("complexity"),
         "duplication": item.get("duplication"),
         "change_frequency": item.get("change_frequency"),
-        "quality_signal": {
-            "profile_version": QUALITY_SIGNAL_PROFILE_VERSION,
-            "weighted_score": round_score(weighted_score),
-            "priority_score": priority_score,
-            "priority_grade": priority_grade,
-            "priority_decision": repo_priority_decision(priority_grade),
-            "axis_breakdown": axis_breakdown,
-            "top_signals": top_signals,
-            "summary": summarize_repo_hotspot(
-                {
-                    "path": as_text(item.get("path")),
-                    "quality_signal": {
-                        "priority_score": priority_score,
-                        "priority_grade": priority_grade,
-                        "top_signals": top_signals or [{"metric": "none"}],
-                    },
-                }
-            ),
-        },
+        "quality_signal": build_repo_quality_signal(path, axis_breakdown, signal_contributions),
     }
 
 

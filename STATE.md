@@ -2,24 +2,27 @@
 
 ## Current Task
 
-- task: `apply_git_history_metrics + apply_duplication_metrics 중복 정리`
+- task: `normalize_quality_signals repo metric helper extraction`
 - phase: `closeout`
-- scope: `narrow refactor in scripts/collect_repo_metrics.py to share metric payload rebuilding logic`
-- verification_target: `compileall scripts and tests, unittest discover, collect metrics smoke, planner json/markdown, budget checker json, git diff --check`
+- scope: `narrow refactor in repo metric normalization helpers without schema changes, focused regression test`
+- verification_target: `compileall scripts and tests, unittest discover, normalize smoke, planner json/markdown, budget checker json, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `4`
+- score_total: `5`
 - score_breakdown:
   - `single_file_refactor`: 1
-  - `duplicate_block_reduction`: 1
-  - `core_scan_tool`: 1
+  - `large_normalizer_hotspot`: 1
+  - `repo_metric_schema_risk`: 1
+  - `helper_extraction`: 1
+  - `focused_test_update`: 1
   - `verification_required`: 1
 - hard_triggers:
   - `none`
 - selected_rules:
   - `narrow_refactor`
-  - `preserve_collect_metrics_schema`
+  - `preserve_normalized_schema`
+  - `preserve_repo_metrics_output`
   - `preserve_guardrails`
   - `verification_required`
 - selected_skills:
@@ -27,9 +30,9 @@
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `one duplicate block inside one file; no independent write sets or parallel verification target`
-- spawn_decision: `do_not_spawn; local refactor is cheaper than handoff`
-- selection_reason: `Campaign queue is empty; planner fell back to scan-based refactor candidate with priority_score=54.05.`
+- efficiency_basis: `one file and one tightly coupled repo-metric normalization path; no independent write sets`
+- spawn_decision: `do_not_spawn; helper extraction is local and easier to verify in one lane`
+- selection_reason: `Planner selected normalize_quality_signals.py responsibility refactor from scan fallback with priority_score=54.05.`
 
 ## Evaluation Plan
 
@@ -39,9 +42,11 @@
   - `Destructive commands, secrets, deploys, paid calls, DB migrations, and cross-workspace edits remain approval-gated.`
   - `Imported scripts should remain runnable without external dependencies.`
 - task_acceptance:
-  - `Duplicate FileMetrics rebuilding code in apply_git_history_metrics and apply_duplication_metrics is shared through one helper.`
-  - `collect_repo_metrics.py output schema remains unchanged.`
-  - `No behavior change outside the duplicate block refactor.`
+  - `Repo metric axis normalization is split into smaller helpers.`
+  - `Focused test covers normalized repo metric schema and ranking behavior.`
+  - `Normalized repo metrics JSON schema remains unchanged.`
+  - `Top signal, priority score, grade, and summary behavior stay equivalent.`
+  - `No broad rewrite of generic tool-result normalization.`
 - non_goals:
   - `Do not edit codex_multiagent.`
   - `Do not touch installers or global Codex config.`
@@ -50,14 +55,14 @@
 - hard_checks:
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . --pretty`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/collect_repo_metrics.py --changed-path STATE.md --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . --pretty | python .\scripts\normalize_quality_signals.py --pretty`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/normalize_quality_signals.py --changed-path tests/test_normalize_quality_signals.py --changed-path STATE.md --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether the helper preserves every FileMetrics field exactly.`
-  - `Check whether the refactor really reduces the duplicated update pattern.`
+  - `Check whether helper extraction preserves metric contribution math.`
+  - `Check whether output keys and summary shape remain stable.`
 - evidence_required:
   - `verification command output`
   - `selected planner candidate`
@@ -66,20 +71,22 @@
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `collect repo metrics refactor`
+- write_set: `normalize quality signals refactor`
 - write_sets:
   - `main`:
-    - `scripts/collect_repo_metrics.py`
-    - `runs/20260424-140813-collect-metrics-refactor.md`
+    - `scripts/normalize_quality_signals.py`
+    - `tests/test_normalize_quality_signals.py`
+    - `runs/20260424-141655-normalize-quality-signals-refactor.md`
     - `CAMPAIGN_STATE.md`
     - `STATE.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Refactor only the duplicated FileMetrics reconstruction pattern.
-- Preserve field names, data types, and JSON output shape.
-- Do not introduce shared helper modules for this small change.
+- Refactor only repo metrics normalization helper boundaries.
+- Add focused regression coverage for repo metric normalization.
+- Preserve field names, data types, priority math, and JSON output shape.
+- Do not split files or introduce new dependencies.
 - Record the completed run under `runs/` and update the latest campaign run summary.
 - Do not touch installers, global Codex config, codex_multiagent, secrets, deploys, paid APIs, or DB files.
 
@@ -87,33 +94,33 @@
 
 - reviewer: `none`
 - reviewer_target: `n/a`
-- reviewer_focus: `manual collect_repo_metrics field-preservation review`
+- reviewer_focus: `manual normalize_quality_signals schema-preservation review`
 
 ## Last Update
 
-- timestamp: `2026-04-24T14:08:56+09:00`
+- timestamp: `2026-04-24T14:17:16+09:00`
 - phase: `closeout`
-- status: `collect_repo_metrics duplicate refactor completed.`
+- status: `normalize_quality_signals repo metric helper extraction completed.`
 - verification_result:
   - `python -m compileall -q scripts tests`: `passed`
-  - `python -m unittest discover -s tests`: `passed; 28 tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . --pretty`: `passed; file_count=41`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/collect_repo_metrics.py --changed-path runs/20260424-140813-collect-metrics-refactor.md --changed-path CAMPAIGN_STATE.md --changed-path STATE.md --format json`: `passed; violation_count=0`
+  - `python -m unittest discover -s tests`: `passed; 29 tests`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\collect_repo_metrics.py --root . | python .\scripts\normalize_quality_signals.py | Out-Null`: `passed`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path scripts/normalize_quality_signals.py --changed-path tests/test_normalize_quality_signals.py --changed-path STATE.md --format json`: `passed; violation_count=0`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json`: `passed; selected=scripts/normalize_quality_signals.py 책임 분리와 경계 정리`
   - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed`
-  - `git diff --check`: `passed with LF-to-CRLF warnings for scripts/collect_repo_metrics.py and scripts/plan_next_task.py`
-- note: `This task followed scan fallback after campaign queue completion.`
+  - `git diff --check`: `passed with LF-to-CRLF warning for scripts/normalize_quality_signals.py`
+- note: `This task starts after commit 682a8af; planner still flags the same file as the next broad hotspot.`
 
 ## Retrospective
 
-- task: `collect_repo_metrics duplicate refactor`
-- score_total: `4`
-- evaluation_fit: `good; smoke metrics and planner fallback verified the refactor`
-- orchestration_fit: `good; single-session matched one-file refactor scope`
+- task: `normalize_quality_signals helper extraction`
+- score_total: `5`
+- evaluation_fit: `good; focused test and normalize smoke cover the extracted repo metric helpers`
+- orchestration_fit: `good; single-session matched one-file helper extraction`
 - predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
 - spawn_count: `0`
-- rework_or_reclassification: `none`
+- rework_or_reclassification: `expanded scope to add a focused regression test before verification`
 - reviewer_findings: `manual review only; no subagent spawned`
 - verification_outcome: `passed`
-- next_gate_adjustment: `Next candidate is scripts/normalize_quality_signals.py 책임 분리와 경계 정리.`
+- next_gate_adjustment: `Continue splitting normalize_quality_signals.py hotspot if planner keeps selecting it.`
