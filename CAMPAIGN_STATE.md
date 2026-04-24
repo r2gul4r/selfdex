@@ -44,8 +44,9 @@ none
 - Add MCP connection autonomy rules for ordinary server connection commands.
 - Broaden command autonomy to all ordinary non-destructive workflow commands.
 - Split planner orchestration-fit heuristics out of `scripts/plan_next_task.py`.
+- Split file metric models and line analysis out of `scripts/collect_repo_metrics.py`.
 
 ## Latest Run
 
-- status: `plan-orchestration-fit-split`
-- summary: `Extracted task-size and orchestration-fit heuristics from scripts/plan_next_task.py into scripts/plan_orchestration_fit.py, added focused tests, preserved planner JSON/Markdown schema, and advanced the next planner candidate to scripts/collect_repo_metrics.py responsibility split.`
+- status: `collect-metrics-utils-split`
+- summary: `Extracted FileMetrics/GitHistory/DuplicateGroup models and line-analysis helpers from scripts/collect_repo_metrics.py into scripts/repo_metrics_utils.py, added helper plus direct/module CLI tests, fixed reviewer-found import-boundary risk, and advanced the next planner candidate to scripts/extract_refactor_candidates.py responsibility split.`
