@@ -34,6 +34,7 @@ appetite for exploration, parallel work, and bounded repair.
 | `STATE.md` | Current task contract and write ownership |
 | `PROJECT_REGISTRY.md` | Registered projects for read-only multi-project analysis |
 | `docs/SELFDEX_FINAL_GOAL.md` | Final goal, roadmap, and recursive improvement contract |
+| `docs/SELFDEX_HANDOFF.md` | Cross-machine handoff memory for continuing the campaign |
 | `docs/ORCHESTRATION_DECISION_PLAN.md` | Planner execution-fit model for safe multi-agent acceleration |
 | `runs/` | Per-run records and evidence |
 | `scripts/plan_next_task.py` | Selects the next candidate from repository signals |
