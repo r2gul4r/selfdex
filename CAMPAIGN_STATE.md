@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `shared-extractor-helpers`
-- summary: `Moved duplicated extractor argparse options and area classification into shared helpers; planner now selects scripts/normalize_quality_signals.py responsibility split next.`
+- status: `normalizer-helper-extraction`
+- summary: `Moved repo quality scoring and tool-result parsing out of scripts/normalize_quality_signals.py; planner now selects build_duplicate_candidate + build_hotspot_candidate duplicate cleanup next.`

@@ -41,6 +41,8 @@ appetite for exploration, parallel work, and bounded repair.
 | `scripts/argparse_utils.py` | Shared argparse option helpers for local scripts |
 | `scripts/markdown_utils.py` | Shared markdown parsing helpers for local scripts |
 | `scripts/repo_area_utils.py` | Shared repository area labels and classifiers |
+| `scripts/repo_quality_signal_utils.py` | Shared repo metric quality-signal scoring helpers |
+| `scripts/tool_result_utils.py` | Shared tool-result issue and coverage parsing helpers |
 | `scripts/list_project_registry.py` | Lists registered projects without scanning or writing to them |
 | `scripts/collect_repo_metrics.py` | Repository metric scanner |
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
