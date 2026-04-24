@@ -38,6 +38,7 @@ appetite for exploration, parallel work, and bounded repair.
 | `scripts/plan_next_task.py` | Selects the next candidate from repository signals |
 | `scripts/check_campaign_budget.py` | Rejects campaign budget and write-contract violations |
 | `scripts/check_doc_drift.py` | Checks README drift against generated-report scripts |
+| `scripts/markdown_utils.py` | Shared markdown parsing helpers for local scripts |
 | `scripts/list_project_registry.py` | Lists registered projects without scanning or writing to them |
 | `scripts/collect_repo_metrics.py` | Repository metric scanner |
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |

@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `normalize-coverage-parser`
-- summary: `Split coverage parsing helpers in normalize_quality_signals.py and added explicit/text coverage regression tests.`
+- status: `shared-markdown-helper`
+- summary: `Moved duplicated markdown value and section parsing helpers into scripts/markdown_utils.py; planner now selects parse_args duplicate cleanup next.`
