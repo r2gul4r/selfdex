@@ -43,8 +43,9 @@ none
 - Clean stale verification entrypoints and document the quality signal sample payload.
 - Add MCP connection autonomy rules for ordinary server connection commands.
 - Broaden command autonomy to all ordinary non-destructive workflow commands.
+- Split planner orchestration-fit heuristics out of `scripts/plan_next_task.py`.
 
 ## Latest Run
 
-- status: `general-command-autonomy`
-- summary: `Broadened AGENTS.md policy so ordinary non-destructive commands run automatically across inspection, Git reads, local scripts, verification, formatting, builds, diagnostics, and MCP connection checks, while destructive drive, destructive Git, global config, secrets, deploy, paid API, and DB operations remain approval-gated.`
+- status: `plan-orchestration-fit-split`
+- summary: `Extracted task-size and orchestration-fit heuristics from scripts/plan_next_task.py into scripts/plan_orchestration_fit.py, added focused tests, preserved planner JSON/Markdown schema, and advanced the next planner candidate to scripts/collect_repo_metrics.py responsibility split.`

@@ -49,6 +49,7 @@ appetite for exploration, parallel work, and bounded repair.
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
 | `scripts/normalize_quality_signals.py` | Normalizes scan outputs into priority signals |
 | `scripts/record_run.py` | Writes compact run evidence under `runs/` |
+| `scripts/plan_orchestration_fit.py` | Planner task-size and orchestration-fit heuristics |
 | `examples/quality_signal_samples.json` | Sample quality-tool payload for normalizer demos |
 
 ## Quick Start
