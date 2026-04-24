@@ -43,5 +43,5 @@ none
 
 ## Latest Run
 
-- status: `normalize-quality-signals-refactor`
-- summary: `Split repo metric contribution, axis breakdown, and quality signal assembly in normalize_quality_signals.py with focused regression coverage.`
+- status: `normalize-coverage-parser`
+- summary: `Split coverage parsing helpers in normalize_quality_signals.py and added explicit/text coverage regression tests.`

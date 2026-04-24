@@ -838,7 +838,7 @@ def normalize_repo_metrics_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def parse_coverage(result: dict[str, Any], text: str) -> dict[str, Any] | None:
+def normalize_explicit_coverage(result: dict[str, Any]) -> dict[str, Any] | None:
     if isinstance(result.get("coverage"), dict):
         coverage = result["coverage"].copy()
         percent = coerce_float(coverage.get("percent"))
@@ -848,9 +848,11 @@ def parse_coverage(result: dict[str, Any], text: str) -> dict[str, Any] | None:
             coverage[key] = coerce_int(coverage.get(key))
         coverage["raw"] = coverage.get("raw") or None
         return coverage
+    return None
 
+
+def parse_primary_coverage_values(result: dict[str, Any], text: str) -> dict[str, Any]:
     lines_match = LINES_COVERAGE_PATTERN.search(text)
-    branches_match = BRANCHES_COVERAGE_PATTERN.search(text)
     total_match = TOTAL_COVERAGE_PATTERN.search(text)
     table_match = TABLE_COVERAGE_PATTERN.search(text)
 
@@ -883,20 +885,7 @@ def parse_coverage(result: dict[str, Any], text: str) -> dict[str, Any] | None:
             percent = percent_hint
             raw = f"coverage_percent={percent_hint}"
 
-    if branches_match:
-        branches_covered = coerce_int(branches_match.group("covered"))
-        branches_total = coerce_int(branches_match.group("total"))
-        raw = "\n".join(part for part in (raw, branches_match.group(0)) if part)
-
-    if percent is None and not any(
-        value is not None
-        for value in (lines_covered, lines_total, branches_covered, branches_total)
-    ):
-        return None
-
-    status = "covered" if percent is not None else "partial"
     return {
-        "status": status,
         "percent": percent,
         "lines_covered": lines_covered,
         "lines_total": lines_total,
@@ -904,6 +893,48 @@ def parse_coverage(result: dict[str, Any], text: str) -> dict[str, Any] | None:
         "branches_total": branches_total,
         "raw": raw,
     }
+
+
+def apply_branch_coverage(text: str, coverage: dict[str, Any]) -> dict[str, Any]:
+    branches_match = BRANCHES_COVERAGE_PATTERN.search(text)
+    if branches_match:
+        coverage["branches_covered"] = coerce_int(branches_match.group("covered"))
+        coverage["branches_total"] = coerce_int(branches_match.group("total"))
+        coverage["raw"] = "\n".join(
+            part for part in (coverage["raw"], branches_match.group(0)) if part
+        )
+    return coverage
+
+
+def has_coverage_values(coverage: dict[str, Any]) -> bool:
+    return any(
+        coverage.get(key) is not None
+        for key in ("lines_covered", "lines_total", "branches_covered", "branches_total")
+    )
+
+
+def parse_coverage_from_text(result: dict[str, Any], text: str) -> dict[str, Any] | None:
+    coverage = apply_branch_coverage(text, parse_primary_coverage_values(result, text))
+    if coverage["percent"] is None and not has_coverage_values(coverage):
+        return None
+
+    status = "covered" if coverage["percent"] is not None else "partial"
+    return {
+        "status": status,
+        "percent": coverage["percent"],
+        "lines_covered": coverage["lines_covered"],
+        "lines_total": coverage["lines_total"],
+        "branches_covered": coverage["branches_covered"],
+        "branches_total": coverage["branches_total"],
+        "raw": coverage["raw"],
+    }
+
+
+def parse_coverage(result: dict[str, Any], text: str) -> dict[str, Any] | None:
+    explicit_coverage = normalize_explicit_coverage(result)
+    if explicit_coverage is not None:
+        return explicit_coverage
+    return parse_coverage_from_text(result, text)
 
 
 def build_summary(tool: str, status: str, failure_count: int, warning_count: int, coverage: dict[str, Any] | None) -> str:

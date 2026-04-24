@@ -17,6 +17,39 @@ SPEC.loader.exec_module(normalize_quality_signals)
 
 
 class NormalizeQualitySignalsTests(unittest.TestCase):
+    def test_parse_coverage_preserves_explicit_coverage_payload(self) -> None:
+        coverage = normalize_quality_signals.parse_coverage(
+            {
+                "coverage": {
+                    "percent": "87.5",
+                    "lines_covered": "7",
+                    "lines_total": "8",
+                    "raw": "",
+                }
+            },
+            "",
+        )
+
+        self.assertEqual(coverage["percent"], 87.5)
+        self.assertEqual(coverage["lines_covered"], 7)
+        self.assertEqual(coverage["lines_total"], 8)
+        self.assertIsNone(coverage["raw"])
+
+    def test_parse_coverage_combines_line_and_branch_text(self) -> None:
+        coverage = normalize_quality_signals.parse_coverage(
+            {},
+            "Lines: 80.0% (8/10)\nBranches: 50.0% (1/2)",
+        )
+
+        self.assertEqual(coverage["status"], "covered")
+        self.assertEqual(coverage["percent"], 80.0)
+        self.assertEqual(coverage["lines_covered"], 8)
+        self.assertEqual(coverage["lines_total"], 10)
+        self.assertEqual(coverage["branches_covered"], 1)
+        self.assertEqual(coverage["branches_total"], 2)
+        self.assertIn("Lines: 80.0%", coverage["raw"])
+        self.assertIn("Branches: 50.0%", coverage["raw"])
+
     def test_repo_metrics_normalization_keeps_quality_signal_shape(self) -> None:
         payload = {
             "schema_version": 1,
