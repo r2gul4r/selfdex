@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -158,6 +160,88 @@ class CandidateExtractorFixtureTests(unittest.TestCase):
         self.assertEqual(candidates[0]["source_signals"]["candidate_source"], "duplicate_block")
         self.assertEqual(candidates[0]["source_signals"]["paths"], ["scripts/alpha.py", "scripts/beta.py"])
         self.assertEqual(candidates[0]["common_score"], refactor.compute_common_score(candidates[0]["common_axes"]))
+
+    def test_refactor_extractor_runs_as_script_and_module_with_metrics_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_file(
+                root,
+                "scripts/hotspot.py",
+                "def parse_config():\n    return {}\n\n"
+                "def render_report():\n    return ''\n",
+            )
+            metrics_path = root / "metrics.json"
+            metrics_path.write_text(
+                json.dumps(
+                    {
+                        "summary": {"file_count": 1},
+                        "files": [
+                            {
+                                "path": "scripts/hotspot.py",
+                                "language": "python",
+                                "complexity": {"cyclomatic_estimate": 120},
+                                "module_size": {"code_lines": 620},
+                                "duplication": {"group_count": 2},
+                                "change_frequency": {"commit_count": 1},
+                            }
+                        ],
+                        "duplication": {"groups": []},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            script_command = [
+                sys.executable,
+                str(ROOT / "scripts" / "extract_refactor_candidates.py"),
+                "--root",
+                str(root),
+                "--metrics-input",
+                str(metrics_path),
+                "--format",
+                "json",
+            ]
+            module_command = [
+                sys.executable,
+                "-m",
+                "scripts.extract_refactor_candidates",
+                "--root",
+                str(root),
+                "--metrics-input",
+                str(metrics_path),
+                "--format",
+                "json",
+            ]
+
+            script_output = subprocess.run(
+                script_command,
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            module_output = subprocess.run(
+                module_command,
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+
+        script_payload = json.loads(script_output.stdout)
+        module_payload = json.loads(module_output.stdout)
+
+        self.assertEqual(script_payload["schema_version"], 1)
+        self.assertEqual(module_payload["schema_version"], 1)
+        self.assertEqual(
+            script_payload["refactor_candidates"][0]["source_signals"]["path"],
+            "scripts/hotspot.py",
+        )
+        self.assertEqual(
+            module_payload["refactor_candidates"][0]["source_signals"]["path"],
+            "scripts/hotspot.py",
+        )
 
 
 if __name__ == "__main__":

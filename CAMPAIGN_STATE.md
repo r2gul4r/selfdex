@@ -48,5 +48,5 @@ none
 
 ## Latest Run
 
-- status: `collect-metrics-utils-split`
-- summary: `Extracted FileMetrics/GitHistory/DuplicateGroup models and line-analysis helpers from scripts/collect_repo_metrics.py into scripts/repo_metrics_utils.py, added helper plus direct/module CLI tests, fixed reviewer-found import-boundary risk, and advanced the next planner candidate to scripts/extract_refactor_candidates.py responsibility split.`
+- status: `refactor-candidate-file-record-helpers`
+- summary: `Extracted file-record and symbol helpers from scripts/extract_refactor_candidates.py into scripts/refactor_file_records.py, added focused and direct/module import tests, restored the Windows path baseline repair required for full-suite verification, and kept the next planner candidate on the remaining refactor extractor hotspot.`

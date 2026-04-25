@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -22,11 +21,27 @@ try:
 except ModuleNotFoundError:
     from scripts.repo_area_utils import AREA_LABELS, classify_area
 
+try:
+    from refactor_file_records import (
+        CODE_LANGUAGES,
+        FileRecord,
+        build_file_records,
+        find_enclosing_symbol,
+        symbol_spans,
+    )
+except ModuleNotFoundError:
+    from scripts.refactor_file_records import (
+        CODE_LANGUAGES,
+        FileRecord,
+        build_file_records,
+        find_enclosing_symbol,
+        symbol_spans,
+    )
+
 
 SCHEMA_VERSION = 1
 DEFAULT_LIMIT = 5
 
-CODE_LANGUAGES = {"python", "shell", "powershell", "makefile", "rules", "toml"}
 SKIP_DIRS = {".git", ".codex", "__pycache__"}
 SKIP_FILENAMES = {"STATE.md", "MULTI_AGENT_LOG.md", "ERROR_LOG.md"}
 
@@ -38,27 +53,6 @@ COMMON_AXIS_POINTS = {
     "structural_impact": {"low": 3, "medium": 2, "high": 0},
     "leverage": {"high": 3, "medium": 2, "low": 1},
 }
-
-PYTHON_DEF_PATTERN = re.compile(r"^\s*(def|class)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
-SHELL_DEF_PATTERN = re.compile(
-    r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\))?\s*\{"
-)
-POWERSHELL_DEF_PATTERN = re.compile(r"^\s*function\s+(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\b", re.IGNORECASE)
-
-
-@dataclass(frozen=True)
-class SymbolLocation:
-    name: str
-    line: int
-    symbol_kind: str
-
-
-@dataclass(frozen=True)
-class FileRecord:
-    path: str
-    language: str
-    lines: list[str]
-    definitions: list[SymbolLocation]
 
 
 @dataclass(frozen=True)
@@ -155,74 +149,6 @@ def load_metrics(root: Path, metrics_input: str | None) -> dict[str, Any]:
             + completed.stderr.strip()
         )
     return json.loads(completed.stdout)
-
-
-def read_text_lines(path: Path) -> list[str]:
-    try:
-        return path.read_text(encoding="utf-8").splitlines()
-    except UnicodeDecodeError:
-        return path.read_text(encoding="utf-8", errors="replace").splitlines()
-
-
-def extract_definitions(language: str, lines: list[str]) -> list[SymbolLocation]:
-    definitions: list[SymbolLocation] = []
-    if language == "python":
-        for index, line in enumerate(lines, start=1):
-            match = PYTHON_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(
-                SymbolLocation(
-                    name=match.group("name"),
-                    line=index,
-                    symbol_kind="class" if match.group(1) == "class" else "function",
-                )
-            )
-        return definitions
-
-    if language == "shell":
-        for index, line in enumerate(lines, start=1):
-            match = SHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(SymbolLocation(name=match.group("name"), line=index, symbol_kind="function"))
-        return definitions
-
-    if language == "powershell":
-        for index, line in enumerate(lines, start=1):
-            match = POWERSHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(SymbolLocation(name=match.group("name"), line=index, symbol_kind="function"))
-        return definitions
-
-    return definitions
-
-
-def build_file_records(root: Path, metrics: dict[str, Any]) -> dict[str, FileRecord]:
-    records: dict[str, FileRecord] = {}
-    for item in metrics.get("files", []):
-        path = item["path"]
-        language = item["language"]
-        if language not in CODE_LANGUAGES:
-            continue
-        lines = read_text_lines(root / path)
-        records[path] = FileRecord(
-            path=path,
-            language=language,
-            lines=lines,
-            definitions=extract_definitions(language, lines),
-        )
-    return records
-
-
-def find_enclosing_symbol(record: FileRecord, line_number: int) -> SymbolLocation | None:
-    active: SymbolLocation | None = None
-    for definition in record.definitions:
-        if definition.line > line_number:
-            break
-        active = definition
-    return active
 
 
 def unique_preserve_order(items: list[str]) -> list[str]:
@@ -477,15 +403,6 @@ def build_duplicate_candidate(
             "max_commit_count": max(item["change_frequency"]["commit_count"] for item in file_metrics),
         },
     )
-
-
-def symbol_spans(record: FileRecord) -> list[tuple[SymbolLocation, int]]:
-    spans: list[tuple[SymbolLocation, int]] = []
-    total_lines = len(record.lines)
-    for index, definition in enumerate(record.definitions):
-        next_line = record.definitions[index + 1].line if index + 1 < len(record.definitions) else total_lines + 1
-        spans.append((definition, max(next_line - definition.line, 1)))
-    return sorted(spans, key=lambda item: (-item[1], item[0].line, item[0].name))
 
 
 def build_hotspot_common_axes(area_id: str, metrics: dict[str, Any]) -> dict[str, str]:

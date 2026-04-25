@@ -302,7 +302,7 @@ def analyze_file(root: Path, path: Path) -> FileMetrics:
 
     total_lines = len(lines)
     code_lines = max(total_lines - blank_lines - comment_lines, 0)
-    relative_path = path.relative_to(root.resolve()).as_posix()
+    relative_path = path.resolve().relative_to(root.resolve()).as_posix()
 
     return FileMetrics(
         path=relative_path,

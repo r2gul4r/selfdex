@@ -2,108 +2,145 @@
 
 ## Current Task
 
-- task: `selfdex durable handoff memory`
+- task: `extract refactor candidate file-record helpers`
 - phase: `closeout`
-- scope: `write a repo-local handoff note that summarizes current Selfdex goal, rules, commits, verification, and next task for use on another machine`
-- verification_target: `doc drift check, campaign budget check, git diff --check`
+- scope: `split file reading, symbol extraction, file record construction, enclosing-symbol lookup, and symbol span helpers out of scripts/extract_refactor_candidates.py without changing report schema or candidate ranking`
+- verification_target: `candidate extractor tests, full unittest suite, refactor extractor smoke, plan_next_task smoke, campaign budget, doc drift, git diff --check, bounded baseline repair`
 
 ## Orchestration Profile
 
-- score_total: `4`
+- score_total: `8`
 - score_breakdown:
-  - `handoff_documentation`: 1
-  - `cross_machine_continuity`: 1
-  - `state_and_readme_update`: 1
-  - `commit_required`: 1
+  - `large_hotspot_refactor`: 2
+  - `shared_candidate_contract`: 1
+  - `verification_sensitive_output_schema`: 1
+  - `separable_read_only_exploration`: 1
+  - `reviewer_value_after_patch`: 1
+  - `user_standing_subagent_authorization`: 1
+  - `baseline_repair_blocker`: 1
 - hard_triggers:
-  - `none`
+  - `large_hotspot_refactor`
+  - `verification_sensitive_output_schema`
+  - `verification_failure_observed`
 - selected_rules:
-  - `repo_local_memory_only`
-  - `do_not_edit_global_memory_folder`
-  - `no_global_config_edit`
-  - `no_installers`
+  - `freeze_before_implementation`
+  - `bounded_helper_extraction`
+  - `schema_preservation`
+  - `standing_subagent_authorization_applies`
+  - `bounded_repair_loop`
   - `verification_required`
 - selected_skills:
   - `none`
-- execution_topology: `autopilot-single`
-- orchestration_value: `low`
-- agent_budget: `0`
-- efficiency_basis: `single documentation artifact plus README/STATE update; no parallel slice exists`
-- spawn_decision: `do_not_spawn; write and verify locally`
-- selection_reason: `User asked to save the conversation memory. System memory is read-only here, so store a repo-local handoff note that travels with the repository.`
+- execution_topology: `autopilot-mixed`
+- orchestration_value: `medium`
+- agent_budget: `2`
+- efficiency_basis: `read-only boundary scouting can run beside main preparation, and a reviewer can check schema/import risks after the patch`
+- spawn_decision: `spawn one explorer for read-only boundary recommendation; reserve one reviewer after implementation`
+- selection_reason: `The prior handoff task is complete. The latest run and planner candidate point to scripts/extract_refactor_candidates.py as a large refactor hotspot, and the user granted standing authorization for useful subagent delegation.`
 
 ## Evaluation Plan
 
-- evaluation_need: `light`
+- evaluation_need: `medium`
 - project_invariants:
-  - `Do not update Codex memory files directly.`
-  - `Do not edit global Codex config or installers.`
-  - `Only C:\lsh\git\selfdex may be modified.`
+  - `Do not change candidate schema, ranking, Korean markdown report text, or default CLI behavior.`
+  - `If full-suite verification exposes a baseline blocker, repair only the minimal blocker needed to restore the suite.`
+  - `Do not start the broader scripts/plan_next_task.py or extract_feature_gap_candidates.py split in this task.`
+  - `Keep shared state and run records under main ownership.`
 - task_acceptance:
-  - `Add a concise handoff document under docs/.`
-  - `Document final goal, safety rules, latest commits, verification baseline, next planner candidate, and subagent lesson.`
-  - `Link the handoff document from README core files.`
-  - `Commit the result.`
+  - `Move SymbolLocation, FileRecord, regex patterns, read_text_lines, extract_definitions, build_file_records, find_enclosing_symbol, and symbol_spans out of scripts/extract_refactor_candidates.py into a focused helper module.`
+  - `Keep scripts/extract_refactor_candidates.py public behavior equivalent for existing tests and smoke output.`
+  - `Add focused tests for the extracted helper behavior or update existing candidate extractor tests to cover the helper boundary.`
+  - `Repair the reverted Windows path baseline issue in scripts/repo_metrics_utils.py if needed for full-suite verification.`
+  - `Record the run and update campaign latest run.`
 - non_goals:
-  - `Do not change planner behavior.`
-  - `Do not modify scripts or tests.`
-  - `Do not push unless separately requested.`
+  - `Do not refactor scoring, candidate payload construction, markdown rendering, or planner logic.`
+  - `Do not modify global Codex config, installers, secrets, deploys, paid APIs, databases, or cross-workspace files.`
+  - `Do not commit unless separately requested.`
 - hard_checks:
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path docs/SELFDEX_HANDOFF.md --changed-path README.md --changed-path STATE.md --format json`
+  - `python -m compileall -q scripts tests`
+  - `python -m unittest discover -s tests`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path STATE.md --changed-path README.md --changed-path CAMPAIGN_STATE.md --changed-path ERROR_LOG.md --changed-path .gitignore --changed-path runs/20260425-132016-refactor-candidate-file-record-helpers.md --changed-path scripts/extract_refactor_candidates.py --changed-path scripts/refactor_file_records.py --changed-path tests/test_refactor_file_records.py --changed-path tests/test_candidate_extractors.py --changed-path scripts/repo_metrics_utils.py --format markdown`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether the note is specific enough for another machine to resume.`
-  - `Check whether it avoids implying direct access to private memory storage.`
+  - `Check whether moved helpers preserve line numbers and symbol names for python, shell, and powershell files.`
+  - `Check whether direct script and module-style imports remain safe.`
+  - `Check whether the refactor extractor schema and top candidate still match expectations.`
 - evidence_required:
-  - `doc drift result`
-  - `campaign budget result`
-  - `git status summary`
+  - `explorer boundary note`
+  - `reviewer result`
+  - `full unittest result`
+  - `refactor extractor smoke result`
+  - `budget and doc drift result`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `handoff documentation`
+- write_set: `refactor candidate file-record helper extraction`
 - write_sets:
   - `main`:
-    - `docs/SELFDEX_HANDOFF.md`
-    - `README.md`
     - `STATE.md`
+    - `README.md`
+    - `CAMPAIGN_STATE.md`
+    - `ERROR_LOG.md`
+    - `./.gitignore`
+    - `runs/20260425-132016-refactor-candidate-file-record-helpers.md`
+    - `scripts/extract_refactor_candidates.py`
+    - `scripts/refactor_file_records.py`
+    - `tests/test_refactor_file_records.py`
+    - `tests/test_candidate_extractors.py`
+    - `scripts/repo_metrics_utils.py`
+  - `explorer`:
+    - `read-only: scripts/extract_refactor_candidates.py, tests/test_candidate_extractors.py, related helper modules`
+  - `reviewer`:
+    - `read-only: final diff, schema/import/test risk`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Store handoff memory in `docs/SELFDEX_HANDOFF.md`.
-- Keep it concise and actionable.
-- Do not edit external memory folders or global Codex config.
-- Commit the change after verification.
+- Extract only file-record and symbol-location helpers from `scripts/extract_refactor_candidates.py`.
+- New helper path is `scripts/refactor_file_records.py`.
+- Main owns all writes; explorer and reviewer are read-only.
+- Preserve CLI output shape and existing candidate ordering.
+- Restore only the one-line `repo_metrics_utils.py` path normalization repair if full-suite verification is blocked by the reverted Windows temp path bug.
+- Ignore root-scoped sandbox temp directories only if failed sandbox test runs leave inaccessible scratch directories.
+- Use bundled Python executable when `python` is not on PATH.
 
 ## Reviewer
 
-- reviewer: `none`
-- reviewer_target: `n/a`
-- reviewer_focus: `manual handoff clarity review`
+- reviewer: `reserved`
+- reviewer_target: `final diff after implementation`
+- reviewer_focus: `schema drift, import boundary, missing tests`
 
 ## Last Update
 
-- timestamp: `2026-04-24T18:03:00+09:00`
+- timestamp: `2026-04-25T13:26:37+09:00`
 - phase: `closeout`
-- status: `repo-local handoff memory saved.`
+- status: `file-record helper extraction completed, reviewer import-boundary finding fixed, and verification passed.`
 - verification_result:
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json`: `passed; finding_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path docs/SELFDEX_HANDOFF.md --changed-path README.md --changed-path STATE.md --format json`: `passed; violation_count=0`
-  - `git diff --check`: `passed`
+  - `explorer`: `completed; recommended same file-record/symbol-helper boundary`
+  - `python -m unittest discover -s tests -p test_refactor_file_records.py`: `passed; ran 3 tests through sandbox escalation`
+  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `passed; ran 4 tests through sandbox escalation`
+  - `python -m compileall -q scripts tests`: `passed`
+  - `python -m unittest discover -s tests`: `failed; reverted scripts/repo_metrics_utils.py Windows path canonicalization bug`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`: `failed; README.md must document scripts/refactor_file_records.py`
+  - `reviewer`: `found missing module-style import coverage for scripts.extract_refactor_candidates fallback path; adding script/module CLI fixture test`
+  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `passed after reviewer fix; ran 5 tests through sandbox escalation`
+  - `python -m unittest discover -s tests`: `passed; ran 59 tests through sandbox escalation`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`: `passed; schema_version=1, refactor_candidate_count=5`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed; next candidate remains scripts/extract_refactor_candidates.py responsibility split`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`: `passed; finding_count=0`
+  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path STATE.md --changed-path README.md --changed-path CAMPAIGN_STATE.md --changed-path ERROR_LOG.md --changed-path .gitignore --changed-path runs/20260425-132016-refactor-candidate-file-record-helpers.md --changed-path scripts/extract_refactor_candidates.py --changed-path scripts/refactor_file_records.py --changed-path tests/test_refactor_file_records.py --changed-path tests/test_candidate_extractors.py --changed-path scripts/repo_metrics_utils.py --format markdown`: `passed; violation_count=0`
+  - `git diff --check`: `passed; exit 0 with LF-to-CRLF working-copy warnings`
 
 ## Retrospective
 
-- task: `selfdex durable handoff memory`
-- score_total: `4`
-- evaluation_fit: `good; concise handoff covers goal, rules, commits, verification, next task, and subagent lesson`
-- orchestration_fit: `good; documentation-only local write set`
-- predicted_topology: `autopilot-single`
-- actual_topology: `autopilot-single`
-- spawn_count: `0`
-- rework_or_reclassification: `none`
-- reviewer_findings: `none`
+- task: `extract refactor candidate file-record helpers`
+- score_total: `8`
+- selected_profile: `autopilot-mixed`
+- actual_topology: `autopilot-mixed; explorer and reviewer sidecars used`
 - verification_outcome: `passed`
-- next_gate_adjustment: `Use docs/SELFDEX_HANDOFF.md as cross-machine continuity context.`
+- collisions_or_reclassifications: `reclassified from completed handoff task to next refactor candidate`
+- next_rule_change: `none`
