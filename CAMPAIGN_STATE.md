@@ -45,8 +45,20 @@ none
 - Broaden command autonomy to all ordinary non-destructive workflow commands.
 - Split planner orchestration-fit heuristics out of `scripts/plan_next_task.py`.
 - Split file metric models and line analysis out of `scripts/collect_repo_metrics.py`.
+- Add a dependency-free coverage signal check path to repository verification.
+- Add an integration test for test-gap extraction feeding planner selection.
+- Suppress feature-gap detector stopword self-reference false positives.
+- Add external validation readiness reporting for 2-3 read-only project registration.
+- Register three existing sibling repositories as external read-only validation targets.
+- Add shared generated/dependency directory exclusions before external read-only scans.
+- Add external read-only candidate snapshot generation and binary-safe metric scanning.
+- Support candidate quality templates generated from external read-only snapshots.
+- Mark external validation reports with unscored candidates as needing scoring.
+- Exclude lockfiles and Codex backup artifacts from refactor candidate snapshots.
+- Make external candidate snapshots support explicit user-selected repository scopes.
+- Add read-only external project planning with a Codex execution prompt.
 
 ## Latest Run
 
-- status: `refactor-candidate-file-record-helpers`
-- summary: `Extracted file-record and symbol helpers from scripts/extract_refactor_candidates.py into scripts/refactor_file_records.py, added focused and direct/module import tests, restored the Windows path baseline repair required for full-suite verification, and kept the next planner candidate on the remaining refactor extractor hotspot.`
+- status: `external-project-readonly-plan`
+- summary: `Added a read-only planning command that selects one external project candidate, freezes a proposed task contract, emits a Codex execution prompt, and can record the plan under runs/.`

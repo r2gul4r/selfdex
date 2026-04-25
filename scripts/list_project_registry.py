@@ -4,11 +4,15 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+try:
+    from cli_output_utils import write_json_or_markdown
+except ModuleNotFoundError:
+    from scripts.cli_output_utils import write_json_or_markdown
 
 
 REGISTRY_NAME = "PROJECT_REGISTRY.md"
@@ -160,11 +164,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    if args.format == "json":
-        json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
-        sys.stdout.write("\n")
-    else:
-        sys.stdout.write(render_markdown(payload))
+    write_json_or_markdown(payload, args.format, render_markdown)
     return 0
 
 

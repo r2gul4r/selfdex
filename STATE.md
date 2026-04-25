@@ -2,145 +2,131 @@
 
 ## Current Task
 
-- task: `extract refactor candidate file-record helpers`
-- phase: `closeout`
-- scope: `split file reading, symbol extraction, file record construction, enclosing-symbol lookup, and symbol span helpers out of scripts/extract_refactor_candidates.py without changing report schema or candidate ranking`
-- verification_target: `candidate extractor tests, full unittest suite, refactor extractor smoke, plan_next_task smoke, campaign budget, doc drift, git diff --check, bounded baseline repair`
+- task: `plan selected external project read-only`
+- phase: `verified`
+- scope: `add a safe command that scans one selected external project read-only and emits a Codex-ready task contract without writing the target project`
+- verification_target: `external project planning tests, planner smoke, campaign budget, doc drift, git diff --check`
 
 ## Orchestration Profile
 
-- score_total: `8`
+- score_total: `6`
 - score_breakdown:
-  - `large_hotspot_refactor`: 2
-  - `shared_candidate_contract`: 1
-  - `verification_sensitive_output_schema`: 1
-  - `separable_read_only_exploration`: 1
-  - `reviewer_value_after_patch`: 1
-  - `user_standing_subagent_authorization`: 1
-  - `baseline_repair_blocker`: 1
+  - `external_project_boundary`: 2
+  - `new_cli_contract_artifact`: 2
+  - `verification_required`: 1
+  - `product_direction_recenter`: 1
 - hard_triggers:
-  - `large_hotspot_refactor`
-  - `verification_sensitive_output_schema`
-  - `verification_failure_observed`
+  - `external_project_boundary`
 - selected_rules:
-  - `freeze_before_implementation`
-  - `bounded_helper_extraction`
-  - `schema_preservation`
-  - `standing_subagent_authorization_applies`
-  - `bounded_repair_loop`
+  - `read_only_external_planning`
+  - `no_external_writes`
+  - `codex_execution_prompt_required`
   - `verification_required`
 - selected_skills:
   - `none`
-- execution_topology: `autopilot-mixed`
+- execution_topology: `autopilot-single`
 - orchestration_value: `medium`
-- agent_budget: `2`
-- efficiency_basis: `read-only boundary scouting can run beside main preparation, and a reviewer can check schema/import risks after the patch`
-- spawn_decision: `spawn one explorer for read-only boundary recommendation; reserve one reviewer after implementation`
-- selection_reason: `The prior handoff task is complete. The latest run and planner candidate point to scripts/extract_refactor_candidates.py as a large refactor hotspot, and the user granted standing authorization for useful subagent delegation.`
+- agent_budget: `0`
+- efficiency_basis: `single new planning command plus docs/tests is tightly coupled; no disjoint write set worth spawning`
+- spawn_decision: `no_spawn_user_requested_continuation_but_developer_policy_requires_explicit_subagent_request`
+- selection_reason: `User clarified Selfdex must become a supervised automatic developer control plane, starting with read-only planning for a selected external project before any write-enabled execution.`
 
 ## Evaluation Plan
 
-- evaluation_need: `medium`
+- evaluation_need: `high`
 - project_invariants:
-  - `Do not change candidate schema, ranking, Korean markdown report text, or default CLI behavior.`
-  - `If full-suite verification exposes a baseline blocker, repair only the minimal blocker needed to restore the suite.`
-  - `Do not start the broader scripts/plan_next_task.py or extract_feature_gap_candidates.py split in this task.`
-  - `Keep shared state and run records under main ownership.`
-- task_acceptance:
-  - `Move SymbolLocation, FileRecord, regex patterns, read_text_lines, extract_definitions, build_file_records, find_enclosing_symbol, and symbol_spans out of scripts/extract_refactor_candidates.py into a focused helper module.`
-  - `Keep scripts/extract_refactor_candidates.py public behavior equivalent for existing tests and smoke output.`
-  - `Add focused tests for the extracted helper behavior or update existing candidate extractor tests to cover the helper boundary.`
-  - `Repair the reverted Windows path baseline issue in scripts/repo_metrics_utils.py if needed for full-suite verification.`
-  - `Record the run and update campaign latest run.`
-- non_goals:
-  - `Do not refactor scoring, candidate payload construction, markdown rendering, or planner logic.`
-  - `Do not modify global Codex config, installers, secrets, deploys, paid APIs, databases, or cross-workspace files.`
+  - `Do not write external repositories.`
+  - `Do not implement automatic external writes yet.`
+  - `Do not claim Selfdex is already a fully autonomous developer.`
+  - `Do not add external dependencies.`
+  - `Do not perform destructive Git operations.`
   - `Do not commit unless separately requested.`
+  - `Preserve hard approval gates for secrets, deploys, paid calls, database/prod writes, destructive actions, and cross-workspace writes.`
+- task_acceptance:
+  - `A command can plan one registered project by project id or one ad-hoc project path read-only.`
+  - `The output includes selected candidate, rationale, write boundaries, likely inspect/modify files, verification commands, risk, approval requirement, and Codex execution prompt.`
+  - `The command can write an optional planning artifact under runs/ without writing the external project.`
+  - `README and final-goal docs explain the path from read-only planning to isolated worktree patching and supervised PR-ready modification.`
+  - `Run record and campaign latest run are updated.`
+- non_goals:
+  - `Do not modify any external project.`
+  - `Do not create branches or worktrees in external projects.`
+  - `Do not execute generated Codex prompts.`
+  - `Do not auto-score candidates as human-approved.`
+  - `Do not change PROJECT_REGISTRY.md format.`
 - hard_checks:
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path STATE.md --changed-path README.md --changed-path CAMPAIGN_STATE.md --changed-path ERROR_LOG.md --changed-path .gitignore --changed-path runs/20260425-132016-refactor-candidate-file-record-helpers.md --changed-path scripts/extract_refactor_candidates.py --changed-path scripts/refactor_file_records.py --changed-path tests/test_refactor_file_records.py --changed-path tests/test_candidate_extractors.py --changed-path scripts/repo_metrics_utils.py --format markdown`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`
+  - `python scripts/plan_next_task.py --root . --format json`
+  - `python scripts/plan_next_task.py --root . --format markdown`
+  - `python scripts/check_campaign_budget.py --root . --format json`
+  - `python scripts/check_doc_drift.py --root . --format json`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check whether moved helpers preserve line numbers and symbol names for python, shell, and powershell files.`
-  - `Check whether direct script and module-style imports remain safe.`
-  - `Check whether the refactor extractor schema and top candidate still match expectations.`
+  - `Check the planning command never writes target project files.`
+  - `Check execution prompt is usable but still requires human approval before external writes.`
+  - `Check docs preserve bounded, auditable framing while pointing toward supervised modification.`
 - evidence_required:
-  - `explorer boundary note`
-  - `reviewer result`
-  - `full unittest result`
-  - `refactor extractor smoke result`
-  - `budget and doc drift result`
+  - `focused external planning test result`
+  - `registry project planning smoke result`
+  - `ad-hoc project path planning smoke result`
+  - `full repository verification result`
+  - `run record path`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `refactor candidate file-record helper extraction`
+- write_set: `external project planning command`
 - write_sets:
   - `main`:
     - `STATE.md`
-    - `README.md`
     - `CAMPAIGN_STATE.md`
-    - `ERROR_LOG.md`
-    - `./.gitignore`
-    - `runs/20260425-132016-refactor-candidate-file-record-helpers.md`
-    - `scripts/extract_refactor_candidates.py`
-    - `scripts/refactor_file_records.py`
-    - `tests/test_refactor_file_records.py`
-    - `tests/test_candidate_extractors.py`
-    - `scripts/repo_metrics_utils.py`
-  - `explorer`:
-    - `read-only: scripts/extract_refactor_candidates.py, tests/test_candidate_extractors.py, related helper modules`
-  - `reviewer`:
-    - `read-only: final diff, schema/import/test risk`
+    - `README.md`
+    - `docs/SELFDEX_FINAL_GOAL.md`
+    - `scripts/plan_external_project.py`
+    - `tests/test_plan_external_project.py`
+    - `runs/20260425-201500-external-project-plan-apex-analist.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Extract only file-record and symbol-location helpers from `scripts/extract_refactor_candidates.py`.
-- New helper path is `scripts/refactor_file_records.py`.
-- Main owns all writes; explorer and reviewer are read-only.
-- Preserve CLI output shape and existing candidate ordering.
-- Restore only the one-line `repo_metrics_utils.py` path normalization repair if full-suite verification is blocked by the reverted Windows temp path bug.
-- Ignore root-scoped sandbox temp directories only if failed sandbox test runs leave inaccessible scratch directories.
-- Use bundled Python executable when `python` is not on PATH.
+- Add a read-only planning CLI for a single selected external project.
+- Reuse existing external candidate snapshot scanning where possible.
+- Generate a task contract artifact and Codex execution prompt.
+- Keep external project modification out of scope.
+- Use bundled Python if `python` is not on PATH.
 
 ## Reviewer
 
-- reviewer: `reserved`
-- reviewer_target: `final diff after implementation`
-- reviewer_focus: `schema drift, import boundary, missing tests`
+- reviewer: `not_selected`
+- reviewer_target: `none`
+- reviewer_focus: `local tests and explicit read-only boundary cover this first planning step`
+- reviewer_result: `not run`
 
 ## Last Update
 
-- timestamp: `2026-04-25T13:26:37+09:00`
-- phase: `closeout`
-- status: `file-record helper extraction completed, reviewer import-boundary finding fixed, and verification passed.`
+- timestamp: `2026-04-25T20:15:00+09:00`
+- phase: `verified`
+- status: `read-only external project planning command implemented and verified.`
 - verification_result:
-  - `explorer`: `completed; recommended same file-record/symbol-helper boundary`
-  - `python -m unittest discover -s tests -p test_refactor_file_records.py`: `passed; ran 3 tests through sandbox escalation`
-  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `passed; ran 4 tests through sandbox escalation`
+  - `python -m unittest discover -s tests -p test_plan_external_project.py`: `passed after sandbox escalation; ran 4 tests`
+  - `python scripts/plan_external_project.py --root . --project-id apex_analist --format json`: `passed; status=ready, external_project_writes_performed=false`
+  - `python scripts/plan_external_project.py --root . --project-root ..\apex_analist --project-name apex_analist --format markdown`: `passed; status=ready`
+  - `python scripts/plan_external_project.py --root . --project-id apex_analist --record-run --timestamp 20260425-201500 --format markdown`: `passed; wrote runs/20260425-201500-external-project-plan-apex-analist.md`
   - `python -m compileall -q scripts tests`: `passed`
-  - `python -m unittest discover -s tests`: `failed; reverted scripts/repo_metrics_utils.py Windows path canonicalization bug`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`: `failed; README.md must document scripts/refactor_file_records.py`
-  - `reviewer`: `found missing module-style import coverage for scripts.extract_refactor_candidates fallback path; adding script/module CLI fixture test`
-  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `passed after reviewer fix; ran 5 tests through sandbox escalation`
-  - `python -m unittest discover -s tests`: `passed; ran 59 tests through sandbox escalation`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\extract_refactor_candidates.py --root . --format json`: `passed; schema_version=1, refactor_candidate_count=5`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown`: `passed; next candidate remains scripts/extract_refactor_candidates.py responsibility split`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format markdown`: `passed; finding_count=0`
-  - `$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_campaign_budget.py --root . --changed-path STATE.md --changed-path README.md --changed-path CAMPAIGN_STATE.md --changed-path ERROR_LOG.md --changed-path .gitignore --changed-path runs/20260425-132016-refactor-candidate-file-record-helpers.md --changed-path scripts/extract_refactor_candidates.py --changed-path scripts/refactor_file_records.py --changed-path tests/test_refactor_file_records.py --changed-path tests/test_candidate_extractors.py --changed-path scripts/repo_metrics_utils.py --format markdown`: `passed; violation_count=0`
+  - `python -m unittest discover -s tests`: `passed after sandbox escalation; ran 139 tests`
+  - `python scripts/plan_next_task.py --root . --format json`: `passed`
+  - `python scripts/plan_next_task.py --root . --format markdown`: `passed`
+  - `python scripts/check_campaign_budget.py --root . --format json`: `passed; status=pass, violation_count=0`
+  - `python scripts/check_doc_drift.py --root . --format json`: `passed; status=pass, finding_count=0`
   - `git diff --check`: `passed; exit 0 with LF-to-CRLF working-copy warnings`
 
 ## Retrospective
 
-- task: `extract refactor candidate file-record helpers`
-- score_total: `8`
-- selected_profile: `autopilot-mixed`
-- actual_topology: `autopilot-mixed; explorer and reviewer sidecars used`
+- task: `plan selected external project read-only`
+- score_total: `6`
+- selected_profile: `autopilot-single`
+- actual_topology: `autopilot-single`
 - verification_outcome: `passed`
-- collisions_or_reclassifications: `reclassified from completed handoff task to next refactor candidate`
-- next_rule_change: `none`
+- collisions_or_reclassifications: `reclassified because user clarified the target product is a supervised developer control plane for selected projects`
+- next_rule_change: `consider write-enabled target project contract after read-only planning is verified`

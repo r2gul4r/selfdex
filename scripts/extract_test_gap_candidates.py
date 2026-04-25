@@ -5,14 +5,24 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+try:
+    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+except ModuleNotFoundError:
+    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+
 
 SCHEMA_VERSION = 1
 MAX_FILE_BYTES = 512 * 1024
-SKIP_DIRS = {".git", ".codex", "__pycache__"}
+SKIP_DIRS = set(DEFAULT_SCAN_EXCLUDED_DIRS)
 TEXT_SUFFIXES = {
     "",
     ".md",
@@ -55,6 +65,12 @@ STOPWORDS = {
     "data",
     "item",
 }
+GOAL_CYCLE_INTEGRATION_MARKER = "selfdex_loop_integration"
+GOAL_CYCLE_INTEGRATION_TERMS = (
+    "extract_test_gap_candidates",
+    "plan_next_task",
+    "choose_candidate",
+)
 
 
 @dataclass(frozen=True)
@@ -114,8 +130,8 @@ def infer_language(path: Path) -> str:
     return "text"
 
 
-def should_scan(path: Path) -> bool:
-    if any(part in SKIP_DIRS for part in path.parts):
+def should_scan(path: Path, *, root: Path | None = None) -> bool:
+    if path_has_excluded_dir(path, root=root, excluded_dirs=SKIP_DIRS):
         return False
     if path.is_dir():
         return False
@@ -186,7 +202,7 @@ def build_record(root: Path, path: Path) -> FileRecord:
 
 
 def build_repo_index(root: Path) -> dict[str, Any]:
-    paths = sorted(path for path in root.rglob("*") if should_scan(path))
+    paths = sorted(path for path in root.rglob("*") if should_scan(path, root=root))
     records = [build_record(root, path) for path in paths]
     by_path = {record.relative_path: record for record in records}
     return {
@@ -232,6 +248,16 @@ def find_matching_tests(record: FileRecord, test_records: list[FileRecord]) -> l
         if any(term in haystack for term in search_terms):
             matches.append(test_record.relative_path)
     return sorted(set(matches))
+
+
+def has_goal_cycle_integration_test(test_records: list[FileRecord]) -> bool:
+    for record in test_records:
+        haystack = record.content
+        if GOAL_CYCLE_INTEGRATION_MARKER not in haystack:
+            continue
+        if all(term in haystack for term in GOAL_CYCLE_INTEGRATION_TERMS):
+            return True
+    return False
 
 
 def make_evidence(path: str, line: int | None, summary: str) -> dict[str, Any]:
@@ -430,6 +456,8 @@ def build_goal_cycle_gap(index: dict[str, Any]) -> dict[str, Any] | None:
     makefile = index["by_path"].get("Makefile")
     goal_doc = index["by_path"].get("docs/GOAL_COMPARISON_AREAS.md")
     if makefile is None or goal_doc is None:
+        return None
+    if has_goal_cycle_integration_test(index["test_records"]):
         return None
 
     goal_line = find_line_number(goal_doc, "저장소가 자기 부족한 코드 품질과 기능 공백을 스스로 찾고")

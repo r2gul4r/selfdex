@@ -15,71 +15,64 @@ except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_pretty_argument, add_root_argument
 
 try:
+    from candidate_scoring_utils import COMMON_AXIS_POINTS, compute_common_score, grade_priority
+except ModuleNotFoundError:
+    from scripts.candidate_scoring_utils import COMMON_AXIS_POINTS, compute_common_score, grade_priority
+
+try:
+    import feature_file_records as feature_records
+    import feature_gap_evidence as gap_evidence
+    import feature_small_candidates as small_candidates
+except ModuleNotFoundError:
+    from scripts import feature_file_records as feature_records
+    from scripts import feature_gap_evidence as gap_evidence
+    from scripts import feature_small_candidates as small_candidates
+
+try:
     from repo_area_utils import AREA_LABELS, classify_area
 except ModuleNotFoundError:
     from scripts.repo_area_utils import AREA_LABELS, classify_area
 
 
 SCHEMA_VERSION = 3
-MAX_FILE_BYTES = 512 * 1024
-TEXT_SAMPLE_BYTES = 4096
-SKIP_DIRS = {".git", ".codex", "__pycache__"}
-SCAN_SUFFIXES = {".py", ".sh", ".ps1", ".toml", ".rules"}
-SKIP_FILENAMES = {"STATE.md", "MULTI_AGENT_LOG.md", "ERROR_LOG.md"}
-SKIP_SUFFIXES = {
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".gif",
-    ".pdf",
-    ".zip",
-    ".tar",
-    ".gz",
-    ".exe",
-    ".dll",
-    ".so",
-    ".dylib",
-}
-TEST_FILE_PATTERN = re.compile(r"(?i)(^test_|_test\.|tests?/)")
-TOKEN_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
-PYTHON_DEF_PATTERN = re.compile(r"^\s*(def|class)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
-SHELL_DEF_PATTERN = re.compile(
-    r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\))?\s*\{"
-)
-POWERSHELL_DEF_PATTERN = re.compile(r"^\s*function\s+(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\b", re.IGNORECASE)
-STOPWORDS = {
-    "todo",
-    "fixme",
-    "stub",
-    "stubbed",
-    "placeholder",
-    "implemented",
-    "implementation",
-    "missing",
-    "handler",
-    "callback",
-    "screen",
-    "button",
-    "dialog",
-    "view",
-    "page",
-    "start",
-    "resume",
-    "submit",
-    "click",
-    "api",
-    "client",
-    "endpoint",
-    "fetch",
-    "request",
-    "integration",
-    "with",
-    "from",
-    "this",
-    "that",
-    "none",
-    "soon",
-}
+
+FileRecord = feature_records.FileRecord
+SymbolLocation = feature_records.SymbolLocation
+build_file_record = feature_records.build_file_record
+build_repo_index = feature_records.build_repo_index
+extract_definitions = feature_records.extract_definitions
+find_enclosing_symbol = feature_records.find_enclosing_symbol
+infer_language = feature_records.infer_language
+is_test_file = feature_records.is_test_file
+is_text_file = feature_records.is_text_file
+iter_repo_files = feature_records.iter_repo_files
+normalize_excerpt = feature_records.normalize_excerpt
+read_text_lines = feature_records.read_text_lines
+
+STOPWORDS = gap_evidence.STOPWORDS
+TOKEN_PATTERN = gap_evidence.TOKEN_PATTERN
+assess_gap = gap_evidence.assess_gap
+build_call_flow = gap_evidence.build_call_flow
+build_test_evidence = gap_evidence.build_test_evidence
+extract_tokens = gap_evidence.extract_tokens
+find_related_records = gap_evidence.find_related_records
+is_detector_self_reference = gap_evidence.is_detector_self_reference
+summarize_related_paths = gap_evidence.summarize_related_paths
+summarize_signals = gap_evidence.summarize_signals
+unique_sorted = gap_evidence.unique_sorted
+
+GOAL_ALIGNMENT_AREA_SCORES = small_candidates.GOAL_ALIGNMENT_AREA_SCORES
+assess_common_axes = small_candidates.assess_common_axes
+build_implementation_scope = small_candidates.build_implementation_scope
+build_selection_rationale = small_candidates.build_selection_rationale
+build_small_feature_candidate = small_candidates.build_small_feature_candidate
+build_small_feature_candidates = small_candidates.build_small_feature_candidates
+determine_small_feature_decision = small_candidates.determine_small_feature_decision
+score_to_common_goal_alignment = small_candidates.score_to_common_goal_alignment
+summarize_implementation_cost = small_candidates.summarize_implementation_cost
+summarize_ripple_effect = small_candidates.summarize_ripple_effect
+summarize_small_feature_goal_alignment = small_candidates.summarize_small_feature_goal_alignment
+summarize_user_value = small_candidates.summarize_user_value
 
 
 @dataclass(frozen=True)
@@ -89,24 +82,6 @@ class SignalSpec:
     label: str
     rationale: str
     pattern: re.Pattern[str]
-
-
-@dataclass(frozen=True)
-class SymbolLocation:
-    name: str
-    line: int
-    symbol_kind: str
-
-
-@dataclass(frozen=True)
-class FileRecord:
-    path: Path
-    relative_path: str
-    lines: list[str]
-    content: str
-    language: str
-    is_test_file: bool
-    definitions: list[SymbolLocation]
 
 
 SIGNAL_SPECS = (
@@ -168,26 +143,6 @@ SIGNAL_SPECS = (
 )
 
 
-COMMON_AXIS_POINTS = {
-    "goal_alignment": {"pass": 3, "borderline": 1, "fail": 0},
-    "gap_relevance": {"high": 3, "medium": 2, "low": 0},
-    "safety": {"safe": 3, "guarded": 2, "risky": 0},
-    "reversibility": {"strong": 3, "partial": 2, "weak": 0},
-    "structural_impact": {"low": 3, "medium": 2, "high": 0},
-    "leverage": {"high": 3, "medium": 2, "low": 1},
-}
-
-GOAL_ALIGNMENT_AREA_SCORES = {
-    "installer": 3,
-    "root_tooling": 3,
-    "documentation": 2,
-    "agent_profiles": 3,
-    "rules_and_skills": 3,
-    "examples_and_snapshots": 1,
-    "other": 2,
-}
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Extract evidence-backed unfinished feature candidates from repository files."
@@ -199,161 +154,6 @@ def parse_args() -> argparse.Namespace:
     add_pretty_argument(parser)
     add_format_argument(parser)
     return parser.parse_args()
-
-
-def infer_language(path: Path) -> str:
-    suffix = path.suffix.lower()
-    if suffix == ".py":
-        return "python"
-    if suffix == ".sh":
-        return "shell"
-    if suffix == ".ps1":
-        return "powershell"
-    if suffix == ".toml":
-        return "toml"
-    if suffix == ".rules":
-        return "rules"
-    return "text"
-
-
-def iter_repo_files(root: Path) -> list[Path]:
-    files: list[Path] = []
-    for path in root.rglob("*"):
-        if path.is_dir():
-            continue
-        if any(part in SKIP_DIRS for part in path.parts):
-            continue
-        if path.suffix.lower() in SKIP_SUFFIXES:
-            continue
-        if path.name in SKIP_FILENAMES:
-            continue
-        if path.suffix.lower() not in SCAN_SUFFIXES:
-            continue
-        if path.name == Path(__file__).name:
-            continue
-        try:
-            if path.stat().st_size > MAX_FILE_BYTES:
-                continue
-        except OSError:
-            continue
-        if is_text_file(path):
-            files.append(path)
-    return sorted(files)
-
-
-def is_text_file(path: Path) -> bool:
-    try:
-        sample = path.read_bytes()[:TEXT_SAMPLE_BYTES]
-    except OSError:
-        return False
-    if b"\x00" in sample:
-        return False
-    return True
-
-
-def read_text_lines(path: Path) -> list[str]:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    return text.splitlines()
-
-
-def normalize_excerpt(text: str) -> str:
-    return " ".join(text.strip().split())
-
-
-def is_test_file(path: Path) -> bool:
-    return bool(TEST_FILE_PATTERN.search(path.as_posix()))
-
-
-def extract_definitions(language: str, lines: list[str]) -> list[SymbolLocation]:
-    definitions: list[SymbolLocation] = []
-    if language == "python":
-        pattern = PYTHON_DEF_PATTERN
-        symbol_map = {"def": "function", "class": "class"}
-        for index, line in enumerate(lines, start=1):
-            match = pattern.match(line)
-            if not match:
-                continue
-            definitions.append(
-                SymbolLocation(
-                    name=match.group("name"),
-                    line=index,
-                    symbol_kind=symbol_map.get(match.group(1), "symbol"),
-                )
-            )
-        return definitions
-
-    if language == "shell":
-        for index, line in enumerate(lines, start=1):
-            match = SHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(
-                SymbolLocation(name=match.group("name"), line=index, symbol_kind="function")
-            )
-        return definitions
-
-    if language == "powershell":
-        for index, line in enumerate(lines, start=1):
-            match = POWERSHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(
-                SymbolLocation(name=match.group("name"), line=index, symbol_kind="function")
-            )
-        return definitions
-
-    return definitions
-
-
-def build_file_record(root: Path, path: Path) -> FileRecord:
-    lines = read_text_lines(path)
-    language = infer_language(path)
-    content = "\n".join(lines)
-    relative_path = path.relative_to(root).as_posix()
-    return FileRecord(
-        path=path,
-        relative_path=relative_path,
-        lines=lines,
-        content=content,
-        language=language,
-        is_test_file=is_test_file(path.relative_to(root)),
-        definitions=extract_definitions(language, lines),
-    )
-
-
-def build_repo_index(root: Path, files: list[Path]) -> dict[str, Any]:
-    records = [build_file_record(root, path) for path in files]
-    by_relative_path = {record.relative_path: record for record in records}
-    return {
-        "records": records,
-        "by_relative_path": by_relative_path,
-        "test_records": [record for record in records if record.is_test_file],
-    }
-
-
-def find_enclosing_symbol(record: FileRecord, line_number: int) -> SymbolLocation | None:
-    candidates = [definition for definition in record.definitions if definition.line <= line_number]
-    if not candidates:
-        return None
-    return candidates[-1]
-
-
-def extract_tokens(*values: str) -> list[str]:
-    seen: set[str] = set()
-    tokens: list[str] = []
-    for value in values:
-        for raw in TOKEN_PATTERN.findall(value):
-            token = raw.lower()
-            if token in STOPWORDS:
-                continue
-            if token in seen:
-                continue
-            seen.add(token)
-            tokens.append(token)
-    return tokens
 
 
 def infer_feature_key(candidate: dict[str, Any]) -> str:
@@ -418,11 +218,16 @@ def build_candidate(
 
 
 def scan_file(root: Path, record: FileRecord) -> list[dict[str, Any]]:
+    if record.is_test_file:
+        return []
+
     area_id = classify_area(Path(record.relative_path))
     candidates: list[dict[str, Any]] = []
     seen: set[tuple[int, str]] = set()
 
     for index, line in enumerate(record.lines, start=1):
+        if is_detector_self_reference(line):
+            continue
         for spec in SIGNAL_SPECS:
             if not spec.pattern.search(line):
                 continue
@@ -442,22 +247,6 @@ def scan_file(root: Path, record: FileRecord) -> list[dict[str, Any]]:
             )
             break
     return candidates
-
-
-def summarize_signals(candidates: list[dict[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for candidate in candidates:
-        signal_id = str(candidate.get("signal_id"))
-        counts[signal_id] = counts.get(signal_id, 0) + 1
-    return dict(sorted(counts.items()))
-
-
-def unique_sorted(items: list[str]) -> list[str]:
-    return sorted({item for item in items if item})
-
-
-def summarize_related_paths(paths: list[str], limit: int = 8) -> list[str]:
-    return unique_sorted(paths)[:limit]
 
 
 def map_status_label(decision: str) -> str:
@@ -647,452 +436,6 @@ def render_markdown_report(payload: dict[str, Any]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def find_related_records(
-    repo_index: dict[str, Any], feature_key: str, area_id: str, candidate_paths: list[str]
-) -> list[FileRecord]:
-    tokens = extract_tokens(feature_key, *[Path(path).stem for path in candidate_paths])
-    path_set = set(candidate_paths)
-    related: list[FileRecord] = []
-    for record in repo_index["records"]:
-        same_area = classify_area(Path(record.relative_path)) == area_id
-        if record.relative_path in path_set:
-            related.append(record)
-            continue
-        if not same_area:
-            continue
-        haystack = f"{record.relative_path}\n{record.content}".lower()
-        if any(token in haystack for token in tokens):
-            related.append(record)
-    return related
-
-
-def build_call_flow(
-    repo_index: dict[str, Any], symbol_name: str | None, related_records: list[FileRecord]
-) -> dict[str, Any]:
-    if not symbol_name:
-        return {
-            "entrypoint": None,
-            "definition": None,
-            "callers": [],
-            "status": "unknown",
-            "summary": "심볼을 특정하지 못해 호출 흐름을 추론하지 못함",
-        }
-
-    symbol_pattern = re.compile(rf"\b{re.escape(symbol_name)}\b")
-    definition: dict[str, Any] | None = None
-    callers: list[dict[str, Any]] = []
-
-    for record in repo_index["records"]:
-        for definition_candidate in record.definitions:
-            if definition_candidate.name != symbol_name:
-                continue
-            definition = {
-                "path": record.relative_path,
-                "line": definition_candidate.line,
-                "symbol_kind": definition_candidate.symbol_kind,
-            }
-            break
-        if definition:
-            break
-
-    for record in related_records:
-        for index, line in enumerate(record.lines, start=1):
-            if not symbol_pattern.search(line):
-                continue
-            if definition and record.relative_path == definition["path"] and index == definition["line"]:
-                continue
-            callers.append(
-                {
-                    "path": record.relative_path,
-                    "line": index,
-                    "excerpt": normalize_excerpt(line),
-                }
-            )
-            if len(callers) >= 6:
-                break
-        if len(callers) >= 6:
-            break
-
-    status = "linked" if definition and callers else "defined_only" if definition else "unresolved"
-    if status == "linked":
-        summary = "정의와 참조가 둘 다 보여 실제 호출 흐름을 따라갈 수 있음"
-    elif status == "defined_only":
-        summary = "정의는 보이지만 관련 호출 흔적이 약해 배선 누락 가능성이 남음"
-    else:
-        summary = "정의나 호출 흐름을 안정적으로 찾지 못해 추가 확인이 필요함"
-
-    return {
-        "entrypoint": callers[0] if callers else None,
-        "definition": definition,
-        "callers": callers,
-        "status": status,
-        "summary": summary,
-    }
-
-
-def build_test_evidence(
-    repo_index: dict[str, Any], feature_key: str, symbol_name: str | None, candidate_paths: list[str]
-) -> dict[str, Any]:
-    search_terms = unique_sorted(extract_tokens(feature_key, symbol_name or "", *[Path(path).stem for path in candidate_paths]))
-    matching_tests: list[dict[str, Any]] = []
-
-    for record in repo_index["test_records"]:
-        haystack = f"{record.relative_path}\n{record.content}".lower()
-        if not search_terms:
-            continue
-        if not any(term in haystack for term in search_terms):
-            continue
-        matching_tests.append(
-            {
-                "path": record.relative_path,
-                "matched_terms": [term for term in search_terms if term in haystack][:5],
-            }
-        )
-
-    missing_tests = len(matching_tests) == 0
-    summary = (
-        "연결된 테스트 파일을 찾지 못해 기능 공백 회귀 방어가 약함"
-        if missing_tests
-        else "관련 테스트 흔적이 있어 기능 공백 여부를 추가 검증할 수 있음"
-    )
-    return {
-        "search_terms": search_terms,
-        "matched_test_files": matching_tests,
-        "missing_tests": missing_tests,
-        "summary": summary,
-    }
-
-
-def assess_gap(
-    candidates: list[dict[str, Any]], call_flow: dict[str, Any], test_evidence: dict[str, Any]
-) -> dict[str, Any]:
-    signal_counts = summarize_signals(candidates)
-    explicit_signals = sum(
-        signal_counts.get(signal_id, 0)
-        for signal_id in ("missing_handler", "missing_api_integration", "unwired_ui", "not_implemented")
-    )
-    weak_signals = sum(signal_counts.get(signal_id, 0) for signal_id in ("todo", "placeholder", "stub"))
-
-    reasons: list[str] = []
-    score = 0
-
-    if explicit_signals > 0:
-        score += 2
-        reasons.append("명시적인 미구현/누락 신호가 확인됨")
-    if weak_signals > 1:
-        score += 1
-        reasons.append("같은 기능 후보에 반복 신호가 누적됨")
-    if call_flow.get("status") in {"defined_only", "unresolved"}:
-        score += 1
-        reasons.append("호출 흐름이 끝까지 연결되지 않음")
-    if test_evidence.get("missing_tests"):
-        score += 1
-        reasons.append("관련 테스트 흔적이 없음")
-
-    if score >= 4:
-        decision = "confirmed_gap"
-        confidence = "high"
-        summary = "증거가 겹쳐 보여 실제 기능 공백으로 우선 취급해도 되는 후보"
-    elif score >= 2:
-        decision = "likely_gap"
-        confidence = "medium"
-        summary = "기능 공백 가능성이 높지만 호출 흐름/테스트 확인이 더 있으면 좋음"
-    else:
-        decision = "needs_review"
-        confidence = "low"
-        summary = "신호는 있으나 실제 공백으로 단정하기엔 근거가 약함"
-
-    return {
-        "decision": decision,
-        "confidence": confidence,
-        "summary": summary,
-        "reasons": reasons,
-        "score": score,
-    }
-
-
-def score_to_common_goal_alignment(score: int) -> str:
-    if score >= 2:
-        return "pass"
-    if score == 1:
-        return "borderline"
-    return "fail"
-
-
-def summarize_user_value(feature_group: dict[str, Any]) -> tuple[int, str]:
-    assessment = feature_group["gap_assessment"]
-    tests = feature_group["evidence_bundle"]["tests"]
-    signal_counts = feature_group["signal_counts"]
-    explicit_signals = sum(
-        signal_counts.get(signal_id, 0)
-        for signal_id in ("missing_handler", "missing_api_integration", "unwired_ui", "not_implemented")
-    )
-    if assessment["decision"] == "confirmed_gap" or (explicit_signals > 0 and tests["missing_tests"]):
-        return 3, "현재 확인된 기능 공백을 직접 메워 실제 사용 흐름과 회귀 방어를 바로 개선함"
-    if assessment["decision"] == "likely_gap":
-        return 2, "반복 마찰을 줄이는 보강 후보지만 핵심 공백을 닫는 증거는 한 단계 더 필요함"
-    return 1, "보조적 개선 가치는 있으나 현재 목표 달성에는 간접 효과가 더 큼"
-
-
-def summarize_implementation_cost(feature_group: dict[str, Any]) -> tuple[int, str]:
-    related_paths = feature_group["related_paths"]
-    code_locations = feature_group["evidence_bundle"]["code_locations"]
-    if len(related_paths) <= 1 and len(code_locations) <= 2:
-        return 3, "기존 구조 안에서 한두 지점만 수정하면 되는 작은 변경 범위"
-    if len(related_paths) <= 3:
-        return 2, "현재 구조를 유지한 채 인접 파일 몇 곳을 함께 손보면 되는 범위"
-    if len(related_paths) <= 5:
-        return 1, "영향 경로가 넓어 작은 기능치고 검증 부담이 큰 편"
-    return 0, "구조 변경 승인 없이는 안전하게 넣기 어려운 범위"
-
-
-def summarize_small_feature_goal_alignment(area_id: str, feature_group: dict[str, Any]) -> tuple[int, str]:
-    base_score = GOAL_ALIGNMENT_AREA_SCORES.get(area_id, 1)
-    assessment = feature_group["gap_assessment"]
-    if assessment["decision"] == "confirmed_gap" and base_score < 3:
-        base_score += 1
-    score = min(base_score, 3)
-    if score == 3:
-        return 3, "저장소의 자가 탐지·제안·검증 루프를 직접 강화하는 영역이라 목표 정합성이 높음"
-    if score == 2:
-        return 2, "프로젝트 목표 흐름을 보조하지만 핵심 루프 강화 효과는 한 단계 약함"
-    if score == 1:
-        return 1, "프로젝트 목표와 충돌은 없지만 직접 기여도는 낮음"
-    return 0, "현재 프로젝트 방향성과 직접 연결되지 않음"
-
-
-def summarize_ripple_effect(feature_group: dict[str, Any]) -> tuple[int, str]:
-    call_flow = feature_group["evidence_bundle"]["call_flow"]
-    tests = feature_group["evidence_bundle"]["tests"]
-    related_paths = feature_group["related_paths"]
-    if tests["missing_tests"] and call_flow["status"] in {"defined_only", "unresolved"}:
-        return 3, "기능 보강과 동시에 다음 사이클의 검증 신뢰도와 추적성이 함께 좋아짐"
-    if tests["missing_tests"] or call_flow["status"] in {"defined_only", "unresolved"}:
-        return 2, "인접한 검증 또는 호출 흐름에 긍정 효과가 있지만 범위는 제한적임"
-    if len(related_paths) <= 2:
-        return 1, "현재 공백 해결 중심이라 연쇄 이득은 크지 않음"
-    return 0, "연쇄 이득보다 회귀 통제 비용이 더 커질 수 있음"
-
-
-def assess_common_axes(area_id: str, feature_group: dict[str, Any], implementation_cost: int) -> dict[str, str]:
-    tests = feature_group["evidence_bundle"]["tests"]
-    call_flow = feature_group["evidence_bundle"]["call_flow"]
-    gap_assessment = feature_group["gap_assessment"]
-    goal_alignment_score, _ = summarize_small_feature_goal_alignment(area_id, feature_group)
-
-    if gap_assessment["decision"] in {"confirmed_gap", "likely_gap"}:
-        gap_relevance = "high"
-    elif gap_assessment["score"] > 0:
-        gap_relevance = "medium"
-    else:
-        gap_relevance = "low"
-
-    if implementation_cost == 0:
-        structural_impact = "high"
-    elif len(feature_group["related_paths"]) > 3:
-        structural_impact = "medium"
-    else:
-        structural_impact = "low"
-
-    if implementation_cost == 0:
-        safety = "risky"
-    elif tests["missing_tests"] or call_flow["status"] in {"defined_only", "unresolved"}:
-        safety = "guarded"
-    else:
-        safety = "safe"
-
-    if implementation_cost >= 2:
-        reversibility = "strong"
-    elif implementation_cost == 1:
-        reversibility = "partial"
-    else:
-        reversibility = "weak"
-
-    ripple_effect, _ = summarize_ripple_effect(feature_group)
-    if ripple_effect >= 3 or area_id in {"root_tooling", "rules_and_skills", "agent_profiles"}:
-        leverage = "high"
-    elif ripple_effect >= 2:
-        leverage = "medium"
-    else:
-        leverage = "low"
-
-    return {
-        "goal_alignment": score_to_common_goal_alignment(goal_alignment_score),
-        "gap_relevance": gap_relevance,
-        "safety": safety,
-        "reversibility": reversibility,
-        "structural_impact": structural_impact,
-        "leverage": leverage,
-    }
-
-
-def compute_common_score(common_axes: dict[str, str]) -> int:
-    return sum(COMMON_AXIS_POINTS[axis_name][axis_value] for axis_name, axis_value in common_axes.items())
-
-
-def grade_priority(priority_score: int) -> str:
-    if priority_score >= 40:
-        return "A"
-    if priority_score >= 32:
-        return "B"
-    if priority_score >= 24:
-        return "C"
-    return "D"
-
-
-def determine_small_feature_decision(
-    common_axes: dict[str, str],
-    value: int,
-    implementation_cost: int,
-    goal_alignment_score: int,
-    ripple_effect: int,
-    priority_score: int,
-) -> tuple[str, str]:
-    if common_axes["goal_alignment"] == "fail":
-        return "reject", "hold"
-    if common_axes["gap_relevance"] == "low":
-        return "defer", "hold"
-    if common_axes["safety"] == "risky":
-        return "defer", "hold"
-    if common_axes["reversibility"] == "weak":
-        return "defer", "hold"
-    if common_axes["structural_impact"] == "high":
-        return "needs_approval", "hold"
-    if goal_alignment_score < 2:
-        return "reject", "hold"
-    if value < 2:
-        return "defer", "hold"
-    if implementation_cost == 0:
-        return "needs_approval", "hold"
-    if ripple_effect == 0:
-        return "defer", "hold"
-    return "pick", grade_priority(priority_score)
-
-
-def build_implementation_scope(feature_group: dict[str, Any], implementation_cost_summary: str) -> list[str]:
-    scope = [implementation_cost_summary]
-    code_locations = feature_group["evidence_bundle"]["code_locations"]
-    call_flow = feature_group["evidence_bundle"]["call_flow"]
-    tests = feature_group["evidence_bundle"]["tests"]
-    if code_locations:
-        anchors = unique_sorted(
-            [
-                f"{item['path']}:{item['line']}"
-                for item in code_locations
-                if item.get("path") and item.get("line")
-            ]
-        )
-        scope.append(f"우선 수정 후보 코드 위치: {', '.join(anchors[:4])}")
-    if call_flow["definition"]:
-        definition = call_flow["definition"]
-        scope.append(f"주요 정의 지점: {definition['path']}:{definition['line']}")
-    if tests["matched_test_files"]:
-        scope.append(
-            "연관 테스트 확인 범위: "
-            + ", ".join(item["path"] for item in tests["matched_test_files"][:4])
-        )
-    elif tests["missing_tests"]:
-        scope.append("관련 테스트가 없어 기능 보강과 함께 회귀 방어 경로 확인이 필요함")
-    return scope
-
-
-def build_selection_rationale(
-    feature_group: dict[str, Any],
-    common_axes: dict[str, str],
-    user_value_summary: str,
-    goal_alignment_summary: str,
-    ripple_effect_summary: str,
-) -> list[str]:
-    rationale = [user_value_summary, goal_alignment_summary, ripple_effect_summary]
-    rationale.extend(feature_group["gap_assessment"]["reasons"])
-    rationale.append(
-        "공통 축 판정: " + ", ".join(f"{key}={value}" for key, value in common_axes.items())
-    )
-    return rationale
-
-
-def build_small_feature_candidate(area_id: str, feature_group: dict[str, Any]) -> dict[str, Any]:
-    value, user_value_summary = summarize_user_value(feature_group)
-    implementation_cost, implementation_cost_summary = summarize_implementation_cost(feature_group)
-    goal_alignment_score, goal_alignment_summary = summarize_small_feature_goal_alignment(
-        area_id, feature_group
-    )
-    ripple_effect, ripple_effect_summary = summarize_ripple_effect(feature_group)
-    specific_score = value + implementation_cost + goal_alignment_score + ripple_effect
-    common_axes = assess_common_axes(area_id, feature_group, implementation_cost)
-    common_score = compute_common_score(common_axes)
-    priority_score = (common_score * 2) + specific_score
-    decision, priority_grade = determine_small_feature_decision(
-        common_axes,
-        value,
-        implementation_cost,
-        goal_alignment_score,
-        ripple_effect,
-        priority_score,
-    )
-
-    return {
-        "proposal_id": f"small_feature:{area_id}:{feature_group['feature_key']}",
-        "candidate_kind": "small_feature",
-        "title": feature_group["title"],
-        "linked_gap": "feature_gap",
-        "linked_feature_key": feature_group["feature_key"],
-        "functional_area": area_id,
-        "functional_area_label": AREA_LABELS.get(area_id, area_id),
-        "user_value": user_value_summary,
-        "implementation_scope": build_implementation_scope(feature_group, implementation_cost_summary),
-        "selection_rationale": build_selection_rationale(
-            feature_group,
-            common_axes,
-            user_value_summary,
-            goal_alignment_summary,
-            ripple_effect_summary,
-        ),
-        "common_axes": common_axes,
-        "small_feature_rubric": {
-            "value": value,
-            "implementation_cost": implementation_cost,
-            "goal_alignment": goal_alignment_score,
-            "ripple_effect": ripple_effect,
-            "specific_score": specific_score,
-        },
-        "common_score": common_score,
-        "specific_score": specific_score,
-        "priority_score": priority_score,
-        "priority_grade": priority_grade,
-        "decision": decision,
-        "source_feature_group": {
-            "feature_key": feature_group["feature_key"],
-            "candidate_count": feature_group["candidate_count"],
-            "signal_counts": feature_group["signal_counts"],
-            "related_paths": feature_group["related_paths"],
-            "gap_assessment": feature_group["gap_assessment"],
-        },
-    }
-
-
-def build_small_feature_candidates(areas: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    candidates: list[dict[str, Any]] = []
-    for area in areas:
-        area_id = area["area_id"]
-        for feature_group in area["feature_groups"]:
-            candidate = build_small_feature_candidate(area_id, feature_group)
-            if candidate["common_axes"]["goal_alignment"] != "pass":
-                continue
-            candidates.append(candidate)
-
-    return sorted(
-        candidates,
-        key=lambda item: (
-            {"pick": 0, "defer": 1, "needs_approval": 2, "reject": 3}.get(item["decision"], 4),
-            -item["priority_score"],
-            -item["small_feature_rubric"]["goal_alignment"],
-            -item["small_feature_rubric"]["value"],
-            item["title"],
-        ),
-    )
-
-
 def build_feature_group(
     *,
     area_id: str,
@@ -1238,7 +581,7 @@ def build_area_records(files: list[Path], root: Path, repo_index: dict[str, Any]
 
 
 def extract_feature_gap_candidates(root: Path) -> dict[str, Any]:
-    files = iter_repo_files(root)
+    files = iter_repo_files(root, exclude_filename=Path(__file__).name)
     repo_index = build_repo_index(root, files)
     areas = build_area_records(files, root, repo_index)
     all_candidates = [candidate for area in areas for candidate in area["candidates"]]

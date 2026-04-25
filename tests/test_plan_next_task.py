@@ -71,6 +71,19 @@ def write_extractors(
     )
 
 
+def imported_refactor_payload() -> dict[str, Any]:
+    return {
+        "refactor_candidates": [
+            {
+                "title": "Refactor imported script",
+                "decision": "pick",
+                "priority_score": 47,
+                "selection_rationale": ["scan-based hotspot"],
+            }
+        ]
+    }
+
+
 class PlanNextTaskTests(unittest.TestCase):
     def test_parses_campaign_goal_and_queue_items(self) -> None:
         text = """# Campaign State
@@ -112,16 +125,7 @@ class PlanNextTaskTests(unittest.TestCase):
             )
             write_extractors(
                 root,
-                refactor_payload={
-                    "refactor_candidates": [
-                        {
-                            "title": "Refactor imported script",
-                            "decision": "pick",
-                            "priority_score": 47,
-                            "selection_rationale": ["scan-based hotspot"],
-                        }
-                    ]
-                },
+                refactor_payload=imported_refactor_payload(),
             )
 
             payload = plan_next_task.choose_candidate(root)
@@ -352,16 +356,7 @@ class PlanNextTaskTests(unittest.TestCase):
             )
             write_extractors(
                 root,
-                refactor_payload={
-                    "refactor_candidates": [
-                        {
-                            "title": "Refactor imported script",
-                            "decision": "pick",
-                            "priority_score": 47,
-                            "selection_rationale": ["scan-based hotspot"],
-                        }
-                    ]
-                },
+                refactor_payload=imported_refactor_payload(),
             )
 
             payload = plan_next_task.choose_candidate(root)

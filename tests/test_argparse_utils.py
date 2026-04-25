@@ -41,6 +41,101 @@ class ArgparseUtilsTests(unittest.TestCase):
         self.assertEqual(args.format, "markdown")
         self.assertTrue(args.pretty)
 
+    def test_format_argument_allows_default_override(self) -> None:
+        parser = argparse.ArgumentParser()
+        argparse_utils.add_format_argument(parser, default="markdown")
+
+        args = parser.parse_args([])
+
+        self.assertEqual(args.format, "markdown")
+
+    def test_validation_arguments_keep_existing_defaults(self) -> None:
+        parser = argparse.ArgumentParser()
+        argparse_utils.add_planner_argument(parser)
+        argparse_utils.add_project_id_argument(parser)
+        argparse_utils.add_format_argument(parser)
+
+        args = parser.parse_args(["--planner", "planner.json"])
+
+        self.assertEqual(args.planner, "planner.json")
+        self.assertEqual(args.project_id, "selfdex")
+        self.assertEqual(args.format, "json")
+
+    def test_validation_arguments_parse_explicit_values(self) -> None:
+        parser = argparse.ArgumentParser()
+        argparse_utils.add_planner_argument(parser)
+        argparse_utils.add_project_id_argument(parser)
+        argparse_utils.add_format_argument(parser)
+
+        args = parser.parse_args(
+            [
+                "--planner",
+                "planner.json",
+                "--project-id",
+                "external_one",
+                "--format",
+                "markdown",
+            ]
+        )
+
+        self.assertEqual(args.planner, "planner.json")
+        self.assertEqual(args.project_id, "external_one")
+        self.assertEqual(args.format, "markdown")
+
+    def test_planner_report_arguments_keep_template_defaults(self) -> None:
+        parser = argparse.ArgumentParser()
+        argparse_utils.add_planner_report_arguments(parser)
+
+        args = parser.parse_args(["--planner", "planner.json"])
+
+        self.assertEqual(args.planner, "planner.json")
+        self.assertEqual(args.project_id, "selfdex")
+        self.assertEqual(args.format, "json")
+        self.assertFalse(hasattr(args, "root"))
+        self.assertFalse(hasattr(args, "quality"))
+
+    def test_planner_report_arguments_can_include_root_and_quality(self) -> None:
+        parser = argparse.ArgumentParser()
+        argparse_utils.add_planner_report_arguments(parser, include_root=True, include_quality=True)
+
+        args = parser.parse_args(
+            [
+                "--root",
+                ".",
+                "--planner",
+                "planner.json",
+                "--quality",
+                "quality.json",
+                "--project-id",
+                "external_one",
+                "--format",
+                "markdown",
+            ]
+        )
+
+        self.assertEqual(args.root, ".")
+        self.assertEqual(args.planner, "planner.json")
+        self.assertEqual(args.quality, "quality.json")
+        self.assertEqual(args.project_id, "external_one")
+        self.assertEqual(args.format, "markdown")
+
+    def test_parse_planner_report_args_wraps_parser_creation(self) -> None:
+        args = argparse_utils.parse_planner_report_args(
+            "Report",
+            [
+                "--planner",
+                "planner.json",
+                "--project-id",
+                "external_one",
+                "--format",
+                "markdown",
+            ],
+        )
+
+        self.assertEqual(args.planner, "planner.json")
+        self.assertEqual(args.project_id, "external_one")
+        self.assertEqual(args.format, "markdown")
+
 
 if __name__ == "__main__":
     unittest.main()

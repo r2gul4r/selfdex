@@ -2,26 +2,17 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+try:
+    from symbol_definition_utils import SymbolLocation, extract_definitions
+except ModuleNotFoundError:
+    from scripts.symbol_definition_utils import SymbolLocation, extract_definitions
+
 
 CODE_LANGUAGES = {"python", "shell", "powershell", "makefile", "rules", "toml"}
-
-PYTHON_DEF_PATTERN = re.compile(r"^\s*(def|class)\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b")
-SHELL_DEF_PATTERN = re.compile(
-    r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?:\(\))?\s*\{"
-)
-POWERSHELL_DEF_PATTERN = re.compile(r"^\s*function\s+(?P<name>[A-Za-z_][A-Za-z0-9_-]*)\b", re.IGNORECASE)
-
-
-@dataclass(frozen=True)
-class SymbolLocation:
-    name: str
-    line: int
-    symbol_kind: str
 
 
 @dataclass(frozen=True)
@@ -37,41 +28,6 @@ def read_text_lines(path: Path) -> list[str]:
         return path.read_text(encoding="utf-8").splitlines()
     except UnicodeDecodeError:
         return path.read_text(encoding="utf-8", errors="replace").splitlines()
-
-
-def extract_definitions(language: str, lines: list[str]) -> list[SymbolLocation]:
-    definitions: list[SymbolLocation] = []
-    if language == "python":
-        for index, line in enumerate(lines, start=1):
-            match = PYTHON_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(
-                SymbolLocation(
-                    name=match.group("name"),
-                    line=index,
-                    symbol_kind="class" if match.group(1) == "class" else "function",
-                )
-            )
-        return definitions
-
-    if language == "shell":
-        for index, line in enumerate(lines, start=1):
-            match = SHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(SymbolLocation(name=match.group("name"), line=index, symbol_kind="function"))
-        return definitions
-
-    if language == "powershell":
-        for index, line in enumerate(lines, start=1):
-            match = POWERSHELL_DEF_PATTERN.match(line)
-            if not match:
-                continue
-            definitions.append(SymbolLocation(name=match.group("name"), line=index, symbol_kind="function"))
-        return definitions
-
-    return definitions
 
 
 def build_file_records(root: Path, metrics: dict[str, Any]) -> dict[str, FileRecord]:

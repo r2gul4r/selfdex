@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Iterable
 
 if __package__:
+    from .repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
     from .repo_metrics_utils import (
         MIN_DUPLICATE_TOKEN_COUNT,
         DuplicateGroup,
@@ -24,6 +25,15 @@ if __package__:
         collect_normalized_code_lines,
     )
 else:
+    script_dir = Path(__file__).resolve().parent
+    if str(script_dir) not in sys.path:
+        sys.path.insert(0, str(script_dir))
+
+    try:
+        from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    except ModuleNotFoundError:
+        from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+
     from repo_metrics_utils import (
         MIN_DUPLICATE_TOKEN_COUNT,
         DuplicateGroup,
@@ -38,12 +48,8 @@ else:
 
 SCHEMA_VERSION = 1
 MIN_DUPLICATE_BLOCK_LINES = 3
-DEFAULT_EXCLUDED_DIRS = {
-    ".git",
-    ".codex",
-    "__pycache__",
-    ".pytest_cache",
-}
+TEXT_SAMPLE_BYTES = 4096
+DEFAULT_EXCLUDED_DIRS = set(DEFAULT_SCAN_EXCLUDED_DIRS)
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,6 +87,20 @@ def utc_timestamp() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def is_utf8_text_file(path: Path) -> bool:
+    try:
+        sample = path.read_bytes()[:TEXT_SAMPLE_BYTES]
+    except OSError:
+        return False
+    if b"\x00" in sample:
+        return False
+    try:
+        sample.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
 def iter_files(root: Path, explicit_paths: list[str] | None) -> Iterable[Path]:
     seen: set[Path] = set()
     if explicit_paths:
@@ -94,6 +114,8 @@ def iter_files(root: Path, explicit_paths: list[str] | None) -> Iterable[Path]:
 
         if source.is_file():
             resolved = source.resolve()
+            if not is_utf8_text_file(resolved):
+                continue
             if resolved not in seen:
                 seen.add(resolved)
                 yield resolved
@@ -102,7 +124,9 @@ def iter_files(root: Path, explicit_paths: list[str] | None) -> Iterable[Path]:
         for path in sorted(source.rglob("*")):
             if path.is_dir():
                 continue
-            if any(part in DEFAULT_EXCLUDED_DIRS for part in path.relative_to(source).parts):
+            if path_has_excluded_dir(path, root=root):
+                continue
+            if not is_utf8_text_file(path):
                 continue
             resolved = path.resolve()
             if resolved in seen:

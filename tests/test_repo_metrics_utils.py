@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+from script_smoke_utils import run_script_and_module
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,39 +116,16 @@ class RepoMetricsUtilsTests(unittest.TestCase):
         self.assertEqual(payload["excerpt"], ["x = 1"])
 
     def test_collect_repo_metrics_runs_as_script_and_module(self) -> None:
-        script_command = [
-            sys.executable,
-            str(ROOT / "scripts" / "collect_repo_metrics.py"),
-            "--root",
-            str(ROOT),
-            "--paths",
-            "scripts/collect_repo_metrics.py",
-        ]
-        module_command = [
-            sys.executable,
-            "-m",
-            "scripts.collect_repo_metrics",
-            "--root",
-            str(ROOT),
-            "--paths",
-            "scripts/collect_repo_metrics.py",
-        ]
-
-        script_output = subprocess.run(
-            script_command,
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        module_output = subprocess.run(
-            module_command,
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
+        script_output, module_output = run_script_and_module(
+            repo_root=ROOT,
+            script_name="collect_repo_metrics.py",
+            module_name="collect_repo_metrics",
+            args=[
+                "--root",
+                str(ROOT),
+                "--paths",
+                "scripts/collect_repo_metrics.py",
+            ],
         )
 
         script_payload = json.loads(script_output.stdout)

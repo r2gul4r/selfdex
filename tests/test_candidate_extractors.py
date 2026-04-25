@@ -1,28 +1,15 @@
 from __future__ import annotations
 
-import importlib.util
 import json
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-from types import ModuleType
+
+from script_loader_utils import load_script
+from script_smoke_utils import run_script_and_module
 
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def load_script(name: str) -> ModuleType:
-    path = ROOT / "scripts" / name
-    module_name = name.replace(".py", "")
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
 
 
 test_gap = load_script("extract_test_gap_candidates.py")
@@ -34,6 +21,32 @@ def write_file(root: Path, relative_path: str, content: str) -> None:
     path = root / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def write_hotspot_file(root: Path) -> None:
+    write_file(
+        root,
+        "scripts/hotspot.py",
+        "def parse_config():\n    return {}\n\n"
+        "def render_report():\n    return ''\n",
+    )
+
+
+def hotspot_metrics_payload() -> dict[str, Any]:
+    return {
+        "summary": {"file_count": 1},
+        "files": [
+            {
+                "path": "scripts/hotspot.py",
+                "language": "python",
+                "complexity": {"cyclomatic_estimate": 120},
+                "module_size": {"code_lines": 620},
+                "duplication": {"group_count": 2},
+                "change_frequency": {"commit_count": 1},
+            }
+        ],
+        "duplication": {"groups": []},
+    }
 
 
 class CandidateExtractorFixtureTests(unittest.TestCase):
@@ -74,26 +87,8 @@ class CandidateExtractorFixtureTests(unittest.TestCase):
     def test_refactor_extractor_builds_hotspot_candidate_from_metrics_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            write_file(
-                root,
-                "scripts/hotspot.py",
-                "def parse_config():\n    return {}\n\n"
-                "def render_report():\n    return ''\n",
-            )
-            metrics_payload = {
-                "summary": {"file_count": 1},
-                "files": [
-                    {
-                        "path": "scripts/hotspot.py",
-                        "language": "python",
-                        "complexity": {"cyclomatic_estimate": 120},
-                        "module_size": {"code_lines": 620},
-                        "duplication": {"group_count": 2},
-                        "change_frequency": {"commit_count": 1},
-                    }
-                ],
-                "duplication": {"groups": []},
-            }
+            write_hotspot_file(root)
+            metrics_payload = hotspot_metrics_payload()
 
             candidates = refactor.build_refactor_candidates(root, metrics_payload, limit=3)
 
@@ -164,69 +159,24 @@ class CandidateExtractorFixtureTests(unittest.TestCase):
     def test_refactor_extractor_runs_as_script_and_module_with_metrics_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            write_file(
-                root,
-                "scripts/hotspot.py",
-                "def parse_config():\n    return {}\n\n"
-                "def render_report():\n    return ''\n",
-            )
+            write_hotspot_file(root)
             metrics_path = root / "metrics.json"
             metrics_path.write_text(
-                json.dumps(
-                    {
-                        "summary": {"file_count": 1},
-                        "files": [
-                            {
-                                "path": "scripts/hotspot.py",
-                                "language": "python",
-                                "complexity": {"cyclomatic_estimate": 120},
-                                "module_size": {"code_lines": 620},
-                                "duplication": {"group_count": 2},
-                                "change_frequency": {"commit_count": 1},
-                            }
-                        ],
-                        "duplication": {"groups": []},
-                    }
-                ),
+                json.dumps(hotspot_metrics_payload()),
                 encoding="utf-8",
             )
-            script_command = [
-                sys.executable,
-                str(ROOT / "scripts" / "extract_refactor_candidates.py"),
-                "--root",
-                str(root),
-                "--metrics-input",
-                str(metrics_path),
-                "--format",
-                "json",
-            ]
-            module_command = [
-                sys.executable,
-                "-m",
-                "scripts.extract_refactor_candidates",
-                "--root",
-                str(root),
-                "--metrics-input",
-                str(metrics_path),
-                "--format",
-                "json",
-            ]
-
-            script_output = subprocess.run(
-                script_command,
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-            module_output = subprocess.run(
-                module_command,
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
+            script_output, module_output = run_script_and_module(
+                repo_root=ROOT,
+                script_name="extract_refactor_candidates.py",
+                module_name="extract_refactor_candidates",
+                args=[
+                    "--root",
+                    str(root),
+                    "--metrics-input",
+                    str(metrics_path),
+                    "--format",
+                    "json",
+                ],
             )
 
         script_payload = json.loads(script_output.stdout)

@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
-import sys
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
 try:
@@ -17,9 +14,29 @@ except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_pretty_argument, add_root_argument
 
 try:
+    from candidate_scoring_utils import (
+        COMMON_AXIS_POINTS,
+        compute_common_score,
+        determine_common_axis_decision,
+        grade_priority,
+    )
+except ModuleNotFoundError:
+    from scripts.candidate_scoring_utils import (
+        COMMON_AXIS_POINTS,
+        compute_common_score,
+        determine_common_axis_decision,
+        grade_priority,
+    )
+
+try:
     from repo_area_utils import AREA_LABELS, classify_area
 except ModuleNotFoundError:
     from scripts.repo_area_utils import AREA_LABELS, classify_area
+
+try:
+    from refactor_metrics_payload import filter_metrics_payload, load_metrics
+except ModuleNotFoundError:
+    from scripts.refactor_metrics_payload import filter_metrics_payload, load_metrics
 
 try:
     from refactor_file_records import (
@@ -41,18 +58,6 @@ except ModuleNotFoundError:
 
 SCHEMA_VERSION = 1
 DEFAULT_LIMIT = 5
-
-SKIP_DIRS = {".git", ".codex", "__pycache__"}
-SKIP_FILENAMES = {"STATE.md", "MULTI_AGENT_LOG.md", "ERROR_LOG.md"}
-
-COMMON_AXIS_POINTS = {
-    "goal_alignment": {"pass": 3, "borderline": 1, "fail": 0},
-    "gap_relevance": {"high": 3, "medium": 2, "low": 0},
-    "safety": {"safe": 3, "guarded": 2, "risky": 0},
-    "reversibility": {"strong": 3, "partial": 2, "weak": 0},
-    "structural_impact": {"low": 3, "medium": 2, "high": 0},
-    "leverage": {"high": 3, "medium": 2, "low": 1},
-}
 
 
 @dataclass(frozen=True)
@@ -84,73 +89,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def should_skip_repo_path(path: str) -> bool:
-    normalized = path.replace("\\", "/")
-    parts = PurePosixPath(normalized).parts
-    if any(part in SKIP_DIRS for part in parts):
-        return True
-    return bool(parts and parts[-1] in SKIP_FILENAMES)
-
-
-def filter_metrics_payload(metrics_payload: dict[str, Any]) -> dict[str, Any]:
-    files = [
-        item
-        for item in metrics_payload.get("files", [])
-        if not should_skip_repo_path(str(item.get("path", "")))
-    ]
-    file_paths = {item["path"] for item in files}
-
-    duplication = dict(metrics_payload.get("duplication", {}))
-    groups: list[dict[str, Any]] = []
-    for group in duplication.get("groups", []):
-        modules = [
-            module
-            for module in group.get("modules", [])
-            if module.get("path") in file_paths
-        ]
-        if len(modules) < 2:
-            continue
-        next_group = dict(group)
-        next_group["modules"] = modules
-        next_group["occurrence_count"] = len(modules)
-        groups.append(next_group)
-    duplication["groups"] = groups
-    duplication["group_count"] = len(groups)
-
-    summary = dict(metrics_payload.get("summary", {}))
-    summary["file_count"] = len(files)
-
-    filtered = dict(metrics_payload)
-    filtered["files"] = files
-    filtered["duplication"] = duplication
-    filtered["summary"] = summary
-    return filtered
-
-
-def load_metrics(root: Path, metrics_input: str | None) -> dict[str, Any]:
-    if metrics_input:
-        with open(metrics_input, "r", encoding="utf-8") as handle:
-            return json.load(handle)
-
-    script_dir = Path(__file__).resolve().parent
-    command = [sys.executable, str(script_dir / "collect_repo_metrics.py"), "--root", str(root), "--pretty"]
-    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
-    completed = subprocess.run(
-        command,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        env=env,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(
-            "scripts/collect_repo_metrics.py failed while building refactor candidates:\n"
-            + completed.stderr.strip()
-        )
-    return json.loads(completed.stdout)
-
-
 def unique_preserve_order(items: list[str]) -> list[str]:
     seen: set[str] = set()
     ordered: list[str] = []
@@ -162,20 +100,6 @@ def unique_preserve_order(items: list[str]) -> list[str]:
     return ordered
 
 
-def compute_common_score(common_axes: dict[str, str]) -> int:
-    return sum(COMMON_AXIS_POINTS[key][value] for key, value in common_axes.items())
-
-
-def grade_priority(priority_score: int) -> str:
-    if priority_score >= 40:
-        return "A"
-    if priority_score >= 32:
-        return "B"
-    if priority_score >= 24:
-        return "C"
-    return "D"
-
-
 def determine_refactor_decision(
     common_axes: dict[str, str],
     quality_impact: int,
@@ -184,16 +108,9 @@ def determine_refactor_decision(
     feature_goal_contribution: int,
     priority_score: int,
 ) -> tuple[str, str]:
-    if common_axes["goal_alignment"] == "fail":
-        return "reject", "hold"
-    if common_axes["gap_relevance"] == "low":
-        return "defer", "hold"
-    if common_axes["safety"] == "risky":
-        return "defer", "hold"
-    if common_axes["reversibility"] == "weak":
-        return "defer", "hold"
-    if common_axes["structural_impact"] == "high":
-        return "needs_approval", "hold"
+    common_decision = determine_common_axis_decision(common_axes)
+    if common_decision is not None:
+        return common_decision
     if feature_goal_contribution < 2:
         return "defer", "hold"
     if quality_impact < 2:

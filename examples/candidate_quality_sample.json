@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "analysis_kind": "candidate_quality_evaluation",
+  "status": "pass",
+  "results": [
+    {
+      "candidate": "split candidate extraction helpers",
+      "scores": {
+        "real_problem": 3,
+        "user_value": 2,
+        "local_verifiability": 3,
+        "scope_smallness": 2,
+        "risk_reversibility": 3
+      },
+      "total": 13,
+      "verdict": "strong",
+      "issues": [],
+      "human_notes": ""
+    }
+  ]
+}

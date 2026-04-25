@@ -1,18 +1,20 @@
 # Autopilot Policy
 
-Selfdex runs as an aggressive but bounded improvement loop.
+Selfdex runs as a supervised, bounded, and auditable local improvement loop for
+Codex work.
 
 ## Final Goal Contract
 
 `docs/SELFDEX_FINAL_GOAL.md` is the north-star contract. It defines Selfdex as
-a user-invoked recursive improvement harness:
+a user-invoked control harness for long-running Codex sessions:
 
 ```text
 register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
 The loop may analyze explicitly registered projects read-only, but
-cross-project writes stay approval-gated.
+cross-project writes stay approval-gated. External read-only validation is
+required before treating Selfdex as generally useful beyond this repository.
 
 ## Loop
 
@@ -23,7 +25,8 @@ cross-project writes stay approval-gated.
 4. Rank gaps by goal fit, leverage, risk, reversibility, and verification fit.
 5. Pick the smallest high-leverage task.
 6. Freeze acceptance, non-goals, write sets, and checks.
-7. Fan out to agents when host policy, authorization, and budget allow it.
+7. Recommend or use explorer, worker, and reviewer lanes when host policy,
+   authorization, and budget allow it.
 8. Integrate outputs.
 9. Verify.
 10. Repair inside the same contract when checks fail.
@@ -43,9 +46,9 @@ cross-project writes stay approval-gated.
 
 `STATE.md` owns the current task only.
 
-## Aggression Knobs
+## Control Knobs
 
-- `risk_appetite`: `medium-high` by default.
+- `risk_appetite`: `medium-high` by default, bounded by hard approval zones.
 - `default_agent_budget`: `2`.
 - `max_agent_budget`: `4`.
 - `repair_attempts`: `2`.
@@ -68,8 +71,8 @@ The autopilot must stop for explicit approval before:
 
 Prefer candidates that:
 
-- directly improve the autonomous loop
-- add missing capability needed for recursive improvement
+- directly improve the audit-and-control loop
+- add missing capability needed for supervised long-running Codex work
 - reduce verification blind spots
 - shrink future handoff cost
 - add missing tests for core scripts
@@ -81,6 +84,14 @@ Defer candidates that:
 - cannot be verified locally
 - need broad architecture changes before value is proven
 - overlap active write locks
+
+## External Validation
+
+Selfdex should not claim general autonomous engineering ability from internal
+self-improvement alone. The next proof point is read-only validation on 2-3
+external repositories registered in `PROJECT_REGISTRY.md`. A candidate is useful
+only when a human reviewer agrees it describes a real problem, has user value,
+is small enough to freeze, can be verified locally, and is low-risk to reverse.
 
 ## Run Record
 

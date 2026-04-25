@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -14,11 +13,25 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from markdown_utils import clean_markdown_value, extract_markdown_section
+    from argparse_utils import add_format_argument, add_root_argument
     from plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    import planner_text_utils as planner_text
 except ModuleNotFoundError:
-    from scripts.markdown_utils import clean_markdown_value, extract_markdown_section
+    from scripts.argparse_utils import add_format_argument, add_root_argument
     from scripts.plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    from scripts import planner_text_utils as planner_text
+
+
+WORK_TYPE_DESCRIPTIONS = planner_text.WORK_TYPE_DESCRIPTIONS
+WORK_TYPE_KEYWORDS = planner_text.WORK_TYPE_KEYWORDS
+WORK_TYPE_PRIORITY = planner_text.WORK_TYPE_PRIORITY
+STOP_WORDS = planner_text.STOP_WORDS
+campaign_goal_matches = planner_text.campaign_goal_matches
+classify_work_type = planner_text.classify_work_type
+meaningful_tokens = planner_text.meaningful_tokens
+normalize_goal_token = planner_text.normalize_goal_token
+parse_campaign_goal = planner_text.parse_campaign_goal
+parse_campaign_queue = planner_text.parse_campaign_queue
 
 
 @dataclass(frozen=True)
@@ -40,160 +53,12 @@ CAMPAIGN_QUEUE_ORDER_STEP = 2.0
 CAMPAIGN_GOAL_MATCH_BONUS = 6.0
 CAMPAIGN_GOAL_MATCH_BONUS_CAP = 18.0
 
-STOP_WORDS = {
-    "and",
-    "can",
-    "for",
-    "from",
-    "into",
-    "that",
-    "the",
-    "this",
-    "with",
-}
 
-WORK_TYPE_KEYWORDS = {
-    "repair": {
-        "bug",
-        "broken",
-        "failing",
-        "failure",
-        "fix",
-        "regression",
-        "repair",
-        "restore",
-    },
-    "hardening": {
-        "budget",
-        "check",
-        "checker",
-        "coverage",
-        "drift",
-        "fixture",
-        "guard",
-        "reject",
-        "test",
-        "tests",
-        "validation",
-        "verify",
-    },
-    "automation": {
-        "automate",
-        "automation",
-        "generated",
-        "record",
-        "recorder",
-        "refresh",
-        "run",
-        "runs",
-        "write",
-        "writes",
-    },
-    "capability": {
-        "analysis",
-        "classification",
-        "classify",
-        "evaluator",
-        "multi",
-        "orchestration",
-        "planner",
-        "project",
-        "registry",
-        "socratic",
-        "work_type",
-    },
-    "improvement": {
-        "cleanup",
-        "docs",
-        "improve",
-        "improvement",
-        "refactor",
-        "reduce",
-        "simplify",
-    },
-}
-
-WORK_TYPE_PRIORITY = (
-    "repair",
-    "hardening",
-    "automation",
-    "capability",
-    "improvement",
-)
-
-WORK_TYPE_DESCRIPTIONS = {
-    "repair": "restore broken behavior",
-    "hardening": "make existing behavior harder to break",
-    "improvement": "improve quality without adding a new capability",
-    "capability": "add a new system ability",
-    "automation": "automate repeated coordination work",
-}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Pick the next Selfdex autopilot task.")
-    parser.add_argument("--root", default=".", help="Repository root to scan.")
-    parser.add_argument(
-        "--format",
-        choices=("json", "markdown"),
-        default="markdown",
-        help="Output format.",
-    )
+    add_root_argument(parser, help_text="Repository root to scan.")
+    add_format_argument(parser, default="markdown", help_text="Output format.")
     return parser.parse_args()
-
-
-def parse_campaign_goal(text: str) -> str:
-    for line in extract_markdown_section(text, "Campaign"):
-        match = re.match(r"^\s*-\s*goal:\s*(.+?)\s*$", line)
-        if match:
-            return clean_markdown_value(match.group(1))
-    return ""
-
-
-def parse_campaign_queue(text: str) -> list[str]:
-    candidates: list[str] = []
-    for line in extract_markdown_section(text, "Candidate Queue"):
-        match = re.match(r"^\s*-\s+(.+?)\s*$", line)
-        if not match:
-            continue
-        title = clean_markdown_value(match.group(1))
-        if title:
-            candidates.append(title)
-    return candidates
-
-
-def normalize_goal_token(token: str) -> str:
-    if len(token) > 5 and token.endswith("ing"):
-        return token[:-3]
-    if len(token) > 4 and token.endswith("ed"):
-        return token[:-2]
-    if len(token) > 4 and token.endswith("er"):
-        return token[:-2]
-    if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
-        return token[:-1]
-    return token
-
-
-def meaningful_tokens(value: str) -> set[str]:
-    tokens: set[str] = set()
-    for raw_token in re.split(r"[^a-z0-9]+", value.lower()):
-        if len(raw_token) < 3 or raw_token in STOP_WORDS:
-            continue
-        tokens.add(normalize_goal_token(raw_token))
-    return tokens
-
-
-def campaign_goal_matches(goal: str, title: str) -> list[str]:
-    if not goal:
-        return []
-    return sorted(meaningful_tokens(goal) & meaningful_tokens(title))
-
-
-def classify_work_type(title: str, default: str = "improvement") -> str:
-    tokens = meaningful_tokens(title)
-    for work_type in WORK_TYPE_PRIORITY:
-        keywords = {normalize_goal_token(keyword) for keyword in WORK_TYPE_KEYWORDS[work_type]}
-        if tokens & keywords:
-            return work_type
-    return default
 
 
 def build_socratic_evaluation(candidate: Candidate, campaign_goal: str) -> list[dict[str, str]]:

@@ -10,4 +10,6 @@ separate explicit approval for that target project and task.
 | project_id | path | role | write_policy | verification |
 | :-- | :-- | :-- | :-- | :-- |
 | selfdex | . | recursive improvement harness | selfdex-local writes only | python -m compileall -q scripts tests; python -m unittest discover -s tests |
-
+| apex_analist | ../apex_analist | external validation target | read-only | read-only candidate generation; human rubric scoring |
+| mqyubot | ../mqyubot | external validation target | read-only | read-only candidate generation; human rubric scoring |
+| mqyusimeji | ../mqyusimeji | external validation target | read-only | read-only candidate generation; human rubric scoring |

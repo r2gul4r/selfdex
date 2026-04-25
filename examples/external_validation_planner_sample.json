@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "analysis_kind": "selfdex_next_task_plan",
+  "top_candidates": [
+    {
+      "source": "refactor",
+      "work_type": "improvement",
+      "title": "split candidate extraction helpers",
+      "decision": "pick",
+      "priority_score": 42.5,
+      "risk": "medium",
+      "rationale": [
+        "Large file with duplicated candidate extraction logic."
+      ],
+      "suggested_checks": [
+        "python -m compileall -q scripts"
+      ]
+    }
+  ]
+}
