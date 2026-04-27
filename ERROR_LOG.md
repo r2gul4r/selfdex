@@ -4,6 +4,11 @@ Append-only log for execution, tool, and verification errors.
 
 ## Entries
 
+- time: `2026-04-27T09:37:20+09:00`
+  location: `python -m unittest discover -s tests`
+  summary: `Full-suite verification failed after the home updates because subprocess smoke tests read locale-encoded child Python output as UTF-8.`
+  details: `tests/script_smoke_utils.py captured extract_refactor_candidates.py JSON output with encoding="utf-8", but the child process did not force UTF-8 stdout on Windows and emitted locale-encoded Korean text. Added PYTHONIOENCODING=utf-8 to the shared subprocess smoke helper environment.`
+  status: `resolved`
 - time: `2026-04-25T13:20:16+09:00`
   location: `tests/test_repo_metrics_utils.py::RepoMetricsUtilsTests.test_analyze_python_file_counts_code_comments_and_complexity`
   summary: `Full-suite verification failed after the Windows path baseline repair was reverted.`

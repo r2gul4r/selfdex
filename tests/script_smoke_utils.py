@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import os
 from pathlib import Path
 import subprocess
 import sys
+
+
+def utf8_subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    return env
 
 
 def run_script_and_module(
@@ -24,6 +31,7 @@ def run_script_and_module(
         f"scripts.{module_name}",
         *args,
     ]
+    env = utf8_subprocess_env()
 
     return (
         subprocess.run(
@@ -33,6 +41,7 @@ def run_script_and_module(
             capture_output=True,
             text=True,
             encoding="utf-8",
+            env=env,
         ),
         subprocess.run(
             module_command,
@@ -41,5 +50,6 @@ def run_script_and_module(
             capture_output=True,
             text=True,
             encoding="utf-8",
+            env=env,
         ),
     )
