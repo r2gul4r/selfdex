@@ -60,10 +60,23 @@ none
 - Update generated Codex execution prompts to GPT-5.5-style prompt and skill routing.
 - Add target-project Codex orchestration with project-scoped run records.
 - Add project direction intelligence before hygiene-only target candidate planning.
+- Rewrite README around Selfdex as a local AI project lead.
+- Make target Codex execution truly bounded.
+- Create external validation proof package.
+- Add CI and machine-readable project registry.
+- Improve planner evidence, clustering, run-history demotion, and write-boundary quality.
+- Deduplicate run-history penalty helpers.
+- Split project direction evidence and opportunity responsibilities.
+- Deduplicate project-direction product signal detection blocks.
+- Split target Codex app-server session responsibilities.
+- Deduplicate shared slug normalization helpers.
+- Deduplicate target Codex blocked CLI tests.
+- Deduplicate external validation test payload fixtures.
+- Deduplicate external project registry test fixtures.
 
 ## Latest Run
 
 - status: `completed`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260430-114700-project-direction-intelligence.md`
-- summary: `Added a project direction snapshot and direction-aware candidate source so Selfdex can propose strategic project evolution, not only code hygiene.`
+- artifact_path: `runs/selfdex/20260430-141130-external-project-registry-fixtures-dedup.md`
+- summary: `Moved duplicated external project registry and goal-cycle fixture writers into the shared external validation test helper; planner now reports no remaining candidates.`

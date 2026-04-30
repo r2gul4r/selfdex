@@ -1,137 +1,262 @@
 # Selfdex
 
-Selfdex is a bounded, auditable local control harness for long-running Codex
-work.
+[![check](https://github.com/r2gul4r/selfdex/actions/workflows/check.yml/badge.svg)](https://github.com/r2gul4r/selfdex/actions/workflows/check.yml)
 
-The final goal is a supervised improvement harness, defined in
-`docs/SELFDEX_FINAL_GOAL.md`. The goal is not to replace safety or prove a
-general autonomous developer. The goal is to make long-running Codex work easier
-to choose, freeze, verify, audit, and resume:
+Selfdex is a local AI project lead for Codex work.
+
+Given a target folder, Selfdex reads the project, infers its product and
+technical direction, proposes better next moves the user may not have named,
+chooses one small safe first step, runs Codex in the target project only after
+approval, verifies the result, and records what happened.
+
+It is not just a bugfix finder or code-review helper. Those are baseline
+hygiene. The real goal is to help a project keep moving in a better direction
+when the user is busy, uncertain, or boxed in by the current shape of the code.
 
 ```text
-register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+target folder -> understand direction -> find opportunities -> choose one task
+-> freeze contract -> run Codex on a branch -> verify -> record -> repeat
 ```
 
-`codex_multiagent` stays the conservative safety baseline. This repository is a
-local operating layer for Codex sessions: it records task contracts, write
-boundaries, verification commands, evidence, and resume context while keeping
-high-risk actions behind explicit approval.
+## North Star
 
-## Default Behavior
+Selfdex should become the control layer between a human and long-running Codex
+work:
 
-- Choose a small next task from repository signals and campaign context.
-- Freeze acceptance criteria, non-goals, write boundaries, and verification
-  commands before implementation.
-- Recommend explorer, worker, and reviewer lanes when they reduce risk or time;
-  actual spawning still depends on host capability and explicit task authority.
-- Keep destructive actions, secrets, deploys, paid calls, database writes,
-  production changes, and cross-workspace writes behind hard approval.
-- Keep each loop auditable and resumable through `CAMPAIGN_STATE.md`,
-  `STATE.md`, and `runs/`.
+- understand what the project is trying to become
+- notice useful product, workflow, data, or architecture opportunities
+- keep normal bugfix, refactor, and test-gap work as baseline hygiene
+- select exactly one bounded candidate per loop
+- execute only inside an approved target project boundary
+- keep high-risk work behind explicit approval
+- leave enough evidence that the run can be reviewed, resumed, or reverted
 
-## Validation Status
+The strongest Selfdex candidate is not merely "a small issue exists." It is:
 
-Selfdex has an internal quality loop, but it has not yet proven general
-usefulness on external repositories. Before claiming broader value, it should
-scan 2-3 explicitly registered external projects read-only and show that its top
-candidates are real, valuable, small, locally verifiable, and low-risk according
-to the candidate quality rubric and human review.
+```text
+This project would be better if we moved in this direction,
+and this is the smallest safe first step.
+```
 
-The first step toward modifying a user-selected project is read-only external
-planning. Selfdex now infers a target project's purpose, audience, product
-signals, constraints, and strategic opportunities before ranking routine
-bugfix/refactor/test hygiene. When a target folder is approved for execution,
-Selfdex can run one candidate through a target-project Codex app-server session
-on a new branch and record the result centrally under `runs/<project_key>/`.
+## Operating Model
 
-## Core Files
+Selfdex is user-invoked. It is not a background daemon and it does not silently
+rewrite projects.
 
-| Path | Role |
-| :-- | :-- |
-| `AGENTS.md` | Repository execution rules for bounded Codex work |
-| `AUTOPILOT.md` | Long-running autopilot policy and loop design |
-| `CAMPAIGN_STATE.md` | Current campaign goal, budget, locks, and guardrails |
-| `STATE.md` | Current task contract and write ownership |
-| `PROJECT_REGISTRY.md` | Registered projects for read-only multi-project analysis |
-| `.agents/skills/selfdex-autopilot/SKILL.md` | Repo-scoped Codex skill for Selfdex execution flow and skill routing |
-| `docs/CANDIDATE_QUALITY_RUBRIC.md` | Human scoring rubric for useful, small, verifiable candidates |
-| `docs/SELFDEX_FINAL_GOAL.md` | Final goal, roadmap, and recursive improvement contract |
-| `docs/SELFDEX_HANDOFF.md` | Cross-machine handoff memory for continuing the campaign |
-| `docs/ORCHESTRATION_DECISION_PLAN.md` | Planner execution-fit model for safe multi-agent acceleration |
-| `runs/` | Per-run records and evidence |
-| `scripts/plan_next_task.py` | Selects the next candidate from repository signals |
-| `scripts/check_campaign_budget.py` | Rejects campaign budget and write-contract violations |
-| `scripts/check_doc_drift.py` | Checks README drift against generated-report scripts |
-| `scripts/check_external_validation_readiness.py` | Reports whether 2-3 external read-only projects are registered for validation |
-| `scripts/argparse_utils.py` | Shared argparse option helpers for local scripts |
-| `scripts/candidate_scoring_utils.py` | Shared candidate scoring axes and priority grade helpers |
-| `scripts/cli_output_utils.py` | Shared JSON/markdown stdout helpers for report CLIs |
-| `scripts/markdown_utils.py` | Shared markdown parsing helpers for local scripts |
-| `scripts/repo_area_utils.py` | Shared repository area labels and classifiers |
-| `scripts/repo_scan_excludes.py` | Shared generated/dependency directory exclusions for repository scanners |
-| `scripts/repo_metrics_utils.py` | Shared file metric models and line-analysis helpers |
-| `scripts/repo_quality_signal_utils.py` | Shared repo metric quality-signal scoring helpers |
-| `scripts/symbol_definition_utils.py` | Shared Python/shell/PowerShell symbol-definition extraction helpers |
-| `scripts/tool_result_utils.py` | Shared tool-result issue and coverage parsing helpers |
-| `scripts/check_coverage_signal.py` | Verifies that normalized quality-tool samples produce a coverage signal |
-| `scripts/list_project_registry.py` | Lists registered projects without scanning or writing to them |
-| `scripts/collect_repo_metrics.py` | Repository metric scanner |
-| `scripts/feature_gap_evidence.py` | Feature-gap evidence, call-flow, test-coverage, and gap assessment helpers |
-| `scripts/feature_file_records.py` | Shared file-record and symbol helpers for feature-gap candidate extraction |
-| `scripts/feature_small_candidates.py` | Small-feature scoring and candidate construction helpers |
-| `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
-| `scripts/evaluate_candidate_quality.py` | Scores candidate quality rubric payloads |
-| `scripts/build_project_direction.py` | Infers project purpose and direction opportunities from repository evidence |
-| `scripts/build_external_candidate_snapshot.py` | Builds read-only top-candidate snapshots for registered external projects |
-| `scripts/plan_external_project.py` | Builds a read-only task contract and Codex execution prompt for one selected external project |
-| `scripts/run_target_codex.py` | Runs one target-project Codex task and records the result under `runs/<project_key>/` |
-| `scripts/build_external_validation_report.py` | Builds read-only validation reports from planner and quality payloads |
-| `scripts/prepare_candidate_quality_template.py` | Converts planner or external snapshot output into human scoring templates |
-| `scripts/normalize_quality_signals.py` | Normalizes scan outputs into priority signals |
-| `scripts/record_run.py` | Writes compact run evidence under `runs/` |
-| `scripts/plan_orchestration_fit.py` | Planner task-size and orchestration-fit heuristics |
-| `scripts/planner_payload_utils.py` | Shared planner JSON loading and candidate extraction helpers |
-| `scripts/planner_text_utils.py` | Planner campaign text parsing and work-type classification helpers |
-| `scripts/refactor_file_records.py` | Shared file-record and symbol helpers for refactor candidate extraction |
-| `scripts/refactor_metrics_payload.py` | Metrics loading and filtering helpers for refactor candidate extraction |
-| `examples/quality_signal_samples.json` | Sample quality-tool payload for normalizer demos |
-| `examples/external_validation_planner_sample.json` | Sample planner payload for validation report demos |
-| `examples/candidate_quality_sample.json` | Sample candidate quality payload for validation report demos |
+The normal loop is:
+
+1. Pick or receive a target folder.
+2. Infer the project direction: purpose, audience, product signals, technical
+   signals, constraints, and strategic opportunities.
+3. Scan repository hygiene signals: test gaps, refactor opportunities, feature
+   gaps, TODOs, stubs, and placeholders.
+4. Rank direction opportunities before routine hygiene when the evidence is
+   strong enough.
+5. Freeze one task contract: outcome, write boundary, non-goals, checks, and
+   stop conditions.
+6. Create an isolated branch in the target repository when execution is
+   approved.
+7. Start a target-project Codex session from that target `cwd`.
+8. Run verification or record exactly why verification was skipped.
+9. Record result, changed files, checks, repair attempts, and stop/failure
+   reason under Selfdex `runs/<project_key>/`.
+
+## Safety Contract
+
+Selfdex can be aggressive about finding better work, but conservative about
+side effects.
+
+Hard approval is still required for:
+
+- destructive filesystem or Git history operations
+- secrets, credentials, private keys, or token access
+- paid API calls
+- public deploys
+- database migrations or production writes
+- cross-workspace changes outside the approved target boundary
+- global Codex config, installer, plugin, or MCP setup changes
+
+Folder approval can let Selfdex work inside a target repository, but it does
+not bypass those hard zones.
+
+## Current Capabilities
+
+Implemented pieces:
+
+- `scripts/build_project_direction.py` infers a project direction snapshot from
+  local repository evidence.
+- `scripts/build_external_candidate_snapshot.py` combines direction
+  opportunities with test-gap, refactor, and feature-gap candidates, then adds
+  cluster and run-history metadata.
+- `scripts/plan_external_project.py` freezes one target-project task contract
+  and generates a Codex execution prompt while separating evidence-only files
+  from proposed write files.
+- `scripts/run_target_codex.py` can plan one candidate, create a target branch
+  in execution mode, call a Codex app-server adapter, and write a project-scoped
+  run artifact with bounded timeout and branch metadata.
+- `scripts/build_external_validation_package.py` writes read-only external
+  validation snapshots, scores, reports, and summary artifacts under
+  `runs/external-validation/`.
+- `scripts/check_campaign_budget.py` checks that the current work stays inside
+  the frozen Selfdex contract.
+- `scripts/check_doc_drift.py` keeps this README aligned with repo tools.
+
+Still intentionally bounded:
+
+- no background polling loop
+- no autonomous multi-candidate execution
+- no unapproved writes to target projects
+- no automatic bypass for secrets, deploys, paid APIs, databases, or destructive
+  commands
+- no claim that read-only validation replaces target-project implementation
+  evidence
 
 ## Quick Start
 
+Inspect Selfdex itself:
+
 ```bash
+python scripts/build_project_direction.py --root . --format markdown
 python scripts/plan_next_task.py --root . --format markdown
+```
+
+Inspect registered external projects read-only:
+
+```bash
+python scripts/check_external_validation_readiness.py --root . --format markdown
+python scripts/build_external_candidate_snapshot.py --root . --format markdown
+python scripts/build_external_candidate_snapshot.py --root . --project-id daboyeo --format markdown
+```
+
+Reproduce the external validation proof package:
+
+```bash
+python scripts/build_external_validation_package.py --root . --format markdown
+```
+
+The package writes:
+
+```text
+runs/external-validation/<project_id>-snapshot.md
+runs/external-validation/<project_id>-human-score.md
+runs/external-validation/<project_id>-report.md
+runs/external-validation/summary.md
+```
+
+Build a target-project contract without editing the target:
+
+```bash
+python scripts/plan_external_project.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
+```
+
+Run the target-project orchestrator in dry-run mode:
+
+```bash
+python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
+```
+
+When target execution is explicitly approved, add `--execute`:
+
+```bash
+python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --execute --format markdown
+```
+
+Maintenance checks:
+
+```bash
 python scripts/check_campaign_budget.py --root . --format markdown
 python scripts/check_doc_drift.py --root . --format markdown
-python scripts/check_external_validation_readiness.py --root . --format markdown
-python scripts/build_project_direction.py --root . --format markdown
-python scripts/build_external_candidate_snapshot.py --root . --format markdown
-python scripts/build_external_candidate_snapshot.py --root . --project-id apex_analist --format markdown
-python scripts/build_external_candidate_snapshot.py --root . --project-id apex_analist --project-id mqyusimeji --format markdown
-python scripts/plan_external_project.py --root . --project-id apex_analist --format markdown
-python scripts/plan_external_project.py --root . --project-root ../apex_analist --project-name apex_analist --format markdown
-python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
 python scripts/collect_repo_metrics.py --root . --pretty
-python scripts/normalize_quality_signals.py --input examples/quality_signal_samples.json --pretty
-python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format markdown
 python scripts/extract_test_gap_candidates.py --root . --format markdown
 ```
 
+## Records
+
+Selfdex records target-project runs centrally, not inside the target project by
+default.
+
+```text
+runs/<project_key>/<YYYYMMDD-HHMMSS>-<task-slug>.md
+```
+
+Each run artifact should include:
+
+- project id, project root, and branch
+- selected candidate
+- frozen task contract
+- Codex thread or session id when available
+- changed files
+- verification commands and results
+- repair attempts
+- final status: `completed`, `failed`, `blocked`, or `stopped`
+- failure or stop reason
+
+## Repository Map
+
+Core control files:
+
+- `AGENTS.md` defines repository execution rules.
+- `AUTOPILOT.md` defines the long-running supervised loop.
+- `CAMPAIGN_STATE.md` tracks campaign-level intent, budget, locks, and latest
+  run.
+- `STATE.md` tracks the active task contract and write ownership.
+- `project_registry.json` is the tool-readable project registry source of
+  truth.
+- `PROJECT_REGISTRY.md` mirrors the registry for humans and records the
+  read-only boundary.
+- `docs/SELFDEX_FINAL_GOAL.md` is the north-star contract.
+- `docs/CANDIDATE_QUALITY_RUBRIC.md` defines human scoring for candidate
+  usefulness.
+- `docs/SELFDEX_HANDOFF.md` keeps cross-machine continuity notes.
+- `docs/ORCHESTRATION_DECISION_PLAN.md` describes orchestration-fit decisions.
+- `runs/` stores run evidence.
+
+Tooling:
+
+- `scripts/*.py` contains the local scanners, planners, recorders, checkers,
+  and target Codex runner.
+- `examples/quality_signal_samples.json`,
+  `examples/external_validation_planner_sample.json`, and
+  `examples/candidate_quality_sample.json` are sample payloads for validation
+  and reporting tools.
+
 ## Verification
+
+Use the narrow checks for README and contract changes:
+
+```bash
+python scripts/check_doc_drift.py --root . --format json
+python scripts/check_campaign_budget.py --root . --include-git-diff --format json
+git diff --check
+```
+
+Use the full repo checks after code or workflow changes:
 
 ```bash
 python -m compileall -q scripts tests
 python -m unittest discover -s tests
 python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format json
-python scripts/plan_next_task.py --root . --format json
-python scripts/plan_next_task.py --root . --format markdown
-python scripts/check_campaign_budget.py --root . --format json
-python scripts/check_doc_drift.py --root . --format json
-python scripts/check_external_validation_readiness.py --root . --format json
 python scripts/build_project_direction.py --root . --format json
 python scripts/build_external_candidate_snapshot.py --root . --format json
-python scripts/plan_external_project.py --root . --project-id apex_analist --format json
+python scripts/build_external_validation_package.py --root . --format json
+python scripts/plan_external_project.py --root . --project-id daboyeo --format json
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json
-git diff --check
 ```
+
+CI runs the same baseline through `.github/workflows/check.yml` with
+`make check`.
+
+## Design Bias
+
+Selfdex should be willing to challenge the current project shape, but only in
+reviewable increments.
+
+The project should prefer:
+
+- direction before hygiene
+- evidence before edits
+- one candidate before loops
+- branch isolation before target writes
+- local verification before confidence
+- recorded outcomes before memory
+- small reversible progress before broad autonomy

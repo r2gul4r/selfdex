@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,7 @@ except ModuleNotFoundError:
 
 
 REGISTRY_NAME = "PROJECT_REGISTRY.md"
+JSON_REGISTRY_NAME = "project_registry.json"
 REQUIRED_COLUMNS = ("project_id", "path", "role", "write_policy", "verification")
 
 
@@ -97,9 +99,39 @@ def resolve_project_path(root: Path, value: str) -> Path:
 
 
 def load_registry(root: Path) -> tuple[Path, list[ProjectEntry]]:
+    json_path = root / JSON_REGISTRY_NAME
+    if json_path.exists():
+        return json_path, parse_registry_json(json_path.read_text(encoding="utf-8-sig"))
     registry_path = root / REGISTRY_NAME
     text = registry_path.read_text(encoding="utf-8")
     return registry_path, parse_registry(text)
+
+
+def parse_registry_json(text: str) -> list[ProjectEntry]:
+    payload = json.loads(text)
+    projects = payload.get("projects") if isinstance(payload, dict) else None
+    if not isinstance(projects, list):
+        raise ValueError("project_registry.json must contain a projects array")
+
+    entries: list[ProjectEntry] = []
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+        verification = project.get("verification")
+        if isinstance(verification, list):
+            verification_items = [str(item).strip() for item in verification if str(item).strip()]
+        else:
+            verification_items = split_verification(str(verification or ""))
+        entries.append(
+            ProjectEntry(
+                project_id=str(project.get("project_id") or "").strip(),
+                path=str(project.get("path") or "").strip(),
+                role=str(project.get("role") or "").strip(),
+                write_policy=str(project.get("write_policy") or "").strip(),
+                verification=verification_items,
+            )
+        )
+    return [entry for entry in entries if entry.project_id]
 
 
 def project_to_dict(root: Path, entry: ProjectEntry) -> dict[str, Any]:
@@ -121,6 +153,7 @@ def build_payload(root: Path) -> dict[str, Any]:
         "schema_version": 1,
         "analysis_kind": "selfdex_project_registry",
         "registry_path": str(registry_path),
+        "registry_format": "json" if registry_path.name == JSON_REGISTRY_NAME else "markdown",
         "registered_project_count": len(entries),
         "projects": [project_to_dict(root, entry) for entry in entries],
     }
@@ -132,6 +165,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         f"- registered_project_count: `{payload['registered_project_count']}`",
         f"- registry_path: `{payload['registry_path']}`",
+        f"- registry_format: `{payload.get('registry_format', 'markdown')}`",
         "",
         "## Projects",
         "",

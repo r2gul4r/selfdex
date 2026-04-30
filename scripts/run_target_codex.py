@@ -7,170 +7,42 @@ import argparse
 import json
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
+    import target_codex_app_server as app_server
     from argparse_utils import add_format_argument, add_root_argument
     from cli_output_utils import write_json_or_markdown
     from plan_external_project import build_plan, slugify
 except ModuleNotFoundError:
+    from scripts import target_codex_app_server as app_server
     from scripts.argparse_utils import add_format_argument, add_root_argument
     from scripts.cli_output_utils import write_json_or_markdown
     from scripts.plan_external_project import build_plan, slugify
 
 
 SCHEMA_VERSION = 1
-FINAL_STATUSES = {"completed", "failed", "blocked", "stopped"}
-
-
-@dataclass(frozen=True)
-class CodexRunResult:
-    status: str
-    thread_id: str
-    session_id: str
-    final_response: str
-    changed_files: list[str]
-    verification_results: list[str]
-    repair_attempts: int
-    stop_reason: str
-    raw_events: list[dict[str, Any]]
-
-
-class CodexRunner(Protocol):
-    def run(self, *, cwd: Path, prompt: str, model: str, timeout_seconds: int) -> CodexRunResult:
-        """Run Codex in cwd and return a normalized result."""
-
-
-class AppServerCodexRunner:
-    """Small JSON-RPC client for `codex app-server` stdio transport."""
-
-    def __init__(self, command: list[str] | None = None) -> None:
-        self.command = command or ["codex", "app-server"]
-
-    def run(self, *, cwd: Path, prompt: str, model: str, timeout_seconds: int) -> CodexRunResult:
-        client = _AppServerSession(self.command, cwd, timeout_seconds)
-        return client.run(prompt=prompt, model=model)
-
-
-class _AppServerSession:
-    def __init__(self, command: list[str], cwd: Path, timeout_seconds: int) -> None:
-        self.command = command
-        self.cwd = cwd
-        self.timeout_seconds = timeout_seconds
-        self.next_id = 1
-        self.events: list[dict[str, Any]] = []
-        self.final_chunks: list[str] = []
-
-    def run(self, *, prompt: str, model: str) -> CodexRunResult:
-        try:
-            process = subprocess.Popen(
-                self.command,
-                cwd=self.cwd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-            )
-        except OSError as exc:
-            return blocked_result(f"codex app-server failed to start: {exc}")
-
-        try:
-            self._send(process, "initialize", {"clientInfo": {"name": "selfdex", "title": "Selfdex", "version": "0.1.0"}})
-            self._send_notification(process, "initialized", {})
-            thread_response = self._send(process, "thread/start", {"model": model})
-            thread_id = str(thread_response.get("result", {}).get("thread", {}).get("id") or "")
-            if not thread_id:
-                return blocked_result("codex app-server did not return a thread id", self.events)
-            self._send(
-                process,
-                "turn/start",
-                {
-                    "threadId": thread_id,
-                    "cwd": str(self.cwd),
-                    "input": [{"type": "text", "text": prompt}],
-                },
-            )
-            status, stop_reason = self._read_until_turn_done(process)
-            return CodexRunResult(
-                status=status,
-                thread_id=thread_id,
-                session_id=thread_id,
-                final_response="".join(self.final_chunks).strip(),
-                changed_files=git_changed_files(self.cwd),
-                verification_results=[],
-                repair_attempts=0,
-                stop_reason=stop_reason,
-                raw_events=self.events,
-            )
-        finally:
-            terminate_process(process)
-
-    def _send(self, process: subprocess.Popen[str], method: str, params: dict[str, Any]) -> dict[str, Any]:
-        message_id = self.next_id
-        self.next_id += 1
-        self._write(process, {"method": method, "id": message_id, "params": params})
-        return self._read_response(process, message_id)
-
-    def _send_notification(self, process: subprocess.Popen[str], method: str, params: dict[str, Any]) -> None:
-        self._write(process, {"method": method, "params": params})
-
-    def _write(self, process: subprocess.Popen[str], message: dict[str, Any]) -> None:
-        if process.stdin is None:
-            raise RuntimeError("codex app-server stdin is unavailable")
-        process.stdin.write(json.dumps(message, ensure_ascii=False) + "\n")
-        process.stdin.flush()
-
-    def _read_response(self, process: subprocess.Popen[str], message_id: int) -> dict[str, Any]:
-        if process.stdout is None:
-            return {"error": {"message": "codex app-server stdout is unavailable"}}
-        while True:
-            line = process.stdout.readline()
-            if not line:
-                return {"error": {"message": "codex app-server closed stdout"}}
-            event = json.loads(line)
-            self._capture_event(event)
-            if event.get("id") == message_id:
-                return event
-
-    def _read_until_turn_done(self, process: subprocess.Popen[str]) -> tuple[str, str]:
-        if process.stdout is None:
-            return "failed", "codex app-server stdout is unavailable"
-        while True:
-            line = process.stdout.readline()
-            if not line:
-                return "failed", "codex app-server closed stdout before turn completed"
-            event = json.loads(line)
-            self._capture_event(event)
-            if event.get("method") == "turn/completed":
-                params = event.get("params", {})
-                turn = params.get("turn", {}) if isinstance(params, dict) else {}
-                status = str(turn.get("status") or params.get("status") or "completed")
-                if status not in FINAL_STATUSES:
-                    status = "completed"
-                return status, str(turn.get("error") or params.get("error") or "")
-
-    def _capture_event(self, event: dict[str, Any]) -> None:
-        self.events.append(event)
-        method = str(event.get("method") or "")
-        params = event.get("params", {})
-        if method == "item/agentMessage/delta" and isinstance(params, dict):
-            delta = params.get("delta")
-            if isinstance(delta, str):
-                self.final_chunks.append(delta)
-        if method == "item/completed" and isinstance(params, dict):
-            item = params.get("item", {})
-            if isinstance(item, dict) and item.get("type") == "agent_message":
-                text = item.get("text")
-                if isinstance(text, str):
-                    self.final_chunks.append(text)
+AppServerCodexRunner = app_server.AppServerCodexRunner
+AppServerProtocolError = app_server.AppServerProtocolError
+AppServerTimeoutError = app_server.AppServerTimeoutError
+CodexRunResult = app_server.CodexRunResult
+CodexRunner = app_server.CodexRunner
+FINAL_STATUSES = app_server.FINAL_STATUSES
+STDERR_TAIL_LIMIT = app_server.STDERR_TAIL_LIMIT
+_AppServerSession = app_server._AppServerSession
+_Deadline = app_server._Deadline
+_LineQueueReader = app_server._LineQueueReader
+_StderrTailReader = app_server._StderrTailReader
+blocked_result = app_server.blocked_result
+git_changed_files = app_server.git_changed_files
+terminate_process = app_server.terminate_process
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -235,13 +107,6 @@ def git_output(cwd: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def git_changed_files(cwd: Path) -> list[str]:
-    process = git_output(cwd, ["diff", "--name-only"])
-    if process.returncode != 0:
-        return []
-    return [line.strip() for line in process.stdout.splitlines() if line.strip()]
-
-
 def git_is_repo(cwd: Path) -> bool:
     return git_output(cwd, ["rev-parse", "--is-inside-work-tree"]).returncode == 0
 
@@ -253,6 +118,16 @@ def git_dirty_paths(cwd: Path) -> list[str]:
     return [line.strip() for line in process.stdout.splitlines() if line.strip()]
 
 
+def git_current_branch(cwd: Path) -> str:
+    process = git_output(cwd, ["branch", "--show-current"])
+    if process.returncode == 0 and process.stdout.strip():
+        return process.stdout.strip()
+    process = git_output(cwd, ["rev-parse", "--short", "HEAD"])
+    if process.returncode == 0:
+        return process.stdout.strip()
+    return ""
+
+
 def create_branch(cwd: Path, branch_name: str) -> tuple[bool, str]:
     process = git_output(cwd, ["switch", "-c", branch_name])
     if process.returncode == 0:
@@ -260,27 +135,33 @@ def create_branch(cwd: Path, branch_name: str) -> tuple[bool, str]:
     return False, process.stderr.strip() or process.stdout.strip() or "git switch failed"
 
 
-def blocked_result(reason: str, raw_events: list[dict[str, Any]] | None = None) -> CodexRunResult:
-    return CodexRunResult(
-        status="blocked",
-        thread_id="",
-        session_id="",
-        final_response="",
-        changed_files=[],
-        verification_results=[],
-        repair_attempts=0,
-        stop_reason=reason,
-        raw_events=raw_events or [],
-    )
+def switch_branch(cwd: Path, branch_name: str) -> tuple[bool, str]:
+    process = git_output(cwd, ["switch", branch_name])
+    if process.returncode == 0:
+        return True, ""
+    return False, process.stderr.strip() or process.stdout.strip() or "git switch failed"
 
 
-def terminate_process(process: subprocess.Popen[str]) -> None:
-    if process.poll() is None:
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
+def outcome_class_for_result(*, execute: bool, result: CodexRunResult) -> str:
+    if not execute:
+        return "dry_run"
+    if result.outcome_class:
+        return result.outcome_class
+    if result.status == "completed":
+        return "success"
+    if result.status in {"failed", "stopped"}:
+        return "runtime_failure"
+    return "blocked_by_policy"
+
+
+def exit_code_for_payload(payload: dict[str, Any]) -> int:
+    if payload.get("status") == "completed":
+        return 0
+    if not payload.get("execute_requested"):
+        return 0 if payload.get("outcome_class") == "dry_run" else 1
+    if payload.get("status") in {"blocked", "failed", "stopped"}:
+        return 2
+    return 1
 
 
 def build_orchestration_payload(
@@ -315,6 +196,10 @@ def build_orchestration_payload(
     result = blocked_result("not executed; pass --execute to create a branch and run target Codex")
     target_root = Path(str(plan.get("project", {}).get("resolved_path") or ""))
     branch_created = False
+    branch_before = ""
+    branch_after = ""
+    restore_attempted = False
+    restore_result = "not_needed"
 
     if plan.get("status") != "ready":
         result = blocked_result(str(plan.get("blocker") or "plan is not ready"))
@@ -324,42 +209,75 @@ def build_orchestration_payload(
         elif not git_is_repo(target_root):
             result = blocked_result("target project is not a git repository")
         else:
+            branch_before = git_current_branch(target_root)
+            branch_after = branch_before
             dirty = git_dirty_paths(target_root)
             if dirty:
                 result = blocked_result("target project worktree is dirty: " + "; ".join(dirty))
             else:
                 ok, error = create_branch(target_root, branch)
                 branch_created = ok
+                branch_after = git_current_branch(target_root)
                 if not ok:
                     result = blocked_result(f"could not create target branch: {error}")
                 else:
                     codex_runner = runner or AppServerCodexRunner()
                     prompt = str(plan["task_contract"]["codex_execution_prompt"])
-                    result = codex_runner.run(
-                        cwd=target_root,
-                        prompt=prompt,
-                        model=model,
-                        timeout_seconds=timeout_seconds,
-                    )
+                    try:
+                        result = codex_runner.run(
+                            cwd=target_root,
+                            prompt=prompt,
+                            model=model,
+                            timeout_seconds=timeout_seconds,
+                        )
+                    except Exception as exc:  # pragma: no cover - defensive runner guard
+                        result = blocked_result(f"codex runner failed: {exc}", outcome_class="runtime_failure")
+                    dirty_after = git_dirty_paths(target_root)
+                    actual_changed_files = git_changed_files(target_root)
+                    if actual_changed_files and not result.changed_files:
+                        result = replace(result, changed_files=actual_changed_files)
+                    if result.status != "completed":
+                        if branch_before and not dirty_after:
+                            restore_attempted = True
+                            restored, restore_error = switch_branch(target_root, branch_before)
+                            if restored:
+                                restore_result = f"restored to {branch_before}"
+                            else:
+                                restore_result = f"restore failed: {restore_error}"
+                        elif not branch_before:
+                            restore_result = "skipped; original branch unknown"
+                        else:
+                            restore_result = "skipped; target worktree has changes: " + "; ".join(dirty_after)
+                    branch_after = git_current_branch(target_root)
+
+    outcome_class = outcome_class_for_result(execute=execute, result=result)
 
     payload = {
         "schema_version": SCHEMA_VERSION,
         "analysis_kind": "selfdex_target_codex_run",
         "generated_at": utc_timestamp(),
         "status": result.status,
+        "outcome_class": outcome_class,
         "execute_requested": execute,
         "root": str(root),
         "project_key": project_key,
         "project": plan.get("project", {}),
         "candidate_index": candidate_index,
         "branch": branch,
+        "branch_before": branch_before,
         "branch_created": branch_created,
+        "branch_after": branch_after,
+        "restore_attempted": restore_attempted,
+        "restore_result": restore_result,
         "codex": {
             "model": model,
+            "timeout_seconds": timeout_seconds,
             "thread_id": result.thread_id,
             "session_id": result.session_id,
             "final_response": result.final_response,
             "raw_event_count": len(result.raw_events),
+            "process_returncode": result.process_returncode,
+            "stderr_tail": result.stderr_tail,
         },
         "changed_files": result.changed_files,
         "verification_results": result.verification_results,
@@ -390,11 +308,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "# Target Codex Run",
         "",
         f"- status: `{payload.get('status')}`",
+        f"- outcome_class: `{payload.get('outcome_class')}`",
         f"- project_key: `{payload.get('project_key')}`",
         f"- project_id: `{project.get('project_id', '')}`",
         f"- project_root: `{project.get('resolved_path', '')}`",
         f"- branch: `{payload.get('branch')}`",
+        f"- branch_before: `{payload.get('branch_before')}`",
         f"- branch_created: `{payload.get('branch_created')}`",
+        f"- branch_after: `{payload.get('branch_after')}`",
+        f"- restore_attempted: `{payload.get('restore_attempted')}`",
+        f"- restore_result: `{payload.get('restore_result')}`",
         f"- execute_requested: `{payload.get('execute_requested')}`",
         f"- recorded_run_path: `{payload.get('recorded_run_path')}`",
         "",
@@ -407,8 +330,15 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "## Codex",
         "",
         f"- model: `{payload.get('codex', {}).get('model')}`",
+        f"- timeout_seconds: `{payload.get('codex', {}).get('timeout_seconds')}`",
         f"- thread_id: `{payload.get('codex', {}).get('thread_id')}`",
         f"- session_id: `{payload.get('codex', {}).get('session_id')}`",
+        f"- process_returncode: `{payload.get('codex', {}).get('process_returncode')}`",
+        f"- raw_event_count: `{payload.get('codex', {}).get('raw_event_count')}`",
+        "",
+        "## App Server Stderr Tail",
+        "",
+        *bullet_lines(payload.get("codex", {}).get("stderr_tail", [])),
         "",
         "## Changed Files",
         "",
@@ -460,7 +390,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     write_json_or_markdown(payload, args.format, render_markdown)
-    return 0 if payload["status"] in {"completed", "blocked"} else 1
+    return exit_code_for_payload(payload)
 
 
 if __name__ == "__main__":

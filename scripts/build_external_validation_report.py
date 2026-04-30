@@ -163,13 +163,20 @@ def build_report(
         for candidate in planner_candidates(planner_payload)
     ]
     findings = validation_findings(registry, project, candidates)
+    status = report_status(findings)
+    external_value_proven = (
+        status == "pass"
+        and bool(candidates)
+        and all(candidate["quality"]["status"] == "scored" for candidate in candidates)
+        and any(candidate["quality"]["verdict"] in {"strong", "usable"} for candidate in candidates)
+    )
 
     return {
         "schema_version": SCHEMA_VERSION,
         "analysis_kind": "selfdex_external_validation_report",
-        "status": report_status(findings),
+        "status": status,
         "validation_mode": "read_only",
-        "external_value_proven": False,
+        "external_value_proven": external_value_proven,
         "project": project
         or {
             "project_id": project_id,

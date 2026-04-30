@@ -5,6 +5,11 @@ import sys
 import unittest
 from pathlib import Path
 
+try:
+    from external_validation_test_utils import external_snapshot_payload, planner_candidate, planner_payload
+except ModuleNotFoundError:
+    from tests.external_validation_test_utils import external_snapshot_payload, planner_candidate, planner_payload
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "prepare_candidate_quality_template.py"
@@ -16,54 +21,44 @@ sys.modules[SPEC.name] = prepare_candidate_quality_template
 SPEC.loader.exec_module(prepare_candidate_quality_template)
 
 
-PLANNER_PAYLOAD = {
-    "schema_version": 1,
-    "analysis_kind": "selfdex_next_task_plan",
-    "top_candidates": [
-        {
-            "source": "refactor",
-            "title": "split candidate extraction helpers",
-            "rationale": ["Large file with duplicated logic."],
-            "suggested_checks": ["python -m compileall -q scripts"],
-        },
-        {
-            "source": "test_gap",
-            "title": "add parser fixture coverage",
-            "rationale": ["Parser edge case has no focused test."],
-            "suggested_checks": ["python -m unittest discover -s tests"],
-        },
-    ],
-}
+PLANNER_PAYLOAD = planner_payload(
+    [
+        planner_candidate(rationale=["Large file with duplicated logic."]),
+        planner_candidate(
+            source="test_gap",
+            title="add parser fixture coverage",
+            rationale=["Parser edge case has no focused test."],
+            suggested_checks=["python -m unittest discover -s tests"],
+        ),
+    ]
+)
 
 
-EXTERNAL_SNAPSHOT_PAYLOAD = {
-    "schema_version": 1,
-    "analysis_kind": "selfdex_external_candidate_snapshot",
-    "projects": [
-        {
-            "project_id": "external_one",
-            "top_candidates": [
-                {
-                    "source": "refactor",
-                    "title": "split external duplicate block",
-                    "rationale": ["External duplicate evidence."],
-                    "suggested_checks": ["npm test"],
-                }
+EXTERNAL_SNAPSHOT_PAYLOAD = external_snapshot_payload(
+    [
+        (
+            "external_one",
+            [
+                planner_candidate(
+                    title="split external duplicate block",
+                    rationale=["External duplicate evidence."],
+                    suggested_checks=["npm test"],
+                )
             ],
-        },
-        {
-            "project_id": "external_two",
-            "top_candidates": [
-                {
-                    "source": "test_gap",
-                    "title": "add external smoke test",
-                    "rationale": ["External test evidence."],
-                    "suggested_checks": ["pytest"],
-                }
+        ),
+        (
+            "external_two",
+            [
+                planner_candidate(
+                    source="test_gap",
+                    title="add external smoke test",
+                    rationale=["External test evidence."],
+                    suggested_checks=["pytest"],
+                )
             ],
-        },
-    ],
-}
+        ),
+    ]
+)
 
 
 class CandidateQualityTemplateTests(unittest.TestCase):

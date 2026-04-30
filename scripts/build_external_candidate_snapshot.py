@@ -32,6 +32,7 @@ try:
         collect_test_gap_candidates,
     )
     from refactor_metrics_payload import filter_metrics_payload, load_metrics
+    from run_history_penalty import apply_run_history_penalty
 except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_root_argument
     from scripts.build_project_direction import build_payload as build_direction_payload
@@ -49,6 +50,7 @@ except ModuleNotFoundError:
         collect_test_gap_candidates,
     )
     from scripts.refactor_metrics_payload import filter_metrics_payload, load_metrics
+    from scripts.run_history_penalty import apply_run_history_penalty
 
 
 SCHEMA_VERSION = 1
@@ -156,6 +158,7 @@ def scan_project_direction(project_root: Path, limit: int) -> tuple[list[Candida
             source_signals={
                 "opportunity_id": item.get("opportunity_id"),
                 "paths": item.get("evidence_paths", []),
+                "evidence": item.get("evidence", []),
                 "strategic_dimensions": item.get("strategic_dimensions", {}),
                 "suggested_first_step": item.get("suggested_first_step", ""),
                 "project_purpose": payload.get("purpose", {}).get("summary", ""),
@@ -202,6 +205,35 @@ DEFAULT_SCAN_STEPS: tuple[tuple[str, ScanStep], ...] = (
 )
 
 
+def normalized_cluster_key(candidate: Candidate | dict[str, Any]) -> str:
+    title = candidate.title if isinstance(candidate, Candidate) else str(candidate.get("title") or "")
+    source = candidate.source if isinstance(candidate, Candidate) else str(candidate.get("source") or "")
+    tokens = [
+        token.lower()
+        for token in "".join(char if char.isalnum() else " " for char in title).split()
+        if len(token) > 2
+    ]
+    return f"{source}:{'-'.join(tokens[:5]) or 'untitled'}"
+
+
+def annotate_candidate_clusters(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        key = normalized_cluster_key(candidate)
+        counts[key] = counts.get(key, 0) + 1
+    annotated: list[dict[str, Any]] = []
+    for candidate in candidates:
+        item = dict(candidate)
+        key = normalized_cluster_key(item)
+        item["cluster"] = {
+            "key": key,
+            "size": counts[key],
+            "is_duplicate_family": counts[key] > 1,
+        }
+        annotated.append(item)
+    return annotated
+
+
 def rank_candidates(candidates: list[Candidate], limit: int) -> list[Candidate]:
     return sorted(
         candidates,
@@ -233,6 +265,7 @@ def build_project_snapshot(
     project: dict[str, Any],
     *,
     limit: int,
+    history_root: Path | None = None,
     scan_steps: tuple[tuple[str, ScanStep], ...] = DEFAULT_SCAN_STEPS,
 ) -> dict[str, Any]:
     if not is_read_only_external(project):
@@ -258,7 +291,14 @@ def build_project_snapshot(
         all_candidates.extend(candidates)
         scanner_summaries.append(summary)
 
-    top_candidates = [candidate_to_dict(candidate, "") for candidate in rank_candidates(all_candidates, limit)]
+    all_candidates = apply_run_history_penalty(
+        all_candidates,
+        history_root,
+        str(project.get("project_id") or "").strip(),
+    )
+    top_candidates = annotate_candidate_clusters(
+        [candidate_to_dict(candidate, "") for candidate in rank_candidates(all_candidates, limit)]
+    )
     project_direction = next(
         (summary for summary in scanner_summaries if summary.get("scanner") == "project_direction"),
         {},
@@ -290,7 +330,7 @@ def build_snapshot(root: Path, *, project_ids: list[str] | None = None, limit: i
     requested_project_ids = unique_project_ids(project_ids)
     projects = selected_registry_projects(registry, requested_project_ids)
     project_snapshots = [
-        build_project_snapshot(project, limit=limit)
+        build_project_snapshot(project, limit=limit, history_root=root)
         for project in projects
     ]
     scanner_error_count = sum(len(project["scanner_errors"]) for project in project_snapshots)

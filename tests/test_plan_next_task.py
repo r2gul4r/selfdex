@@ -365,6 +365,26 @@ class PlanNextTaskTests(unittest.TestCase):
         self.assertEqual(payload["selected"]["source"], "refactor")
         self.assertEqual(payload["selected"]["work_type"], "improvement")
         self.assertEqual(payload["selected"]["title"], "Refactor imported script")
+        self.assertIn("cluster", payload["selected"])
+
+    def test_failed_run_history_penalizes_repeated_local_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_campaign(root, "Build a harness that can improve safely.", [])
+            runs = root / "runs" / "selfdex"
+            runs.mkdir(parents=True)
+            (runs / "20260430-failed.md").write_text(
+                "# Target Codex Run\n\n- status: `failed`\n\n## Selected Candidate\n\n- title: Refactor imported script\n",
+                encoding="utf-8",
+            )
+            write_extractors(root, refactor_payload=imported_refactor_payload())
+
+            payload = plan_next_task.choose_candidate(root)
+
+        candidate = payload["selected"]
+        self.assertEqual(candidate["title"], "Refactor imported script")
+        self.assertTrue(candidate["source_signals"]["run_history"]["previous_failed_or_blocked"])
+        self.assertLess(candidate["priority_score"], 47)
 
 
 if __name__ == "__main__":

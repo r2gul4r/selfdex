@@ -56,6 +56,8 @@ class BuildProjectDirectionTests(unittest.TestCase):
         self.assertIn("data_pipeline", labels)
         self.assertIn("direction:core-user-journey", opportunity_ids)
         self.assertIn("direction:data-quality-loop", opportunity_ids)
+        self.assertIn("evidence", payload["purpose"])
+        self.assertIn("quote", payload["purpose"]["evidence"][0])
 
     def test_opportunities_are_scored_for_strategy_not_only_hygiene(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -71,6 +73,11 @@ class BuildProjectDirectionTests(unittest.TestCase):
         self.assertGreaterEqual(opportunity["priority_score"], 38)
         self.assertIn("strategic_fit", opportunity["strategic_dimensions"])
         self.assertIn("suggested_first_step", opportunity)
+        self.assertIn("evidence", opportunity)
+        self.assertIn("path", opportunity["evidence"][0])
+        self.assertIn("signal", opportunity["evidence"][0])
+        self.assertIn("quote", opportunity["evidence"][0])
+        self.assertIn("confidence", opportunity["evidence"][0])
         self.assertIn("python -m unittest discover -s tests", opportunity["suggested_checks"])
 
     def test_run_artifacts_are_not_used_as_direction_evidence(self) -> None:
@@ -88,6 +95,18 @@ class BuildProjectDirectionTests(unittest.TestCase):
             for path in opportunity["evidence_paths"]
         ]
         self.assertFalse(any(path.startswith("runs/") for path in all_paths))
+
+    def test_doc_only_product_signal_rules_still_infer_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_file(root, "README.md", "# Docs Only\n\nThis backend API service has no source files yet.\n")
+
+            payload = build_project_direction.build_payload(root, limit=3)
+
+        service_signal = next(
+            item for item in payload["product_signals"] if item["label"] == "service_layer"
+        )
+        self.assertEqual(service_signal["evidence_paths"], [])
 
 
 if __name__ == "__main__":

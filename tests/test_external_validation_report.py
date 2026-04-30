@@ -6,6 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from external_validation_test_utils import external_snapshot_payload, planner_candidate, planner_payload
+except ModuleNotFoundError:
+    from tests.external_validation_test_utils import external_snapshot_payload, planner_candidate, planner_payload
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "build_external_validation_report.py"
@@ -28,22 +33,16 @@ REGISTRY_TEXT = """# Project Registry
 """
 
 
-PLANNER_PAYLOAD = {
-    "schema_version": 1,
-    "analysis_kind": "selfdex_next_task_plan",
-    "top_candidates": [
-        {
-            "source": "refactor",
-            "work_type": "improvement",
-            "title": "split candidate extraction helpers",
-            "decision": "pick",
-            "priority_score": 42.5,
-            "risk": "medium",
-            "rationale": ["large file with duplicated logic"],
-            "suggested_checks": ["python -m compileall -q scripts"],
-        }
-    ],
-}
+PLANNER_PAYLOAD = planner_payload(
+    [
+        planner_candidate(
+            work_type="improvement",
+            decision="pick",
+            priority_score=42.5,
+            risk="medium",
+        )
+    ]
+)
 
 
 QUALITY_PAYLOAD = {
@@ -68,27 +67,21 @@ QUALITY_PAYLOAD = {
 }
 
 
-EXTERNAL_SNAPSHOT_PAYLOAD = {
-    "schema_version": 1,
-    "analysis_kind": "selfdex_external_candidate_snapshot",
-    "projects": [
-        {
-            "project_id": "external_one",
-            "top_candidates": [
-                {
-                    "source": "refactor",
-                    "work_type": "improvement",
-                    "title": "split candidate extraction helpers",
-                    "decision": "pick",
-                    "priority_score": 42.5,
-                    "risk": "medium",
-                    "rationale": ["large file with duplicated logic"],
-                    "suggested_checks": ["python -m compileall -q scripts"],
-                }
+EXTERNAL_SNAPSHOT_PAYLOAD = external_snapshot_payload(
+    [
+        (
+            "external_one",
+            [
+                planner_candidate(
+                    work_type="improvement",
+                    decision="pick",
+                    priority_score=42.5,
+                    risk="medium",
+                )
             ],
-        }
-    ],
-}
+        )
+    ]
+)
 
 
 class ExternalValidationReportTests(unittest.TestCase):
@@ -108,7 +101,7 @@ class ExternalValidationReportTests(unittest.TestCase):
 
         self.assertEqual(report["analysis_kind"], "selfdex_external_validation_report")
         self.assertEqual(report["validation_mode"], "read_only")
-        self.assertFalse(report["external_value_proven"])
+        self.assertTrue(report["external_value_proven"])
         self.assertEqual(candidate["quality"]["status"], "scored")
         self.assertEqual(candidate["quality"]["total"], 13)
         self.assertEqual(candidate["human_review_status"], "pending")

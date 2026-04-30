@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "projects": [
+    {
+      "project_id": "selfdex",
+      "path": ".",
+      "role": "recursive improvement harness",
+      "write_policy": "selfdex-local writes only",
+      "verification": [
+        "python -m compileall -q scripts tests",
+        "python -m unittest discover -s tests"
+      ]
+    },
+    {
+      "project_id": "daboyeo",
+      "path": "../daboyeo",
+      "role": "movie showtime and recommendation validation target",
+      "write_policy": "read-only",
+      "verification": [
+        "read-only candidate generation",
+        "human rubric scoring"
+      ]
+    },
+    {
+      "project_id": "codex_multiagent",
+      "path": "../codex_multiagent",
+      "role": "multi-agent policy kit validation target",
+      "write_policy": "read-only",
+      "verification": [
+        "read-only candidate generation",
+        "human rubric scoring"
+      ]
+    },
+    {
+      "project_id": "fs",
+      "path": "../fs",
+      "role": "small static project validation target",
+      "write_policy": "read-only",
+      "verification": [
+        "read-only candidate generation",
+        "human rubric scoring"
+      ]
+    }
+  ]
+}

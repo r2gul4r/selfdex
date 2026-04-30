@@ -10,7 +10,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-import unicodedata
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -21,11 +20,13 @@ try:
     from build_external_candidate_snapshot import build_project_snapshot
     from cli_output_utils import write_json_or_markdown
     from list_project_registry import build_payload as build_registry_payload
+    from slug_utils import normalize_slug
 except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_root_argument
     from scripts.build_external_candidate_snapshot import build_project_snapshot
     from scripts.cli_output_utils import write_json_or_markdown
     from scripts.list_project_registry import build_payload as build_registry_payload
+    from scripts.slug_utils import normalize_slug
 
 
 SCHEMA_VERSION = 1
@@ -108,19 +109,7 @@ def utc_timestamp() -> str:
 
 
 def slugify(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", value)
-    parts: list[str] = []
-    previous_dash = False
-    for char in normalized:
-        if char.isalnum() or char == "_":
-            parts.append(char.lower())
-            previous_dash = False
-            continue
-        if not previous_dash:
-            parts.append("-")
-            previous_dash = True
-    slug = "".join(parts).strip("-").strip(".")
-    return slug or "external-project"
+    return normalize_slug(value, fallback="external-project")
 
 
 def project_key_from_project(project: dict[str, Any]) -> str:
@@ -186,6 +175,18 @@ def candidate_paths(candidate: dict[str, Any]) -> list[str]:
         if path:
             return [path]
     return []
+
+
+def candidate_modify_paths(candidate: dict[str, Any]) -> list[str]:
+    source = str(candidate.get("source") or "").strip()
+    if source == "project_direction":
+        return []
+    source_signals = candidate.get("source_signals")
+    if isinstance(source_signals, dict):
+        write_set = normalize_string_list(source_signals.get("first_write_set"))
+        if write_set:
+            return write_set
+    return candidate_paths(candidate)
 
 
 def candidate_quality_estimate(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -304,7 +305,7 @@ def build_task_contract(
     project_direction: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     inspect_files = candidate_paths(candidate)
-    modify_files = list(inspect_files)
+    modify_files = candidate_modify_paths(candidate)
     checks = verification_commands(project, candidate)
     return {
         "selected_candidate": candidate,
@@ -314,6 +315,7 @@ def build_task_contract(
         "write_boundaries": {
             "target_project_writes_allowed_now": False,
             "future_write_mode": "requires explicit user approval and an isolated branch or worktree",
+            "evidence_only_files": inspect_files,
             "proposed_target_write_set": modify_files,
             "selfdex_artifact_writes_allowed": ["runs/"],
         },
@@ -492,6 +494,12 @@ def render_markdown(payload: dict[str, Any]) -> str:
             "",
             f"- target_project_writes_allowed_now: `{boundaries['target_project_writes_allowed_now']}`",
             f"- future_write_mode: {boundaries['future_write_mode']}",
+            "- evidence_only_files:",
+        ]
+    )
+    lines.extend([f"  - `{path}`" for path in boundaries.get("evidence_only_files", [])] or ["  - none"])
+    lines.extend(
+        [
             "- proposed_target_write_set:",
         ]
     )

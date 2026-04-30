@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -28,6 +29,27 @@ REGISTRY_TEXT = """# Project Registry
 """
 
 
+REGISTRY_JSON = {
+    "schema_version": 1,
+    "projects": [
+        {
+            "project_id": "selfdex",
+            "path": ".",
+            "role": "harness",
+            "write_policy": "selfdex-local writes only",
+            "verification": ["python -m unittest"],
+        },
+        {
+            "project_id": "external_json",
+            "path": "./external-json",
+            "role": "fixture",
+            "write_policy": "read-only",
+            "verification": ["read-only candidate generation", "human rubric scoring"],
+        },
+    ],
+}
+
+
 class ProjectRegistryTests(unittest.TestCase):
     def test_parse_registry_table(self) -> None:
         entries = list_project_registry.parse_registry(REGISTRY_TEXT)
@@ -46,8 +68,27 @@ class ProjectRegistryTests(unittest.TestCase):
 
         projects = {project["project_id"]: project for project in payload["projects"]}
         self.assertEqual(payload["registered_project_count"], 2)
+        self.assertEqual(payload["registry_format"], "markdown")
         self.assertTrue(projects["selfdex"]["path_exists"])
         self.assertFalse(projects["missing"]["path_exists"])
+
+    def test_build_payload_prefers_json_registry_source_of_truth(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "external-json").mkdir()
+            (root / "PROJECT_REGISTRY.md").write_text(REGISTRY_TEXT, encoding="utf-8")
+            (root / "project_registry.json").write_text(
+                json.dumps(REGISTRY_JSON),
+                encoding="utf-8",
+            )
+
+            payload = list_project_registry.build_payload(root)
+
+        projects = {project["project_id"]: project for project in payload["projects"]}
+        self.assertEqual(payload["registry_format"], "json")
+        self.assertIn("project_registry.json", payload["registry_path"])
+        self.assertIn("external_json", projects)
+        self.assertTrue(projects["external_json"]["path_exists"])
 
     def test_markdown_output_includes_write_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -58,6 +99,7 @@ class ProjectRegistryTests(unittest.TestCase):
         markdown = list_project_registry.render_markdown(payload)
 
         self.assertIn("# Project Registry", markdown)
+        self.assertIn("- registry_format: `markdown`", markdown)
         self.assertIn("- write_policy: selfdex-local writes only", markdown)
         self.assertIn("- path_exists: `False`", markdown)
 

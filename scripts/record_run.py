@@ -9,7 +9,15 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import unicodedata
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+try:
+    from slug_utils import normalize_slug
+except ModuleNotFoundError:
+    from scripts.slug_utils import normalize_slug
 
 
 TIMESTAMP_PATTERN = re.compile(r"^\d{8}-\d{6}$")
@@ -68,23 +76,11 @@ def current_timestamp() -> str:
 
 
 def sanitize_slug(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", value)
-    parts: list[str] = []
-    previous_dash = False
-    for char in normalized:
-        if char.isalnum() or char == "_":
-            parts.append(char.lower())
-            previous_dash = False
-            continue
-        if not previous_dash:
-            parts.append("-")
-            previous_dash = True
-    slug = "".join(parts).strip("-")
-    return slug or "run"
+    return normalize_slug(value, fallback="run")
 
 
 def sanitize_project_key(value: str) -> str:
-    return sanitize_slug(value).strip(".") or "project"
+    return normalize_slug(value, fallback="project")
 
 
 def validate_timestamp(value: str) -> str:

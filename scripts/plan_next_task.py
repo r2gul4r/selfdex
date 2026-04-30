@@ -15,10 +15,12 @@ from typing import Any
 try:
     from argparse_utils import add_format_argument, add_root_argument
     from plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    from run_history_penalty import apply_run_history_penalty
     import planner_text_utils as planner_text
 except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_root_argument
     from scripts.plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    from scripts.run_history_penalty import apply_run_history_penalty
     from scripts import planner_text_utils as planner_text
 
 
@@ -277,6 +279,15 @@ def collect_feature_candidates(payload: dict[str, Any]) -> list[Candidate]:
     return candidates
 
 
+def normalized_cluster_key(candidate: Candidate) -> str:
+    tokens = [
+        token.lower()
+        for token in "".join(char if char.isalnum() else " " for char in candidate.title).split()
+        if len(token) > 2
+    ]
+    return f"{candidate.source}:{'-'.join(tokens[:5]) or 'untitled'}"
+
+
 def choose_candidate(root: Path) -> dict[str, Any]:
     loaders = (
         ("extract_test_gap_candidates.py", collect_test_gap_candidates),
@@ -295,6 +306,7 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         if payload:
             all_candidates.extend(collector(payload))
 
+    all_candidates = apply_run_history_penalty(all_candidates, root)
     ranked = sorted(
         all_candidates,
         key=lambda item: (
@@ -304,6 +316,10 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         ),
     )
     selected = ranked[0] if ranked else None
+    cluster_counts: dict[str, int] = {}
+    for candidate in ranked:
+        key = normalized_cluster_key(candidate)
+        cluster_counts[key] = cluster_counts.get(key, 0) + 1
 
     return {
         "schema_version": 1,
@@ -312,8 +328,8 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         "campaign_goal": campaign_goal,
         "campaign_queue_candidate_count": len(campaign_candidates),
         "errors": errors,
-        "selected": candidate_to_dict(selected, campaign_goal) if selected else None,
-        "top_candidates": [candidate_to_dict(item, campaign_goal) for item in ranked[:5]],
+        "selected": candidate_to_dict(selected, campaign_goal, cluster_counts) if selected else None,
+        "top_candidates": [candidate_to_dict(item, campaign_goal, cluster_counts) for item in ranked[:5]],
         "recommended_topology": recommend_topology(selected),
     }
 
@@ -321,6 +337,7 @@ def choose_candidate(root: Path) -> dict[str, Any]:
 def candidate_to_dict(
     candidate: Candidate | None,
     campaign_goal: str = "",
+    cluster_counts: dict[str, int] | None = None,
 ) -> dict[str, Any] | None:
     if candidate is None:
         return None
@@ -337,6 +354,13 @@ def candidate_to_dict(
     }
     if candidate.source_signals:
         payload["source_signals"] = candidate.source_signals
+    cluster_key = normalized_cluster_key(candidate)
+    cluster_size = (cluster_counts or {}).get(cluster_key, 1)
+    payload["cluster"] = {
+        "key": cluster_key,
+        "size": cluster_size,
+        "is_duplicate_family": cluster_size > 1,
+    }
     return payload
 
 

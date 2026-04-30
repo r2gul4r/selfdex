@@ -6,6 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from external_validation_test_utils import write_external_registry, write_goal_cycle_fixture
+except ModuleNotFoundError:
+    from tests.external_validation_test_utils import write_external_registry, write_goal_cycle_fixture
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "plan_external_project.py"
@@ -17,36 +22,7 @@ sys.modules[SPEC.name] = plan_external_project
 SPEC.loader.exec_module(plan_external_project)
 
 
-def write_file(root: Path, relative_path: str, content: str) -> None:
-    path = root / relative_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
-
-def write_registry(root: Path, external: Path, *, write_policy: str = "read-only") -> None:
-    (root / "PROJECT_REGISTRY.md").write_text(
-        "# Project Registry\n\n"
-        "## Registered Projects\n\n"
-        "| project_id | path | role | write_policy | verification |\n"
-        "| :-- | :-- | :-- | :-- | :-- |\n"
-        "| selfdex | . | harness | selfdex-local writes only | python -m unittest |\n"
-        f"| external_one | {external} | fixture | {write_policy} | python -m unittest discover -s tests |\n",
-        encoding="utf-8",
-    )
-
-
-def write_goal_cycle_fixture(root: Path) -> None:
-    write_file(
-        root,
-        "CAMPAIGN_STATE.md",
-        "# Campaign State\n\n## Campaign\n\n- goal: `Build a harness that can detect, plan, verify, and record work.`\n",
-    )
-    write_file(
-        root,
-        "docs/GOAL_COMPARISON_AREAS.md",
-        "- 저장소가 자기 부족한 코드 품질과 기능 공백을 스스로 찾고, 개선안을 제안·구현·검증한다\n",
-    )
-    write_file(root, "Makefile", "test: test-installers\n\tpython -m unittest discover -s tests\n")
+REGISTRY_VERIFICATION = "python -m unittest discover -s tests"
 
 
 class PlanExternalProjectTests(unittest.TestCase):
@@ -55,7 +31,7 @@ class PlanExternalProjectTests(unittest.TestCase):
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external)
+            write_external_registry(root, external, verification=REGISTRY_VERIFICATION)
             write_goal_cycle_fixture(external)
 
             payload = plan_external_project.build_plan(root, project_id="external_one", limit=3)
@@ -71,9 +47,14 @@ class PlanExternalProjectTests(unittest.TestCase):
         self.assertIn("project_direction", contract)
         self.assertIn("purpose", contract["project_direction"])
         self.assertFalse(contract["write_boundaries"]["target_project_writes_allowed_now"])
+        self.assertEqual(
+            contract["write_boundaries"]["evidence_only_files"],
+            contract["files_likely_to_inspect"],
+        )
+        self.assertEqual(contract["files_likely_safe_to_modify_after_approval"], [])
         self.assertTrue(contract["human_approval_required"])
         self.assertIn("real_problem", contract["candidate_quality"]["scores"])
-        self.assertIn("python -m unittest discover -s tests", contract["registry_verification_notes"])
+        self.assertIn(REGISTRY_VERIFICATION, contract["registry_verification_notes"])
         self.assertNotIn("human rubric scoring", contract["verification_commands"])
         self.assertIn("Human approval is required", contract["codex_execution_prompt"])
         self.assertIn("Expected outcome:", contract["codex_execution_prompt"])
@@ -110,7 +91,7 @@ class PlanExternalProjectTests(unittest.TestCase):
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external)
+            write_external_registry(root, external, verification=REGISTRY_VERIFICATION)
 
             payload = plan_external_project.build_plan(root, project_id="missing", limit=3)
 
@@ -123,7 +104,7 @@ class PlanExternalProjectTests(unittest.TestCase):
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external)
+            write_external_registry(root, external, verification=REGISTRY_VERIFICATION)
             write_goal_cycle_fixture(external)
             payload = plan_external_project.build_plan(root, project_id="external_one", limit=3)
 
@@ -145,13 +126,13 @@ class PlanExternalProjectTests(unittest.TestCase):
             payload = plan_external_project.build_plan(
                 root,
                 project_root=str(external),
-                project_name="다보여 Project!",
+                project_name="Target Project!",
                 limit=3,
             )
 
             path = plan_external_project.write_plan_artifact(root, payload, "20260425-201501")
 
-        self.assertEqual(path.parent.name, "다보여-project")
+        self.assertEqual(path.parent.name, "target-project")
 
 
 if __name__ == "__main__":

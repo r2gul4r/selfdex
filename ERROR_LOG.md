@@ -224,3 +224,33 @@ Append-only log for execution, tool, and verification errors.
   summary: `Campaign budget check flagged the new run artifact path as a database hard-approval hint.`
   details: `The path runs/20260430-104000-gpt55-codex-skill-migration.md contained the substring migration, which matched the database hard-approval keyword list even though no database work occurred. Renamed the artifact to runs/20260430-104000-gpt55-codex-skill-update.md and reran the budget check.`
   status: `resolved`
+- time: `2026-04-30T13:28:33+09:00`
+  location: `python -m unittest tests.test_build_project_direction`
+  summary: `Sandboxed focused project-direction tests failed because fixture writes to Windows Temp were denied.`
+  details: `The focused suite creates temporary repository fixtures under AppData Local Temp. The workspace sandbox denied README.md fixture writes and cleanup. Rerun with approved sandbox escalation is required for this verification target.`
+  status: `resolved_after_escalated_rerun`
+- time: `2026-04-30T13:31:50+09:00`
+  location: `python -m unittest tests.test_build_project_direction`
+  summary: `Project direction alias refactor initially shadowed the evidence module with a local evidence list.`
+  details: `The import fallback dedupe used evidence as a module alias, but infer_purpose also defines evidence as the output list. Focused tests raised AttributeError on evidence.rel_path. Renamed the module alias to direction_evidence and reran the focused suite.`
+  status: `resolved`
+- time: `2026-04-30T14:06:42+09:00`
+  location: `python -m unittest discover -s tests`
+  summary: `Sandboxed full-suite verification failed because fixture writes to Windows Temp were denied.`
+  details: `The target Codex CLI test dedupe changed only test helper structure, but the full suite uses TemporaryDirectory fixtures under AppData Local Temp. The sandbox denied fixture writes; the same full suite passed after approved sandbox escalation: 170 tests OK.`
+  status: `resolved`
+- time: `2026-04-30T14:08:57+09:00`
+  location: `python -m unittest tests.test_candidate_quality_template tests.test_external_validation_report`
+  summary: `Focused external validation tests initially could not import the new shared test utility by both unittest entrypoint styles.`
+  details: `The first refactor imported external_validation_test_utils only as a start-dir module. Added a fallback import through tests.external_validation_test_utils so both module-name and discover-style unittest runs can load the helper.`
+  status: `resolved`
+- time: `2026-04-30T14:09:17+09:00`
+  location: `python -m unittest tests.test_candidate_quality_template tests.test_external_validation_report`
+  summary: `Sandboxed focused external validation tests failed because registry fixture writes to Windows Temp were denied.`
+  details: `After the import repair, the external validation report tests wrote PROJECT_REGISTRY.md fixtures under AppData Local Temp. The sandbox denied those writes; the same focused suite passed after approved sandbox escalation: 9 tests OK.`
+  status: `resolved`
+- time: `2026-04-30T14:15:47+09:00`
+  location: `python -m unittest tests.test_external_candidate_snapshot tests.test_plan_external_project`
+  summary: `Focused external project fixture tests exposed a non-ASCII fixture literal that changed while rewriting the test file.`
+  details: `The registry fixture dedupe rewrote tests/test_plan_external_project.py and left the ad-hoc project-name slug assertion dependent on a corrupted non-ASCII literal. Replaced that one fixture with an ASCII project name because Unicode slug behavior is already covered by dedicated slug/run-target tests, then reran the focused suite successfully.`
+  status: `resolved`

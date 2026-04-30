@@ -8,6 +8,21 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
+try:
+    from external_validation_test_utils import (
+        write_external_registry,
+        write_file,
+        write_goal_cycle_fixture,
+        write_multi_external_registry,
+    )
+except ModuleNotFoundError:
+    from tests.external_validation_test_utils import (
+        write_external_registry,
+        write_file,
+        write_goal_cycle_fixture,
+        write_multi_external_registry,
+    )
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = ROOT / "scripts" / "build_external_candidate_snapshot.py"
@@ -19,62 +34,13 @@ sys.modules[SPEC.name] = build_external_candidate_snapshot
 SPEC.loader.exec_module(build_external_candidate_snapshot)
 
 
-def write_file(root: Path, relative_path: str, content: str) -> None:
-    path = root / relative_path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
-
-
-def write_registry(root: Path, external: Path, *, write_policy: str = "read-only") -> None:
-    (root / "PROJECT_REGISTRY.md").write_text(
-        "# Project Registry\n\n"
-        "## Registered Projects\n\n"
-        "| project_id | path | role | write_policy | verification |\n"
-        "| :-- | :-- | :-- | :-- | :-- |\n"
-        "| selfdex | . | harness | selfdex-local writes only | python -m unittest |\n"
-        f"| external_one | {external} | fixture | {write_policy} | read-only candidate generation |\n",
-        encoding="utf-8",
-    )
-
-
-def write_multi_registry(root: Path, projects: dict[str, Path]) -> None:
-    rows = [
-        "| selfdex | . | harness | selfdex-local writes only | python -m unittest |",
-    ]
-    for project_id, path in projects.items():
-        rows.append(f"| {project_id} | {path} | fixture | read-only | read-only candidate generation |")
-    (root / "PROJECT_REGISTRY.md").write_text(
-        "# Project Registry\n\n"
-        "## Registered Projects\n\n"
-        "| project_id | path | role | write_policy | verification |\n"
-        "| :-- | :-- | :-- | :-- | :-- |\n"
-        + "\n".join(rows)
-        + "\n",
-        encoding="utf-8",
-    )
-
-
-def write_goal_cycle_fixture(root: Path) -> None:
-    write_file(
-        root,
-        "CAMPAIGN_STATE.md",
-        "# Campaign State\n\n## Campaign\n\n- goal: `Build a harness that can detect, plan, verify, and record work.`\n",
-    )
-    write_file(
-        root,
-        "docs/GOAL_COMPARISON_AREAS.md",
-        "- 저장소가 자기 부족한 코드 품질과 기능 공백을 스스로 찾고, 개선안을 제안·구현·검증한다\n",
-    )
-    write_file(root, "Makefile", "test: test-installers\n\tpython -m unittest discover -s tests\n")
-
-
 class ExternalCandidateSnapshotTests(unittest.TestCase):
     def test_build_snapshot_scans_registered_read_only_external_project(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external)
+            write_external_registry(root, external)
             write_goal_cycle_fixture(external)
 
             payload = build_external_candidate_snapshot.build_snapshot(root, limit=3)
@@ -90,6 +56,8 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
         self.assertEqual(project["status"], "scanned")
         self.assertEqual(candidate["source"], "project_direction")
         self.assertEqual(candidate["title"], "Close one autonomous feedback loop with evidence")
+        self.assertIn("cluster", candidate)
+        self.assertIn("evidence", candidate["source_signals"])
         self.assertIn("purpose", project["project_direction"])
         self.assertEqual(
             project["scanner_summaries"][0]["scanner"],
@@ -101,7 +69,7 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external, write_policy="write-enabled")
+            write_external_registry(root, external, write_policy="write-enabled")
 
             payload = build_external_candidate_snapshot.build_snapshot(
                 root,
@@ -122,7 +90,7 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
             external_two = root / "external-two"
             external_one.mkdir()
             external_two.mkdir()
-            write_multi_registry(root, {"external_one": external_one, "external_two": external_two})
+            write_multi_external_registry(root, {"external_one": external_one, "external_two": external_two})
             write_goal_cycle_fixture(external_two)
 
             payload = build_external_candidate_snapshot.build_snapshot(
@@ -143,7 +111,7 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
             root = Path(temp_dir)
             external = root / "external-one"
             external.mkdir()
-            write_registry(root, external)
+            write_external_registry(root, external)
 
             payload = build_external_candidate_snapshot.build_snapshot(
                 root,
@@ -182,6 +150,36 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
         self.assertEqual(snapshot["status"], "error")
         self.assertEqual(snapshot["scanner_errors"][0]["scanner"], "broken")
         self.assertIn("boom", snapshot["scanner_errors"][0]["error"])
+
+    def test_failed_run_history_penalizes_repeated_candidate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            runs = root / "runs" / "external_one"
+            runs.mkdir(parents=True)
+            write_file(
+                root,
+                "runs/external_one/20260430-failed.md",
+                "# Target Codex Run\n\n- status: `blocked`\n\n## Selected Candidate\n\n- title: Repeat me\n",
+            )
+            candidate = build_external_candidate_snapshot.Candidate(
+                source="refactor",
+                work_type="improvement",
+                title="Repeat me",
+                decision="pick",
+                priority_score=20,
+                risk="medium",
+                rationale=[],
+                suggested_checks=[],
+            )
+
+            adjusted = build_external_candidate_snapshot.apply_run_history_penalty(
+                [candidate],
+                root,
+                "external_one",
+            )[0]
+
+        self.assertLess(adjusted.priority_score, candidate.priority_score)
+        self.assertTrue(adjusted.source_signals["run_history"]["previous_failed_or_blocked"])
 
     def test_markdown_keeps_human_review_pending(self) -> None:
         payload = {

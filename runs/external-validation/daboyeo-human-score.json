@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "analysis_kind": "candidate_quality_evaluation",
+  "status": "pass",
+  "candidate_count": 3,
+  "verdict_counts": {
+    "strong": 3,
+    "usable": 0,
+    "defer": 0,
+    "split": 0,
+    "invalid": 0
+  },
+  "results": [
+    {
+      "candidate": "ingest_lotte + ingest_megabox 중복 정리",
+      "source_project": "daboyeo",
+      "source_signal": "refactor",
+      "evidence": "공통 축 판정: goal_alignment=pass, gap_relevance=high, safety=safe, reversibility=strong, structural_impact=low, leverage=high",
+      "suggested_verification": "python -m compileall -q scripts",
+      "scores": {
+        "real_problem": 3,
+        "user_value": 2,
+        "local_verifiability": 3,
+        "scope_smallness": 3,
+        "risk_reversibility": 3
+      },
+      "total": 14,
+      "verdict": "strong",
+      "issues": [],
+      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
+    },
+    {
+      "candidate": "showtime_payload 중복 정리",
+      "source_project": "daboyeo",
+      "source_signal": "refactor",
+      "evidence": "공통 축 판정: goal_alignment=pass, gap_relevance=medium, safety=safe, reversibility=strong, structural_impact=low, leverage=high",
+      "suggested_verification": "python -m compileall -q scripts",
+      "scores": {
+        "real_problem": 3,
+        "user_value": 2,
+        "local_verifiability": 3,
+        "scope_smallness": 3,
+        "risk_reversibility": 3
+      },
+      "total": 14,
+      "verdict": "strong",
+      "issues": [],
+      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
+    },
+    {
+      "candidate": "scripts/ingest/collect_all_to_tidb.py 책임 분리와 경계 정리",
+      "source_project": "daboyeo",
+      "source_signal": "refactor",
+      "evidence": "공통 축 판정: goal_alignment=pass, gap_relevance=high, safety=guarded, reversibility=strong, structural_impact=medium, leverage=high",
+      "suggested_verification": "python -m compileall -q scripts",
+      "scores": {
+        "real_problem": 3,
+        "user_value": 2,
+        "local_verifiability": 3,
+        "scope_smallness": 2,
+        "risk_reversibility": 3
+      },
+      "total": 13,
+      "verdict": "strong",
+      "issues": [],
+      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
+    }
+  ]
+}
