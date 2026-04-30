@@ -9,7 +9,7 @@ Codex work.
 a user-invoked control harness for long-running Codex sessions:
 
 ```text
-register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
 The loop may analyze explicitly registered projects read-only, but
@@ -18,21 +18,25 @@ required before treating Selfdex as generally useful beyond this repository.
 
 ## Loop
 
-1. Scan repository signals.
-2. Ask the Socratic evaluation questions for non-trivial candidates.
-3. Classify each candidate as repair, hardening, improvement, capability, or
+1. Infer the project direction: purpose, audience, product signals,
+   constraints, and strategic opportunities.
+2. Scan repository signals.
+3. Ask the Socratic evaluation questions for non-trivial candidates.
+4. Classify each candidate as repair, hardening, improvement, capability, or
    automation.
-4. Rank gaps by goal fit, leverage, risk, reversibility, and verification fit.
-5. Pick the smallest high-leverage task.
-6. Freeze acceptance, non-goals, write sets, and checks.
-7. Recommend or use explorer, worker, and reviewer lanes when host policy,
+5. Rank direction opportunities first, then hygiene gaps, by strategic fit,
+   user value, novelty, feasibility, evidence, risk, reversibility, and
+   verification fit.
+6. Pick the smallest high-leverage task.
+7. Freeze acceptance, non-goals, write sets, and checks.
+8. Recommend or use explorer, worker, and reviewer lanes when host policy,
    authorization, and budget allow it.
-8. For approved target projects, run one candidate through a target-project
+9. For approved target projects, run one candidate through a target-project
    Codex session on a new branch.
-9. Integrate outputs.
-10. Verify.
-11. Repair inside the same contract when checks fail.
-12. Record the run under `runs/<project_key>/` and advance the campaign queue.
+10. Integrate outputs.
+11. Verify.
+12. Repair inside the same contract when checks fail.
+13. Record the run under `runs/<project_key>/` and advance the campaign queue.
 
 ## Campaign State
 
@@ -76,6 +80,9 @@ folder, but it does not bypass the hard approval zones above.
 
 Prefer candidates that:
 
+- move the project toward a clearer product or technical direction
+- reveal a better next feature, workflow, or capability the user may not have
+  explicitly requested
 - directly improve the audit-and-control loop
 - add missing capability needed for supervised long-running Codex work
 - reduce verification blind spots

@@ -7,7 +7,7 @@ Its final goal is to make Codex work more controllable than the default
 request-response loop by adding a durable supervised improvement cycle:
 
 ```text
-register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
 Selfdex should inspect itself first, then explicitly registered projects
@@ -16,10 +16,11 @@ losing safety, traceability, or user control. It is not yet proven as a general
 autonomous engineer; that claim requires external read-only validation.
 
 The intended end state is still active, supervised development: given a target
-project and a goal, Selfdex should inspect the repository, rank small useful
-tasks, freeze one contract, produce a Codex/GPT execution prompt, execute only
-after approval on an isolated branch, verify, attempt bounded repair, produce a
-patch or PR-ready summary, and record evidence under `runs/<project_key>/`.
+project, Selfdex should infer the project's direction, suggest better next
+moves even when the user did not name them, rank small useful tasks, freeze one
+contract, produce a Codex/GPT execution prompt, execute only after approval on
+an isolated branch, verify, attempt bounded repair, produce a patch or PR-ready
+summary, and record evidence under `runs/<project_key>/`.
 
 ## Operating Contract
 
@@ -46,9 +47,11 @@ Selfdex must distinguish fixing from improving:
 | `improvement` | Improve quality without changing capability | Refactor a hotspot or reduce duplication |
 | `capability` | Add a new system ability | Add project registry or run recorder |
 | `automation` | Automate repeated coordination work | Generate run records or refresh queues |
+| `direction` | Improve the project trajectory | Propose a new user workflow, product feedback loop, or strategy-backed capability |
 
 The planner should show this type for each candidate so the loop does not look
-like it only "fixes" things.
+like it only "fixes" things. Direction candidates should be evidence-backed,
+small enough for one first step, and reversible.
 
 ## Socratic Evaluation
 
@@ -101,6 +104,8 @@ Goal: turn a selected external project candidate into a Codex-ready task
 contract without modifying the target project.
 
 - Accept either a registered `project_id` or an ad-hoc `project_root`.
+- Infer the project purpose, audience, product signals, constraints, and
+  strategic opportunities before routine hygiene ranking.
 - Scan the target project read-only and select one candidate.
 - Emit a task contract with rationale, likely inspect files, proposed future
   write boundary, verification commands, risk level, approval requirement, and

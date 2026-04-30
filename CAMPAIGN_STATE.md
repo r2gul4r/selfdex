@@ -59,10 +59,11 @@ none
 - Add read-only external project planning with a Codex execution prompt.
 - Update generated Codex execution prompts to GPT-5.5-style prompt and skill routing.
 - Add target-project Codex orchestration with project-scoped run records.
+- Add project direction intelligence before hygiene-only target candidate planning.
 
 ## Latest Run
 
 - status: `completed`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260430-111200-target-codex-orchestrator.md`
-- summary: `Added one-candidate target Codex orchestration, branch-isolated execution hooks, and project-scoped run records under runs/<project_key>/.`
+- artifact_path: `runs/selfdex/20260430-114700-project-direction-intelligence.md`
+- summary: `Added a project direction snapshot and direction-aware candidate source so Selfdex can propose strategic project evolution, not only code hygiene.`

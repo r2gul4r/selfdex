@@ -72,6 +72,18 @@ WORK_TYPE_KEYWORDS = {
         "socratic",
         "work_type",
     },
+    "direction": {
+        "audience",
+        "direction",
+        "opportunity",
+        "product",
+        "strategy",
+        "thesis",
+        "trajectory",
+        "user",
+        "vision",
+        "workflow",
+    },
     "improvement": {
         "cleanup",
         "docs",
@@ -88,6 +100,7 @@ WORK_TYPE_PRIORITY = (
     "hardening",
     "automation",
     "capability",
+    "direction",
     "improvement",
 )
 
@@ -96,6 +109,7 @@ WORK_TYPE_DESCRIPTIONS = {
     "hardening": "make existing behavior harder to break",
     "improvement": "improve quality without adding a new capability",
     "capability": "add a new system ability",
+    "direction": "move the project toward a better product or technical trajectory",
     "automation": "automate repeated coordination work",
 }
 

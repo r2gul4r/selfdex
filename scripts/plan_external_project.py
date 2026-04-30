@@ -197,7 +197,7 @@ def candidate_quality_estimate(candidate: dict[str, Any]) -> dict[str, Any]:
 
     scores = {
         "real_problem": 3 if rationale else 2 if candidate.get("source_signals") else 1,
-        "user_value": 2 if work_type in {"repair", "hardening", "improvement", "capability"} else 1,
+        "user_value": 2 if work_type in {"repair", "hardening", "improvement", "capability", "direction"} else 1,
         "local_verifiability": 3 if checks else 1,
         "scope_smallness": 3 if 0 < len(paths) <= 1 else 2 if len(paths) <= 3 else 1,
         "risk_reversibility": 3 if risk == "low" else 2 if risk in {"", "medium"} else 1,
@@ -241,6 +241,7 @@ def build_codex_prompt(
     inspect_files: list[str],
     modify_files: list[str],
     checks: list[str],
+    project_direction: dict[str, Any] | None = None,
 ) -> str:
     inspect_block = "\n".join(f"- {path}" for path in inspect_files) or "- Discover the smallest relevant files first."
     modify_block = "\n".join(f"- {path}" for path in modify_files) or "- No target files are approved yet; freeze them before editing."
@@ -248,11 +249,25 @@ def build_codex_prompt(
     gates_block = "\n".join(f"- {gate}" for gate in APPROVAL_GATES)
     success_block = "\n".join(f"- {criterion}" for criterion in PROMPT_SUCCESS_CRITERIA)
     stops_block = "\n".join(f"- {condition}" for condition in PROMPT_STOP_CONDITIONS)
+    direction = project_direction or {}
+    direction_block = "\n".join(
+        f"- {item}"
+        for item in (
+            f"purpose: {direction.get('purpose')}" if direction.get("purpose") else "",
+            f"opportunity_source: {candidate.get('source')}",
+            f"suggested_first_step: {candidate.get('source_signals', {}).get('suggested_first_step')}"
+            if isinstance(candidate.get("source_signals"), dict)
+            else "",
+        )
+        if item
+    ) or "- No direction snapshot was available; infer purpose read-only before changing files."
     return (
         f"You are working in the user-selected target project:\n"
         f"{project.get('resolved_path')}\n\n"
+        "Project direction context:\n"
+        f"{direction_block}\n\n"
         "Expected outcome:\n"
-        f"Deliver the smallest safe improvement for this candidate: {candidate.get('title')}\n\n"
+        f"Move the project in a better direction with the smallest safe first step for this candidate: {candidate.get('title')}\n\n"
         "Success criteria:\n"
         f"{success_block}\n\n"
         "Context budget:\n"
@@ -283,12 +298,17 @@ def build_codex_prompt(
     )
 
 
-def build_task_contract(project: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+def build_task_contract(
+    project: dict[str, Any],
+    candidate: dict[str, Any],
+    project_direction: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     inspect_files = candidate_paths(candidate)
     modify_files = list(inspect_files)
     checks = verification_commands(project, candidate)
     return {
         "selected_candidate": candidate,
+        "project_direction": project_direction or {},
         "why_it_matters": normalize_string_list(candidate.get("rationale")),
         "candidate_quality": candidate_quality_estimate(candidate),
         "write_boundaries": {
@@ -303,7 +323,14 @@ def build_task_contract(project: dict[str, Any], candidate: dict[str, Any]) -> d
         "registry_verification_notes": normalize_string_list(project.get("verification")),
         "risk_level": candidate.get("risk", "unknown"),
         "human_approval_required": True,
-        "codex_execution_prompt": build_codex_prompt(project, candidate, inspect_files, modify_files, checks),
+        "codex_execution_prompt": build_codex_prompt(
+            project,
+            candidate,
+            inspect_files,
+            modify_files,
+            checks,
+            project_direction,
+        ),
     }
 
 
@@ -372,7 +399,7 @@ def build_plan(
         "candidate_count": project_snapshot.get("candidate_count", 0),
         "scanner_status": project_snapshot.get("status", ""),
         "scanner_errors": project_snapshot.get("scanner_errors", []),
-        "task_contract": build_task_contract(project, candidate),
+        "task_contract": build_task_contract(project, candidate, project_snapshot.get("project_direction")),
         "recorded_run_path": None,
     }
 
@@ -416,6 +443,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
     candidate = contract["selected_candidate"]
     quality = contract["candidate_quality"]
+    project_direction = contract.get("project_direction") or {}
     lines.extend(
         [
             "## Selected Candidate",
@@ -430,6 +458,16 @@ def render_markdown(payload: dict[str, Any]) -> str:
             "",
         ]
     )
+    if project_direction:
+        lines.extend(
+            [
+                "",
+                "## Project Direction Context",
+                "",
+                f"- purpose: {project_direction.get('purpose', 'unknown')}",
+                f"- opportunity_count: `{project_direction.get('opportunity_count', 'unknown')}`",
+            ]
+        )
     rationale = contract.get("why_it_matters", [])
     lines.extend([f"- {item}" for item in rationale] or ["- no rationale available"])
     lines.extend(

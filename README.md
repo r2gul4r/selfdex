@@ -9,7 +9,7 @@ general autonomous developer. The goal is to make long-running Codex work easier
 to choose, freeze, verify, audit, and resume:
 
 ```text
-register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
 `codex_multiagent` stays the conservative safety baseline. This repository is a
@@ -38,9 +38,11 @@ candidates are real, valuable, small, locally verifiable, and low-risk according
 to the candidate quality rubric and human review.
 
 The first step toward modifying a user-selected project is read-only external
-planning. When a target folder is approved for execution, Selfdex can run one
-candidate through a target-project Codex app-server session on a new branch and
-record the result centrally under `runs/<project_key>/`.
+planning. Selfdex now infers a target project's purpose, audience, product
+signals, constraints, and strategic opportunities before ranking routine
+bugfix/refactor/test hygiene. When a target folder is approved for execution,
+Selfdex can run one candidate through a target-project Codex app-server session
+on a new branch and record the result centrally under `runs/<project_key>/`.
 
 ## Core Files
 
@@ -79,6 +81,7 @@ record the result centrally under `runs/<project_key>/`.
 | `scripts/feature_small_candidates.py` | Small-feature scoring and candidate construction helpers |
 | `scripts/extract_*_candidates.py` | Feature/test/refactor candidate extractors |
 | `scripts/evaluate_candidate_quality.py` | Scores candidate quality rubric payloads |
+| `scripts/build_project_direction.py` | Infers project purpose and direction opportunities from repository evidence |
 | `scripts/build_external_candidate_snapshot.py` | Builds read-only top-candidate snapshots for registered external projects |
 | `scripts/plan_external_project.py` | Builds a read-only task contract and Codex execution prompt for one selected external project |
 | `scripts/run_target_codex.py` | Runs one target-project Codex task and records the result under `runs/<project_key>/` |
@@ -102,6 +105,7 @@ python scripts/plan_next_task.py --root . --format markdown
 python scripts/check_campaign_budget.py --root . --format markdown
 python scripts/check_doc_drift.py --root . --format markdown
 python scripts/check_external_validation_readiness.py --root . --format markdown
+python scripts/build_project_direction.py --root . --format markdown
 python scripts/build_external_candidate_snapshot.py --root . --format markdown
 python scripts/build_external_candidate_snapshot.py --root . --project-id apex_analist --format markdown
 python scripts/build_external_candidate_snapshot.py --root . --project-id apex_analist --project-id mqyusimeji --format markdown
@@ -125,6 +129,7 @@ python scripts/plan_next_task.py --root . --format markdown
 python scripts/check_campaign_budget.py --root . --format json
 python scripts/check_doc_drift.py --root . --format json
 python scripts/check_external_validation_readiness.py --root . --format json
+python scripts/build_project_direction.py --root . --format json
 python scripts/build_external_candidate_snapshot.py --root . --format json
 python scripts/plan_external_project.py --root . --project-id apex_analist --format json
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json

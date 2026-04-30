@@ -18,6 +18,7 @@ if str(SCRIPT_DIR) not in sys.path:
 try:
     from argparse_utils import add_format_argument, add_root_argument
     from cli_output_utils import write_json_or_markdown
+    from build_project_direction import build_payload as build_direction_payload
     from extract_feature_gap_candidates import extract_feature_gap_candidates
     from extract_refactor_candidates import build_payload as build_refactor_payload
     from extract_refactor_candidates import build_refactor_candidates
@@ -33,6 +34,7 @@ try:
     from refactor_metrics_payload import filter_metrics_payload, load_metrics
 except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_root_argument
+    from scripts.build_project_direction import build_payload as build_direction_payload
     from scripts.cli_output_utils import write_json_or_markdown
     from scripts.extract_feature_gap_candidates import extract_feature_gap_candidates
     from scripts.extract_refactor_candidates import build_payload as build_refactor_payload
@@ -139,6 +141,37 @@ def scan_test_gaps(project_root: Path, limit: int) -> tuple[list[Candidate], dic
     }
 
 
+def scan_project_direction(project_root: Path, limit: int) -> tuple[list[Candidate], dict[str, Any]]:
+    payload = build_direction_payload(project_root, limit=max(limit, 1))
+    candidates = [
+        Candidate(
+            source="project_direction",
+            work_type=str(item.get("work_type") or "capability"),
+            title=str(item.get("title") or "Project direction opportunity"),
+            decision=str(item.get("decision") or "monitor"),
+            priority_score=float(item.get("priority_score") or 0),
+            risk=str(item.get("risk") or "guarded"),
+            rationale=[str(value) for value in item.get("rationale", []) if str(value).strip()][:3],
+            suggested_checks=[str(value) for value in item.get("suggested_checks", []) if str(value).strip()],
+            source_signals={
+                "opportunity_id": item.get("opportunity_id"),
+                "paths": item.get("evidence_paths", []),
+                "strategic_dimensions": item.get("strategic_dimensions", {}),
+                "suggested_first_step": item.get("suggested_first_step", ""),
+                "project_purpose": payload.get("purpose", {}).get("summary", ""),
+            },
+        )
+        for item in payload.get("opportunities", [])
+        if isinstance(item, dict)
+    ]
+    return candidates, {
+        "scanner": "project_direction",
+        "opportunity_count": payload.get("opportunity_count", 0),
+        "candidate_count": len(candidates),
+        "purpose": payload.get("purpose", {}).get("summary", ""),
+    }
+
+
 def scan_refactor_gaps(project_root: Path, limit: int) -> tuple[list[Candidate], dict[str, Any]]:
     metrics_payload = filter_metrics_payload(load_metrics(project_root, None))
     refactor_candidates = build_refactor_candidates(project_root, metrics_payload, max(limit, 1))
@@ -162,6 +195,7 @@ def scan_feature_gaps(project_root: Path, limit: int) -> tuple[list[Candidate], 
 
 
 DEFAULT_SCAN_STEPS: tuple[tuple[str, ScanStep], ...] = (
+    ("project_direction", scan_project_direction),
     ("test_gap", scan_test_gaps),
     ("refactor", scan_refactor_gaps),
     ("feature_gap", scan_feature_gaps),
@@ -225,6 +259,10 @@ def build_project_snapshot(
         scanner_summaries.append(summary)
 
     top_candidates = [candidate_to_dict(candidate, "") for candidate in rank_candidates(all_candidates, limit)]
+    project_direction = next(
+        (summary for summary in scanner_summaries if summary.get("scanner") == "project_direction"),
+        {},
+    )
     if scanner_errors and top_candidates:
         status = "partial"
     elif scanner_errors:
@@ -240,6 +278,7 @@ def build_project_snapshot(
         "status": status,
         "scanner_errors": scanner_errors,
         "scanner_summaries": scanner_summaries,
+        "project_direction": project_direction,
         "candidate_count": len(top_candidates),
         "top_candidates": top_candidates,
         "human_review_status": "pending" if top_candidates else "not_started",
@@ -314,6 +353,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
                 f"- human_review_status: `{project['human_review_status']}`",
             ]
         )
+        project_direction = project.get("project_direction")
+        if isinstance(project_direction, dict) and project_direction.get("purpose"):
+            lines.append(f"- project_direction: {project_direction['purpose']}")
         if project.get("skip_reason"):
             lines.append(f"- skip_reason: `{project['skip_reason']}`")
         if project["scanner_errors"]:

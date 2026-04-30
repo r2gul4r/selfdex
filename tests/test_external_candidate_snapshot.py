@@ -88,8 +88,13 @@ class ExternalCandidateSnapshotTests(unittest.TestCase):
         self.assertEqual(payload["project_count"], 1)
         self.assertEqual(project["project_id"], "external_one")
         self.assertEqual(project["status"], "scanned")
-        self.assertEqual(candidate["source"], "test_gap")
-        self.assertEqual(candidate["title"], "자가개선 루프 통합 검증 부재")
+        self.assertEqual(candidate["source"], "project_direction")
+        self.assertEqual(candidate["title"], "Close one autonomous feedback loop with evidence")
+        self.assertIn("purpose", project["project_direction"])
+        self.assertEqual(
+            project["scanner_summaries"][0]["scanner"],
+            "project_direction",
+        )
 
     def test_requested_non_read_only_project_is_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

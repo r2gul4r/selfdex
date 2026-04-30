@@ -2,65 +2,63 @@
 
 ## Current Task
 
-- task: `implement target Codex orchestrator with project-scoped run records`
+- task: `add project direction intelligence to target candidate planning`
 - phase: `verified`
-- scope: `add a Selfdex command that plans one target-project candidate, creates an isolated branch, runs target Codex through an app-server adapter, and stores results under runs/<project_key>/`
-- verification_target: `focused orchestrator, plan artifact, record-run, campaign-budget tests plus full repository checks`
+- scope: `teach Selfdex to infer project purpose and strategic opportunities, then feed direction-aware candidates into target project planning before routine bugfix/refactor hygiene`
+- verification_target: `focused project direction tests, external snapshot/plan tests, campaign budget, and repository smoke checks`
 
 ## Orchestration Profile
 
-- score_total: `8`
+- score_total: `7`
 - score_breakdown:
-  - `cross_project_execution_path`: 2
-  - `branch_creation_and_git_state`: 2
-  - `codex_app_server_adapter`: 2
-  - `project_scoped_run_records`: 1
-  - `campaign_budget_policy_change`: 1
+  - `candidate_policy_change`: 2
+  - `project_understanding_layer`: 2
+  - `external_snapshot_integration`: 1
+  - `target_prompt_contract_change`: 1
+  - `tests_and_docs_update`: 1
 - hard_triggers:
-  - `external_source_dependency`
-  - `cross_workspace_write_path`
   - `workflow_policy_change`
-  - `automation_execution_surface`
+  - `ambiguous_acceptance_criteria`
+  - `project_direction_inference`
 - selected_rules:
   - `state_before_writes`
   - `single_write_lane`
-  - `target_branch_isolation`
-  - `project_scoped_runs`
+  - `direction_before_hygiene`
+  - `evidence_backed_opportunities`
   - `verification_required`
 - selected_skills:
   - `selfdex-autopilot`
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `The implementation touches one tightly coupled orchestration path and host policy does not grant subagent authorization for this turn.`
-- spawn_decision: `no_spawn_host_policy_and_coupled_write_surface`
-- selection_reason: `The user approved implementing Selfdex as the central controller that automatically executes one target-project Codex task at a time and records results in per-project run folders.`
+- efficiency_basis: `The candidate extraction, scoring, prompt, and tests form one coupled policy path; host policy does not grant subagent spawning for this turn.`
+- spawn_decision: `no_spawn_host_policy_and_coupled_policy_surface`
+- selection_reason: `The user clarified that Selfdex should understand project direction and propose growth opportunities, not merely perform code review, small bugfixes, and hygiene work.`
 
 ## Evaluation Plan
 
 - evaluation_need: `full`
 - project_invariants:
   - `Do not modify external project files during this implementation.`
-  - `Do not run target Codex automation during tests; use fake adapters.`
+  - `Do not call paid or external LLM APIs to infer direction.`
   - `Do not touch secrets, deploys, paid APIs, databases, production systems, installers, or global Codex config.`
   - `Preserve existing GPT-5.5 prompt and repo skill changes already in the working tree.`
-  - `Target project writes must be isolated to a new branch when execution is enabled.`
+  - `Strategic opportunities must remain evidence-backed and bounded to a small first step.`
 - task_acceptance:
-  - `Target orchestration command can build a one-candidate plan and record a blocked, dry-run, or completed result.`
-  - `Project run artifacts are written under runs/<project_key>/<timestamp>-<task-slug>.md.`
-  - `Registered project_id wins for project key; ad-hoc project_name is next; folder name is fallback.`
-  - `Project keys are path-safe slugs, including spaces, symbols, and Korean input.`
-  - `Different projects produce separate run directories.`
-  - `Campaign budget check allows normal runs/<project_key>/ artifacts without false hard-approval failures.`
+  - `Selfdex can generate a project direction snapshot with purpose, audience, product signals, technical signals, constraints, and strategic opportunities.`
+  - `Direction opportunities become candidate source entries in external target snapshots.`
+  - `Direction candidates are scored on strategic fit, user value, novelty, feasibility, verifiability, reversibility, and evidence strength.`
+  - `Target Codex contracts include project direction context and explicitly frame the work as project evolution, not only cleanup.`
+  - `Existing hygiene candidates remain available as baseline work.`
 - non_goals:
-  - `Do not make Codex SDK/app-server work around this machine's WindowsApps codex.exe Access denied issue.`
-  - `Do not run real target-project Codex execution as part of implementation verification.`
-  - `Do not add multi-candidate loops; keep one candidate per run.`
-  - `Do not write run artifacts inside target repositories.`
+  - `Do not implement a daemon, polling loop, or background optimizer.`
+  - `Do not use an external model call for direction inference in tests or normal local scans.`
+  - `Do not remove bugfix, refactor, or test-gap candidate sources.`
+  - `Do not run real target-project Codex execution as part of verification.`
 - hard_checks:
-  - `python -m unittest discover -s tests -p test_run_target_codex.py`
+  - `python -m unittest discover -s tests -p test_build_project_direction.py`
+  - `python -m unittest discover -s tests -p test_build_external_candidate_snapshot.py`
   - `python -m unittest discover -s tests -p test_plan_external_project.py`
-  - `python -m unittest discover -s tests -p test_record_run.py`
   - `python -m unittest discover -s tests -p test_campaign_budget.py`
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
@@ -68,19 +66,19 @@
   - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check external writes require explicit execute mode and branch isolation.`
-  - `Check run artifacts cannot collide across projects.`
-  - `Check app-server adapter failures are recorded as blocked/failed without hiding them.`
+  - `Check strategic candidates are grounded in repository evidence, not vague product advice.`
+  - `Check the selected candidate prompt still freezes a small first step.`
+  - `Check routine hygiene sources remain available and are not silently discarded.`
 - evidence_required:
-  - `focused orchestrator tests`
-  - `project-scoped artifact tests`
-  - `campaign budget acceptance for runs/<project_key>`
-  - `full repository verification`
+  - `project direction extractor tests`
+  - `external snapshot integration tests`
+  - `target plan prompt tests`
+  - `campaign budget acceptance`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `target codex orchestrator and project-scoped run records`
+- write_set: `project direction intelligence and candidate planning`
 - write_sets:
   - `main`:
     - `STATE.md`
@@ -88,14 +86,16 @@
     - `README.md`
     - `AUTOPILOT.md`
     - `docs/SELFDEX_FINAL_GOAL.md`
+    - `scripts/build_project_direction.py`
+    - `scripts/build_external_candidate_snapshot.py`
     - `scripts/plan_external_project.py`
-    - `scripts/record_run.py`
-    - `scripts/run_target_codex.py`
+    - `scripts/planner_text_utils.py`
     - `scripts/check_campaign_budget.py`
+    - `tests/test_build_project_direction.py`
+    - `tests/test_external_candidate_snapshot.py`
     - `tests/test_plan_external_project.py`
-    - `tests/test_record_run.py`
-    - `tests/test_run_target_codex.py`
     - `tests/test_campaign_budget.py`
+    - `runs/selfdex/20260430-114700-project-direction-intelligence.md`
     - `runs/selfdex/20260430-111200-target-codex-orchestrator.md`
     - `AGENTS.md`
     - `ERROR_LOG.md`
@@ -105,46 +105,46 @@
 
 ## Contract Freeze
 
-- Implement a target Codex orchestrator script that plans one candidate, prepares a branch when execution is enabled, invokes a Codex app-server adapter, captures status, and writes a Selfdex run artifact.
-- Keep default behavior non-mutating for target repos unless an explicit execute flag is provided.
-- Store all new run artifacts under `runs/<project_key>/`.
-- Update existing plan/run record helpers so project-scoped run paths are supported and tested.
-- Update campaign/docs to describe folder-wide approval, one-candidate execution, branch isolation, and project-scoped records.
+- Implement a local, deterministic project direction snapshot builder that infers purpose, audience, product signals, technical signals, constraints, and direction opportunities from repository evidence.
+- Integrate direction opportunities as first-class external candidate source entries alongside test/refactor/feature hygiene candidates.
+- Extend target project planning contracts and generated Codex prompts with project direction context.
+- Keep opportunities bounded to one small first step with suggested checks and evidence paths.
+- Update docs, campaign state, tests, and run evidence to reflect the goal shift from hygiene-only work to project evolution.
 - Preserve previous uncommitted GPT-5.5 prompt and skill-routing changes.
 
 ## Reviewer
 
 - reviewer: `not_selected`
 - reviewer_target: `none`
-- reviewer_focus: `focused tests plus full suite cover the target orchestrator and project-scoped artifact policy`
+- reviewer_focus: `focused tests plus full suite cover direction extraction, candidate integration, and target prompt context`
 - reviewer_result: `not run`
 
 ## Last Update
 
-- timestamp: `2026-04-30T11:19:17+09:00`
+- timestamp: `2026-04-30T11:53:13+09:00`
 - phase: `verified`
-- status: `target Codex orchestration and project-scoped run records implemented.`
+- status: `project direction intelligence implemented and verified.`
 - verification_result:
-  - `python -m unittest discover -s tests -p test_run_target_codex.py`: `passed; ran 4 tests`
-  - `python -m unittest discover -s tests -p test_plan_external_project.py`: `passed; ran 5 tests`
-  - `python -m unittest discover -s tests -p test_record_run.py`: `passed; ran 5 tests`
-  - `python -m unittest discover -s tests -p test_campaign_budget.py`: `passed; ran 7 tests`
   - `python -m compileall -q scripts tests`: `passed`
-  - `python -m unittest discover -s tests`: `passed; ran 147 tests`
+  - `python -m unittest discover -s tests -p test_build_project_direction.py`: `passed; ran 3 tests`
+  - `python -m unittest discover -s tests -p test_external_candidate_snapshot.py`: `passed; ran 6 tests`
+  - `python -m unittest discover -s tests -p test_plan_external_project.py`: `passed; ran 5 tests`
+  - `python -m unittest discover -s tests -p test_planner_text_utils.py`: `passed; ran 3 tests`
+  - `python -m unittest discover -s tests`: `passed; ran 150 tests`
   - `python scripts/check_doc_drift.py --root . --format json`: `passed; status=pass`
   - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`: `passed; status=pass, violation_count=0`
   - `git diff --check`: `passed; exit 0 with LF-to-CRLF working-copy warnings for touched Python files`
 
 ## Retrospective
 
-- task: `implement target Codex orchestrator with project-scoped run records`
-- score_total: `8`
-- evaluation_fit: `full checks were useful because the change touched orchestration, recording paths, and campaign-budget policy`
-- orchestration_fit: `autopilot-single fit because the write surface was tightly coupled and host policy did not grant subagent spawning`
+- task: `add project direction intelligence to target candidate planning`
+- score_total: `7`
+- evaluation_fit: `full checks fit because the change moved candidate policy, prompt context, docs, and snapshot outputs`
+- orchestration_fit: `autopilot-single fit because the policy path was tightly coupled and subagent spawning was not authorized`
 - predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
 - spawn_count: `0`
 - rework_or_reclassification: `none after contract freeze`
-- reviewer_findings: `not run; focused tests and full suite covered the target orchestrator and recording policy`
+- reviewer_findings: `not run; focused and full tests covered direction extraction and integration`
 - verification_outcome: `passed`
-- next_gate_adjustment: `keep real target Codex execution out of unit verification and require fake adapters for app-server tests`
+- next_gate_adjustment: `future target runs should treat project_direction candidates as first-class product evolution work, not just hygiene`
