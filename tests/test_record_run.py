@@ -29,6 +29,7 @@ class RecordRunTests(unittest.TestCase):
                 root,
                 record_run.RunRecord(
                     timestamp="20260424-131500",
+                    project_key="Selfdex Core",
                     slug="Run Recorder!",
                     goal="Build recursive improvement.",
                     selected_candidate="Add a run recorder.",
@@ -45,6 +46,8 @@ class RecordRunTests(unittest.TestCase):
             content = result.read_text(encoding="utf-8")
 
         self.assertEqual(result.name, "20260424-131500-run-recorder.md")
+        self.assertEqual(result.parent, root / "runs" / "selfdex-core")
+        self.assertIn("- project_key: selfdex-core", content)
         self.assertIn("- goal: Build recursive improvement.", content)
         self.assertIn("- selected_candidate: Add a run recorder.", content)
         self.assertIn("- scripts/record_run.py", content)
@@ -55,6 +58,7 @@ class RecordRunTests(unittest.TestCase):
             root = Path(temp_dir)
             record = record_run.RunRecord(
                 timestamp="20260424-131500",
+                project_key="same-project",
                 slug="same",
                 goal="Goal",
                 selected_candidate="Candidate",
@@ -74,6 +78,9 @@ class RecordRunTests(unittest.TestCase):
     def test_rejects_invalid_timestamp(self) -> None:
         with self.assertRaises(ValueError):
             record_run.validate_timestamp("2026-04-24")
+
+    def test_sanitizes_unicode_project_key(self) -> None:
+        self.assertEqual(record_run.sanitize_project_key("다보여 프로젝트!!"), "다보여-프로젝트")
 
 
 if __name__ == "__main__":

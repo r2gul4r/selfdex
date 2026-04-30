@@ -2,114 +2,149 @@
 
 ## Current Task
 
-- task: `repair Windows subprocess smoke UTF-8 handling after home update`
+- task: `implement target Codex orchestrator with project-scoped run records`
 - phase: `verified`
-- scope: `make subprocess-based script/module smoke tests inherit a stable UTF-8 stdout encoding on Windows`
-- verification_target: `focused extractor smoke test, full unittest suite, planner smoke, doc drift, git diff --check`
+- scope: `add a Selfdex command that plans one target-project candidate, creates an isolated branch, runs target Codex through an app-server adapter, and stores results under runs/<project_key>/`
+- verification_target: `focused orchestrator, plan artifact, record-run, campaign-budget tests plus full repository checks`
 
 ## Orchestration Profile
 
-- score_total: `3`
+- score_total: `8`
 - score_breakdown:
-  - `windows_verification_regression`: 2
-  - `single_helper_test_surface`: 1
+  - `cross_project_execution_path`: 2
+  - `branch_creation_and_git_state`: 2
+  - `codex_app_server_adapter`: 2
+  - `project_scoped_run_records`: 1
+  - `campaign_budget_policy_change`: 1
 - hard_triggers:
-  - `none`
+  - `external_source_dependency`
+  - `cross_workspace_write_path`
+  - `workflow_policy_change`
+  - `automation_execution_surface`
 - selected_rules:
-  - `verification_required`
-  - `windows_powershell_compatibility`
+  - `state_before_writes`
   - `single_write_lane`
+  - `target_branch_isolation`
+  - `project_scoped_runs`
+  - `verification_required`
 - selected_skills:
-  - `none`
+  - `selfdex-autopilot`
 - execution_topology: `autopilot-single`
 - orchestration_value: `low`
 - agent_budget: `0`
-- efficiency_basis: `single shared test helper controls the failing subprocess smoke path; delegation would add handoff without independent write ownership`
-- spawn_decision: `no_spawn_handoff_cost_exceeds_gain`
-- selection_reason: `After syncing the home updates, full unittest verification failed because subprocess smoke tests decoded child Python output as UTF-8 while the child process emitted locale-encoded Korean text on Windows.`
+- efficiency_basis: `The implementation touches one tightly coupled orchestration path and host policy does not grant subagent authorization for this turn.`
+- spawn_decision: `no_spawn_host_policy_and_coupled_write_surface`
+- selection_reason: `The user approved implementing Selfdex as the central controller that automatically executes one target-project Codex task at a time and records results in per-project run folders.`
 
 ## Evaluation Plan
 
-- evaluation_need: `light`
+- evaluation_need: `full`
 - project_invariants:
-  - `Do not change external project behavior.`
-  - `Do not touch codex_multiagent, global config, installers, secrets, deploys, paid APIs, databases, or production systems.`
-  - `Keep the fix inside the failing verification surface.`
-  - `Do not use destructive Git or filesystem commands.`
+  - `Do not modify external project files during this implementation.`
+  - `Do not run target Codex automation during tests; use fake adapters.`
+  - `Do not touch secrets, deploys, paid APIs, databases, production systems, installers, or global Codex config.`
+  - `Preserve existing GPT-5.5 prompt and repo skill changes already in the working tree.`
+  - `Target project writes must be isolated to a new branch when execution is enabled.`
 - task_acceptance:
-  - `Subprocess script/module smoke helper forces UTF-8 child stdout/stderr encoding.`
-  - `Focused extractor smoke test passes on Windows.`
-  - `Full unittest suite passes.`
-  - `Planner smoke and diff checks remain clean.`
+  - `Target orchestration command can build a one-candidate plan and record a blocked, dry-run, or completed result.`
+  - `Project run artifacts are written under runs/<project_key>/<timestamp>-<task-slug>.md.`
+  - `Registered project_id wins for project key; ad-hoc project_name is next; folder name is fallback.`
+  - `Project keys are path-safe slugs, including spaces, symbols, and Korean input.`
+  - `Different projects produce separate run directories.`
+  - `Campaign budget check allows normal runs/<project_key>/ artifacts without false hard-approval failures.`
 - non_goals:
-  - `Do not refactor candidate extraction behavior.`
-  - `Do not change planner scoring.`
-  - `Do not modify external project registry contents.`
+  - `Do not make Codex SDK/app-server work around this machine's WindowsApps codex.exe Access denied issue.`
+  - `Do not run real target-project Codex execution as part of implementation verification.`
+  - `Do not add multi-candidate loops; keep one candidate per run.`
+  - `Do not write run artifacts inside target repositories.`
 - hard_checks:
-  - `python -m unittest discover -s tests -p test_candidate_extractors.py`
-  - `python -m unittest discover -s tests`
+  - `python -m unittest discover -s tests -p test_run_target_codex.py`
+  - `python -m unittest discover -s tests -p test_plan_external_project.py`
+  - `python -m unittest discover -s tests -p test_record_run.py`
+  - `python -m unittest discover -s tests -p test_campaign_budget.py`
   - `python -m compileall -q scripts tests`
-  - `python scripts/plan_next_task.py --root . --format json`
+  - `python -m unittest discover -s tests`
   - `python scripts/check_doc_drift.py --root . --format json`
+  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`
   - `git diff --check`
 - llm_review_rubric:
-  - `Check the helper fix is limited to subprocess smoke environment setup.`
-  - `Check no test hides real command failures.`
+  - `Check external writes require explicit execute mode and branch isolation.`
+  - `Check run artifacts cannot collide across projects.`
+  - `Check app-server adapter failures are recorded as blocked/failed without hiding them.`
 - evidence_required:
-  - `failing full-suite output before fix`
-  - `focused extractor smoke result`
-  - `full repository verification result`
+  - `focused orchestrator tests`
+  - `project-scoped artifact tests`
+  - `campaign budget acceptance for runs/<project_key>`
+  - `full repository verification`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `windows subprocess smoke repair`
+- write_set: `target codex orchestrator and project-scoped run records`
 - write_sets:
   - `main`:
     - `STATE.md`
+    - `CAMPAIGN_STATE.md`
+    - `README.md`
+    - `AUTOPILOT.md`
+    - `docs/SELFDEX_FINAL_GOAL.md`
+    - `scripts/plan_external_project.py`
+    - `scripts/record_run.py`
+    - `scripts/run_target_codex.py`
+    - `scripts/check_campaign_budget.py`
+    - `tests/test_plan_external_project.py`
+    - `tests/test_record_run.py`
+    - `tests/test_run_target_codex.py`
+    - `tests/test_campaign_budget.py`
+    - `runs/selfdex/20260430-111200-target-codex-orchestrator.md`
+    - `AGENTS.md`
     - `ERROR_LOG.md`
-    - `tests/script_smoke_utils.py`
+    - `.agents/skills/selfdex-autopilot/SKILL.md`
+    - `runs/20260430-104000-gpt55-codex-skill-update.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Add UTF-8 child process environment handling to the shared subprocess smoke helper.
-- Preserve direct script and module command coverage.
-- Record the verification failure and resolution in `ERROR_LOG.md`.
-- Do not alter extractor scoring or output schemas.
+- Implement a target Codex orchestrator script that plans one candidate, prepares a branch when execution is enabled, invokes a Codex app-server adapter, captures status, and writes a Selfdex run artifact.
+- Keep default behavior non-mutating for target repos unless an explicit execute flag is provided.
+- Store all new run artifacts under `runs/<project_key>/`.
+- Update existing plan/run record helpers so project-scoped run paths are supported and tested.
+- Update campaign/docs to describe folder-wide approval, one-candidate execution, branch isolation, and project-scoped records.
+- Preserve previous uncommitted GPT-5.5 prompt and skill-routing changes.
 
 ## Reviewer
 
 - reviewer: `not_selected`
 - reviewer_target: `none`
-- reviewer_focus: `focused and full unittest coverage exercise the changed helper`
+- reviewer_focus: `focused tests plus full suite cover the target orchestrator and project-scoped artifact policy`
 - reviewer_result: `not run`
 
 ## Last Update
 
-- timestamp: `2026-04-27T09:37:20+09:00`
+- timestamp: `2026-04-30T11:19:17+09:00`
 - phase: `verified`
-- status: `home updates synced locally; Windows subprocess smoke encoding repair completed.`
+- status: `target Codex orchestration and project-scoped run records implemented.`
 - verification_result:
-  - `python -m compileall -q scripts tests`: `passed before repair`
-  - `python -m unittest discover -s tests`: `failed before repair; subprocess reader hit UnicodeDecodeError while reading extract_refactor_candidates.py output`
-  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `passed after repair; ran 5 tests`
-  - `python -m compileall -q scripts tests`: `passed after repair`
-  - `python -m unittest discover -s tests`: `passed after repair; ran 139 tests`
-  - `python scripts/plan_next_task.py --root . --format json`: `passed before repair; selected tests/test_candidate_quality_template.py 외 1개 경로 중복 정리`
-  - `python scripts/plan_next_task.py --root . --format json`: `passed after repair; selected tests/test_candidate_quality_template.py 외 1개 경로 중복 정리`
-  - `python scripts/plan_next_task.py --root . --format markdown`: `passed after repair`
-  - `python scripts/check_doc_drift.py --root . --format json`: `passed after repair; status=pass`
-  - `python scripts/check_campaign_budget.py --root . --changed-path STATE.md --changed-path ERROR_LOG.md --changed-path tests/script_smoke_utils.py --format json`: `passed after repair; status=pass, violation_count=0`
-  - `git diff --check`: `passed after repair; exit 0 with LF-to-CRLF working-copy warning for tests/script_smoke_utils.py`
+  - `python -m unittest discover -s tests -p test_run_target_codex.py`: `passed; ran 4 tests`
+  - `python -m unittest discover -s tests -p test_plan_external_project.py`: `passed; ran 5 tests`
+  - `python -m unittest discover -s tests -p test_record_run.py`: `passed; ran 5 tests`
+  - `python -m unittest discover -s tests -p test_campaign_budget.py`: `passed; ran 7 tests`
+  - `python -m compileall -q scripts tests`: `passed`
+  - `python -m unittest discover -s tests`: `passed; ran 147 tests`
+  - `python scripts/check_doc_drift.py --root . --format json`: `passed; status=pass`
+  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`: `passed; status=pass, violation_count=0`
+  - `git diff --check`: `passed; exit 0 with LF-to-CRLF working-copy warnings for touched Python files`
 
 ## Retrospective
 
-- task: `repair Windows subprocess smoke UTF-8 handling after home update`
-- score_total: `3`
-- selected_profile: `autopilot-single`
+- task: `implement target Codex orchestrator with project-scoped run records`
+- score_total: `8`
+- evaluation_fit: `full checks were useful because the change touched orchestration, recording paths, and campaign-budget policy`
+- orchestration_fit: `autopilot-single fit because the write surface was tightly coupled and host policy did not grant subagent spawning`
+- predicted_topology: `autopilot-single`
 - actual_topology: `autopilot-single`
+- spawn_count: `0`
+- rework_or_reclassification: `none after contract freeze`
+- reviewer_findings: `not run; focused tests and full suite covered the target orchestrator and recording policy`
 - verification_outcome: `passed`
-- rework_or_reclassification: `new verification repair task created after syncing home commits`
-- reviewer_findings: `not run; focused and full tests covered the changed helper`
-- next_gate_adjustment: `keep subprocess smoke helpers responsible for child process encoding when tests parse JSON containing Korean text`
+- next_gate_adjustment: `keep real target Codex execution out of unit verification and require fake adapters for app-server tests`

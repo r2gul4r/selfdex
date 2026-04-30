@@ -73,6 +73,12 @@ class PlanExternalProjectTests(unittest.TestCase):
         self.assertIn("python -m unittest discover -s tests", contract["registry_verification_notes"])
         self.assertNotIn("human rubric scoring", contract["verification_commands"])
         self.assertIn("Human approval is required", contract["codex_execution_prompt"])
+        self.assertIn("Expected outcome:", contract["codex_execution_prompt"])
+        self.assertIn("Success criteria:", contract["codex_execution_prompt"])
+        self.assertIn("Context budget:", contract["codex_execution_prompt"])
+        self.assertIn("Tool and skill routing:", contract["codex_execution_prompt"])
+        self.assertIn("do not install skills, plugins, MCP servers", contract["codex_execution_prompt"])
+        self.assertIn("Stop conditions:", contract["codex_execution_prompt"])
 
     def test_project_root_plan_does_not_need_registry(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -107,7 +113,7 @@ class PlanExternalProjectTests(unittest.TestCase):
         self.assertIn("not registered", payload["blocker"])
         self.assertIsNone(payload["task_contract"])
 
-    def test_record_run_writes_only_under_selfdex_runs(self) -> None:
+    def test_record_run_writes_under_project_scoped_selfdex_runs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             external = root / "external-one"
@@ -119,10 +125,28 @@ class PlanExternalProjectTests(unittest.TestCase):
             path = plan_external_project.write_plan_artifact(root, payload, "20260425-201500")
 
             self.assertTrue(path.exists())
-            self.assertEqual(path.parent, root / "runs")
+            self.assertEqual(path.parent, root / "runs" / "external_one")
             self.assertIn("external-one", payload["project"]["resolved_path"])
             self.assertIn("Codex Execution Prompt", path.read_text(encoding="utf-8"))
             self.assertFalse((external / "runs").exists())
+
+    def test_project_root_record_run_uses_project_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / "selfdex"
+            external = Path(temp_dir) / "external-one"
+            root.mkdir()
+            external.mkdir()
+            write_goal_cycle_fixture(external)
+            payload = plan_external_project.build_plan(
+                root,
+                project_root=str(external),
+                project_name="다보여 Project!",
+                limit=3,
+            )
+
+            path = plan_external_project.write_plan_artifact(root, payload, "20260425-201501")
+
+        self.assertEqual(path.parent.name, "다보여-project")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -128,6 +129,20 @@ class CampaignBudgetTests(unittest.TestCase):
         violation_ids = {item["violation_id"] for item in payload["violations"]}
         self.assertIn("hard-approval-path", violation_ids)
 
+    def test_allows_project_scoped_runs_even_with_hard_approval_words(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            custom_state = state_text() + "    - `runs/database-migration-demo/20260430-task.md`\n"
+            write_fixture(root, state=custom_state)
+
+            payload = check_campaign_budget.build_payload(
+                root,
+                ["runs/database-migration-demo/20260430-task.md"],
+            )
+
+        self.assertEqual(payload["status"], "pass")
+        self.assertEqual(payload["violation_count"], 0)
+
     def test_markdown_reports_pass_status(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -139,6 +154,19 @@ class CampaignBudgetTests(unittest.TestCase):
         self.assertIn("# Campaign Budget Check", markdown)
         self.assertIn("- status: `pass`", markdown)
         self.assertIn("README.md", markdown)
+
+    def test_include_git_diff_reports_untracked_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True, text=True)
+            write_fixture(root)
+            (root / "scripts").mkdir()
+            (root / "scripts" / "check_campaign_budget.py").write_text("# fixture\n", encoding="utf-8")
+
+            payload = check_campaign_budget.build_payload(root, include_git_diff=True)
+
+        reported = {item["normalized"] for item in payload["changed_paths"]}
+        self.assertIn("scripts/check_campaign_budget.py", reported)
 
 
 if __name__ == "__main__":

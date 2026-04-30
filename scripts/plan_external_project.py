@@ -10,6 +10,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import unicodedata
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -42,6 +43,22 @@ APPROVAL_GATES = (
     "database or production writes",
     "destructive filesystem or Git operations",
     "writes outside the frozen target-project contract",
+)
+
+PROMPT_SUCCESS_CRITERIA = (
+    "candidate is confirmed real from repository evidence",
+    "task contract is frozen before any target-project write",
+    "only approved files are modified after explicit approval",
+    "verification commands are run or skipped with exact reasons",
+    "final summary includes changed files, checks, repair attempts, and residual risk",
+)
+
+PROMPT_STOP_CONDITIONS = (
+    "approval to edit the target project is missing",
+    "the candidate is stale, already solved, or unsupported by local evidence",
+    "the needed write set differs materially from the proposed boundary",
+    "a hard approval gate is triggered",
+    "verification cannot run and no equivalent local check exists",
 )
 
 
@@ -91,8 +108,29 @@ def utc_timestamp() -> str:
 
 
 def slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    normalized = unicodedata.normalize("NFKC", value)
+    parts: list[str] = []
+    previous_dash = False
+    for char in normalized:
+        if char.isalnum() or char == "_":
+            parts.append(char.lower())
+            previous_dash = False
+            continue
+        if not previous_dash:
+            parts.append("-")
+            previous_dash = True
+    slug = "".join(parts).strip("-").strip(".")
     return slug or "external-project"
+
+
+def project_key_from_project(project: dict[str, Any]) -> str:
+    project_id = str(project.get("project_id") or "").strip()
+    if project_id:
+        return slugify(project_id)
+    resolved = str(project.get("resolved_path") or "").strip()
+    if resolved:
+        return slugify(Path(resolved).name)
+    return "external-project"
 
 
 def validate_artifact_timestamp(value: str) -> str:
@@ -208,21 +246,36 @@ def build_codex_prompt(
     modify_block = "\n".join(f"- {path}" for path in modify_files) or "- No target files are approved yet; freeze them before editing."
     checks_block = "\n".join(f"- {command}" for command in checks)
     gates_block = "\n".join(f"- {gate}" for gate in APPROVAL_GATES)
+    success_block = "\n".join(f"- {criterion}" for criterion in PROMPT_SUCCESS_CRITERIA)
+    stops_block = "\n".join(f"- {condition}" for condition in PROMPT_STOP_CONDITIONS)
     return (
         f"You are working in the user-selected target project:\n"
         f"{project.get('resolved_path')}\n\n"
-        "Goal:\n"
-        f"Implement the smallest safe improvement for this candidate: {candidate.get('title')}\n\n"
+        "Expected outcome:\n"
+        f"Deliver the smallest safe improvement for this candidate: {candidate.get('title')}\n\n"
+        "Success criteria:\n"
+        f"{success_block}\n\n"
+        "Context budget:\n"
+        "- Read repository instructions and matching skill descriptions before broad search.\n"
+        "- Inspect the likely files first, then search only when the first pass leaves uncertainty.\n"
+        "- Keep stable policy in mind and put dynamic findings into the frozen contract.\n\n"
+        "Tool and skill routing:\n"
+        "- Use repo, user, or system skills only when the task explicitly names them or their description directly matches this work.\n"
+        "- Load only the matching SKILL.md body; do not install skills, plugins, MCP servers, or edit global Codex config without explicit approval.\n"
+        "- Give a short preamble before major tool phases that states what you are checking or changing.\n\n"
         "Start read-only:\n"
         "- Inspect the files below and confirm the task is still real.\n"
         "- Freeze a short task contract before the first target-project write.\n"
-        "- Human approval is required before modifying the target project.\n\n"
+        "- Human approval is required before modifying the target project.\n"
+        "- If approval is not already explicit in the current thread, stop after the read-only contract and ask for approval.\n\n"
         "Likely files to inspect:\n"
         f"{inspect_block}\n\n"
         "Proposed target write boundary after approval:\n"
         f"{modify_block}\n\n"
         "Verification to run from the target project when execution is approved:\n"
         f"{checks_block}\n\n"
+        "Stop conditions:\n"
+        f"{stops_block}\n\n"
         "Hard approval gates:\n"
         f"{gates_block}\n\n"
         "Return a PR-ready summary with changed files, verification results, repair attempts, "
@@ -326,16 +379,16 @@ def build_plan(
 
 def plan_artifact_path(root: Path, payload: dict[str, Any], timestamp: str | None = None) -> Path:
     project = payload.get("project", {})
-    project_id = str(project.get("project_id") or "external-project")
+    project_key = project_key_from_project(project)
     stamp = validate_artifact_timestamp(timestamp or now_local_timestamp())
-    return root / "runs" / f"{stamp}-external-project-plan-{slugify(project_id)}.md"
+    return root / "runs" / project_key / f"{stamp}-external-project-plan-{project_key}.md"
 
 
 def write_plan_artifact(root: Path, payload: dict[str, Any], timestamp: str | None = None) -> Path:
     path = plan_artifact_path(root, payload, timestamp)
     if path.exists():
         raise FileExistsError(f"run artifact already exists: {path}")
-    path.parent.mkdir(exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     payload["recorded_run_path"] = str(path)
     path.write_text(render_markdown(payload), encoding="utf-8")
     return path

@@ -38,10 +38,9 @@ candidates are real, valuable, small, locally verifiable, and low-risk according
 to the candidate quality rubric and human review.
 
 The first step toward modifying a user-selected project is read-only external
-planning: Selfdex scans the target, selects one small candidate, freezes a
-proposed task contract, and emits a Codex execution prompt. Target-project
-writes still require explicit user approval and should happen later in an
-isolated branch or worktree.
+planning. When a target folder is approved for execution, Selfdex can run one
+candidate through a target-project Codex app-server session on a new branch and
+record the result centrally under `runs/<project_key>/`.
 
 ## Core Files
 
@@ -52,6 +51,7 @@ isolated branch or worktree.
 | `CAMPAIGN_STATE.md` | Current campaign goal, budget, locks, and guardrails |
 | `STATE.md` | Current task contract and write ownership |
 | `PROJECT_REGISTRY.md` | Registered projects for read-only multi-project analysis |
+| `.agents/skills/selfdex-autopilot/SKILL.md` | Repo-scoped Codex skill for Selfdex execution flow and skill routing |
 | `docs/CANDIDATE_QUALITY_RUBRIC.md` | Human scoring rubric for useful, small, verifiable candidates |
 | `docs/SELFDEX_FINAL_GOAL.md` | Final goal, roadmap, and recursive improvement contract |
 | `docs/SELFDEX_HANDOFF.md` | Cross-machine handoff memory for continuing the campaign |
@@ -81,6 +81,7 @@ isolated branch or worktree.
 | `scripts/evaluate_candidate_quality.py` | Scores candidate quality rubric payloads |
 | `scripts/build_external_candidate_snapshot.py` | Builds read-only top-candidate snapshots for registered external projects |
 | `scripts/plan_external_project.py` | Builds a read-only task contract and Codex execution prompt for one selected external project |
+| `scripts/run_target_codex.py` | Runs one target-project Codex task and records the result under `runs/<project_key>/` |
 | `scripts/build_external_validation_report.py` | Builds read-only validation reports from planner and quality payloads |
 | `scripts/prepare_candidate_quality_template.py` | Converts planner or external snapshot output into human scoring templates |
 | `scripts/normalize_quality_signals.py` | Normalizes scan outputs into priority signals |
@@ -106,6 +107,7 @@ python scripts/build_external_candidate_snapshot.py --root . --project-id apex_a
 python scripts/build_external_candidate_snapshot.py --root . --project-id apex_analist --project-id mqyusimeji --format markdown
 python scripts/plan_external_project.py --root . --project-id apex_analist --format markdown
 python scripts/plan_external_project.py --root . --project-root ../apex_analist --project-name apex_analist --format markdown
+python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
 python scripts/collect_repo_metrics.py --root . --pretty
 python scripts/normalize_quality_signals.py --input examples/quality_signal_samples.json --pretty
 python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format markdown
@@ -125,5 +127,6 @@ python scripts/check_doc_drift.py --root . --format json
 python scripts/check_external_validation_readiness.py --root . --format json
 python scripts/build_external_candidate_snapshot.py --root . --format json
 python scripts/plan_external_project.py --root . --project-id apex_analist --format json
+python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json
 git diff --check
 ```

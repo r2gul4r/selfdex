@@ -57,8 +57,12 @@ none
 - Exclude lockfiles and Codex backup artifacts from refactor candidate snapshots.
 - Make external candidate snapshots support explicit user-selected repository scopes.
 - Add read-only external project planning with a Codex execution prompt.
+- Update generated Codex execution prompts to GPT-5.5-style prompt and skill routing.
+- Add target-project Codex orchestration with project-scoped run records.
 
 ## Latest Run
 
-- status: `external-project-readonly-plan`
-- summary: `Added a read-only planning command that selects one external project candidate, freezes a proposed task contract, emits a Codex execution prompt, and can record the plan under runs/.`
+- status: `completed`
+- project_key: `selfdex`
+- artifact_path: `runs/selfdex/20260430-111200-target-codex-orchestrator.md`
+- summary: `Added one-candidate target Codex orchestration, branch-isolated execution hooks, and project-scoped run records under runs/<project_key>/.`

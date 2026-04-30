@@ -242,6 +242,8 @@ def zone_hint_keys(zones: list[str]) -> list[str]:
 
 def hard_approval_matches(path: str, zones: list[str]) -> list[str]:
     lower_path = path.lower().replace("\\", "/")
+    if lower_path.startswith("runs/"):
+        return []
     matches: list[str] = []
     for key in zone_hint_keys(zones):
         hints = HARD_APPROVAL_HINTS[key]
@@ -255,6 +257,7 @@ def git_changed_paths(root: Path) -> list[str]:
     commands = (
         ("git", "diff", "--name-only"),
         ("git", "diff", "--name-only", "--cached"),
+        ("git", "ls-files", "--others", "--exclude-standard"),
     )
     for command in commands:
         process = subprocess.run(

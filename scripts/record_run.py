@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+import unicodedata
 
 
 TIMESTAMP_PATTERN = re.compile(r"^\d{8}-\d{6}$")
@@ -17,6 +18,7 @@ TIMESTAMP_PATTERN = re.compile(r"^\d{8}-\d{6}$")
 @dataclass(frozen=True)
 class RunRecord:
     timestamp: str
+    project_key: str
     slug: str
     goal: str
     selected_candidate: str
@@ -32,6 +34,7 @@ class RunRecord:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Write a Selfdex run record.")
     parser.add_argument("--root", default=".", help="Repository root.")
+    parser.add_argument("--project-key", required=True, help="Project key for runs/<project-key>/ records.")
     parser.add_argument("--slug", required=True, help="Run slug for the filename.")
     parser.add_argument(
         "--timestamp",
@@ -65,8 +68,23 @@ def current_timestamp() -> str:
 
 
 def sanitize_slug(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    normalized = unicodedata.normalize("NFKC", value)
+    parts: list[str] = []
+    previous_dash = False
+    for char in normalized:
+        if char.isalnum() or char == "_":
+            parts.append(char.lower())
+            previous_dash = False
+            continue
+        if not previous_dash:
+            parts.append("-")
+            previous_dash = True
+    slug = "".join(parts).strip("-")
     return slug or "run"
+
+
+def sanitize_project_key(value: str) -> str:
+    return sanitize_slug(value).strip(".") or "project"
 
 
 def validate_timestamp(value: str) -> str:
@@ -85,6 +103,7 @@ def render_record(record: RunRecord) -> str:
     lines = [
         f"# Run {record.timestamp}-{record.slug}",
         "",
+        f"- project_key: {record.project_key}",
         f"- goal: {record.goal}",
         f"- selected_candidate: {record.selected_candidate}",
         f"- topology: {record.topology}",
@@ -107,15 +126,17 @@ def render_record(record: RunRecord) -> str:
 
 def write_run_record(root: Path, record: RunRecord) -> Path:
     timestamp = validate_timestamp(record.timestamp)
+    project_key = sanitize_project_key(record.project_key)
     slug = sanitize_slug(record.slug)
-    runs_dir = root / "runs"
-    runs_dir.mkdir(exist_ok=True)
+    runs_dir = root / "runs" / project_key
+    runs_dir.mkdir(parents=True, exist_ok=True)
     path = runs_dir / f"{timestamp}-{slug}.md"
     if path.exists():
         raise FileExistsError(f"run record already exists: {path}")
 
     normalized = RunRecord(
         timestamp=timestamp,
+        project_key=project_key,
         slug=slug,
         goal=record.goal,
         selected_candidate=record.selected_candidate,
@@ -135,6 +156,7 @@ def record_from_args(args: argparse.Namespace) -> RunRecord:
     timestamp = args.timestamp or current_timestamp()
     return RunRecord(
         timestamp=timestamp,
+        project_key=args.project_key,
         slug=args.slug,
         goal=args.goal,
         selected_candidate=args.selected_candidate,

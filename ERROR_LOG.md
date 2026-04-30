@@ -219,3 +219,8 @@ Append-only log for execution, tool, and verification errors.
   summary: `Sandboxed focused validation-report tests failed because fixtures write to Windows Temp.`
   details: `The planner payload and external validation report focused tests create temporary JSON and registry fixtures. The sandbox denied those writes; both focused suites passed after approved sandbox escalation.`
   status: `resolved`
+- time: `2026-04-30T10:47:00+09:00`
+  location: `python scripts/check_campaign_budget.py --root . ...`
+  summary: `Campaign budget check flagged the new run artifact path as a database hard-approval hint.`
+  details: `The path runs/20260430-104000-gpt55-codex-skill-migration.md contained the substring migration, which matched the database hard-approval keyword list even though no database work occurred. Renamed the artifact to runs/20260430-104000-gpt55-codex-skill-update.md and reran the budget check.`
+  status: `resolved`

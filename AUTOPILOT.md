@@ -27,10 +27,12 @@ required before treating Selfdex as generally useful beyond this repository.
 6. Freeze acceptance, non-goals, write sets, and checks.
 7. Recommend or use explorer, worker, and reviewer lanes when host policy,
    authorization, and budget allow it.
-8. Integrate outputs.
-9. Verify.
-10. Repair inside the same contract when checks fail.
-11. Record the run and advance the campaign queue.
+8. For approved target projects, run one candidate through a target-project
+   Codex session on a new branch.
+9. Integrate outputs.
+10. Verify.
+11. Repair inside the same contract when checks fail.
+12. Record the run under `runs/<project_key>/` and advance the campaign queue.
 
 ## Campaign State
 
@@ -66,6 +68,9 @@ The autopilot must stop for explicit approval before:
 - public deploys
 - database migrations or production writes
 - cross-workspace changes
+
+Folder-wide approval can allow Selfdex to run Codex inside a registered target
+folder, but it does not bypass the hard approval zones above.
 
 ## Candidate Selection
 
@@ -112,3 +117,9 @@ Minimum fields:
 - repair attempts
 - result
 - next candidate
+
+Target-project execution records are grouped by project:
+
+```text
+runs/<project_key>/YYYYMMDD-HHMMSS-<slug>.md
+```

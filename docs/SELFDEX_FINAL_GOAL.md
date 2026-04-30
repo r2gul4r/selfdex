@@ -18,21 +18,22 @@ autonomous engineer; that claim requires external read-only validation.
 The intended end state is still active, supervised development: given a target
 project and a goal, Selfdex should inspect the repository, rank small useful
 tasks, freeze one contract, produce a Codex/GPT execution prompt, execute only
-after approval in an isolated branch or worktree, verify, attempt bounded
-repair, produce a patch or PR-ready summary, and record evidence under `runs/`.
+after approval on an isolated branch, verify, attempt bounded repair, produce a
+patch or PR-ready summary, and record evidence under `runs/<project_key>/`.
 
 ## Operating Contract
 
 - Selfdex is user-invoked, not a background daemon.
 - Cross-project analysis starts read-only through a project registry.
-- Cross-project writes require explicit approval for the target project and task.
+- Cross-project writes require explicit approval for the target project. One
+  automated loop runs one selected task at a time on a new branch.
 - Destructive commands, secrets, paid APIs, deploys, database writes, and
   production changes remain hard approval zones.
 - Subagents are an orchestration decision-support tool, not a goal. Use them
   only when host support, task authority, write sets, discovery lanes, or
   reviewer checks make delegation safer or faster than local work.
 - Every non-trivial run leaves evidence in `STATE.md`, `CAMPAIGN_STATE.md`, and
-  eventually `runs/YYYYMMDD-HHMMSS-<slug>.md`.
+  eventually `runs/<project_key>/YYYYMMDD-HHMMSS-<slug>.md`.
 
 ## Improvement Types
 
@@ -112,7 +113,7 @@ contract without modifying the target project.
 The next stage after this is supervised modification:
 
 ```text
-read-only plan -> human approval -> isolated branch/worktree -> bounded patch -> verification -> bounded repair -> PR-ready summary -> runs/ evidence
+read-only plan -> folder approval -> isolated branch -> bounded patch -> verification -> bounded repair -> PR-ready summary -> runs/<project_key>/ evidence
 ```
 
 ### Phase 3 - Socratic Planner
@@ -147,6 +148,7 @@ task.
 - Run bounded repair when verification fails.
 - Update `CAMPAIGN_STATE.md` with result and next candidate.
 - Keep improvements small enough to review and revert.
+- Keep multi-project evidence separated by project key under `runs/`.
 
 ## Current North Star
 

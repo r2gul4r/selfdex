@@ -82,6 +82,30 @@ Before implementation writes:
 - Assign one owner per write set.
 - Put run evidence under `runs/` for non-trivial autonomous loops.
 
+## GPT-5.5 Prompt And Skill Discipline
+
+- Write Codex handoff prompts outcome-first: expected result, success criteria,
+  allowed side effects, evidence rules, output shape, and stop conditions come
+  before process detail.
+- Keep static policy before dynamic task facts so repeated prompts cache well.
+  Do not inject dates unless the task depends on a workspace, legal, release, or
+  user-local date boundary.
+- Treat `reasoning_effort` as a tuning knob, not a rescue plan. Prefer clearer
+  contracts, tool boundaries, and verification loops before asking for higher
+  effort.
+- Use short preambles before major tool phases: say what is being checked or
+  changed and why it matters, then continue working from the result.
+- Skill routing is explicit and auditable: load a skill when the user names it
+  or when its description directly matches the task; record selected skills in
+  `STATE.md`.
+- Skill descriptions must be concise, front-loaded, and boundary-aware so Codex
+  can match them after description truncation.
+- Keep skill bodies lean. Put only essential workflow steps in `SKILL.md`; add
+  scripts or references only when deterministic behavior or extra domain detail
+  is truly needed.
+- Repository skills augment `AGENTS.md`; they do not bypass state, approval,
+  security, or verification gates.
+
 ## Topology Selection
 
 - `autopilot-single`: one local write lane for tiny or tightly coupled work.
