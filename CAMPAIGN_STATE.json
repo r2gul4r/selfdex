@@ -42,10 +42,14 @@
     "selfdex_role": "coordinate the loop, freeze contracts, manage approval, record evidence, and prevent uncontrolled autonomy",
     "codex_role": "implement safely, verify, debug failures, review diffs, and stop when work becomes a product-direction question",
     "code_review_surface": "Codex native reviewer subagent",
-    "fast_exploration_model": "gpt-5.4-mini-or-equivalent",
+    "fast_exploration_model": "gpt-5.5",
+    "explorer_reasoning_effort": "low",
+    "docs_researcher_agent_model": "gpt-5.5",
+    "docs_researcher_reasoning_effort": "medium",
     "demanding_agent_model": "gpt-5.5",
+    "worker_reasoning_effort": "high",
     "reviewer_agent_model": "gpt-5.5",
-    "reviewer_reasoning_effort": "high-or-xhigh-for-risky-changes",
+    "reviewer_reasoning_effort": "xhigh",
     "product_direction_model": "GPT-Pro-extended-user-approved-only",
     "prompt_guidance_role": "operating principle for roles, tool boundaries, success criteria, stop conditions, verification, and compact evidence",
     "prompt_guidance_auto_call": false,
@@ -93,7 +97,7 @@
   "latest_run": {
     "status": "local_verified",
     "project_key": "selfdex",
-    "artifact_path": "runs/selfdex/20260501-231320-review-routing-and-subagent-readiness.md",
-    "summary": "Selfdex now separates GPT Pro / ChatGPT Apps product direction review from Codex reviewer subagent code review, wires docs_researcher into planner recommendations, and validates .codex subagent policy files in the setup doctor."
+    "artifact_path": "runs/selfdex/20260501-233915-subagent-model-effort-alignment.md",
+    "summary": "Selfdex project-scoped Codex subagents now all use gpt-5.5 with role-specific reasoning effort, and setup/plugin validators parse TOML policy values to reject stale model or missing effort drift."
   }
 }

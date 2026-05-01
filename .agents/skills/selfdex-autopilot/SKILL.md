@@ -18,10 +18,11 @@ description: Use when working in the Selfdex repository or from a Selfdex-genera
 ## Codex Native Agents
 
 - Use the main agent for requirements, task selection, approval boundaries, integration, final reporting, and run records.
-- Use `explorer` for read-only codebase scouting and write-boundary recommendations.
-- Use `docs_researcher` for read-only official docs or API behavior checks.
-- Use `worker` for bounded implementation inside one frozen write boundary.
-- Use `reviewer` for read-only correctness, regression, security, and missing-test review.
+- Project-scoped Selfdex subagents use `gpt-5.5` with role-specific effort.
+- Use `explorer` at low effort for read-only codebase scouting and write-boundary recommendations.
+- Use `docs_researcher` at medium effort for read-only official docs or API behavior checks.
+- Use `worker` at high effort for bounded implementation inside one frozen write boundary.
+- Use `reviewer` at xhigh effort for read-only correctness, regression, security, and missing-test review.
 - Read-only subagents may run after `@selfdex` when they reduce noise or shorten independent discovery/review work.
 - Write-capable worker subagents require a frozen contract and disjoint write boundary.
 - Do not call GPT Pro extended mode automatically. Product direction review requires the user to ask for it or explicitly approve it.

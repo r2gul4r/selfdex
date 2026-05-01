@@ -48,11 +48,12 @@ this skill can find the right Selfdex root on another machine.
 4. If approval is missing, stop after the plan.
 5. If approval is explicit, keep execution inside the frozen target boundary
    and preserve hard approval gates.
-6. Choose official Codex agent roles directly:
-   - `explorer`: read-only codebase and evidence mapping.
-   - `docs_researcher`: read-only official docs or API behavior checks.
-   - `worker`: bounded implementation inside one declared write boundary.
-   - `reviewer`: read-only correctness, regression, security, and test review.
+6. Choose official Codex agent roles directly. Project-scoped Selfdex
+   subagents use `gpt-5.5` with role-specific reasoning effort:
+   - `explorer`: low, read-only codebase and evidence mapping.
+   - `docs_researcher`: medium, read-only official docs or API behavior checks.
+   - `worker`: high, bounded implementation inside one declared write boundary.
+   - `reviewer`: xhigh, read-only correctness, regression, security, and test review.
 7. Read-only subagents may run after `@selfdex` when they reduce noise, shorten
    wall-clock time, or keep main-thread context clean.
 8. Write-capable worker subagents require a frozen contract and disjoint write

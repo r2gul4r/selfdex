@@ -109,9 +109,25 @@ Run only when the user explicitly asks for it.
     (scripts / "check_commit_gate.py").write_text("# fixture\n", encoding="utf-8")
     (scripts / "check_github_actions_status.py").write_text("# fixture\n", encoding="utf-8")
     (root / ".codex" / "config.toml").write_text("[features]\nmulti_agent = true\n", encoding="utf-8")
-    for name in ("explorer", "worker", "reviewer", "docs-researcher"):
-        (codex_agents / f"{name}.toml").write_text(
-            f'name = "{name.replace("-", "_")}"\ndescription = "fixture"\ndeveloper_instructions = "fixture"\n',
+    agent_models = {
+        "explorer": ("explorer", "low"),
+        "worker": ("worker", "high"),
+        "reviewer": ("reviewer", "xhigh"),
+        "docs-researcher": ("docs_researcher", "medium"),
+    }
+    for file_name, (agent_name, effort) in agent_models.items():
+        (codex_agents / f"{file_name}.toml").write_text(
+            "\n".join(
+                [
+                    f'name = "{agent_name}"',
+                    'model = "gpt-5.5"',
+                    f'model_reasoning_effort = "{effort}"',
+                    'sandbox_mode = "read-only"',
+                    'description = "fixture"',
+                    'developer_instructions = "Implement only the frozen task slice assigned by the main agent. Stay inside the declared write boundary."',
+                    "",
+                ]
+            ),
             encoding="utf-8",
         )
 
@@ -160,6 +176,43 @@ class SelfdexPluginTests(unittest.TestCase):
         self.assertEqual(result["status"], "fail")
         finding_ids = {finding["finding_id"] for finding in result["findings"]}
         self.assertIn("marketplace-path-mismatch", finding_ids)
+
+    def test_rejects_stale_codex_agent_model(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_plugin_fixture(root)
+            explorer_path = root / ".codex" / "agents" / "explorer.toml"
+            explorer_path.write_text(
+                explorer_path.read_text(encoding="utf-8").replace('model = "gpt-5.5"', 'model = "gpt-5.4-mini"'),
+                encoding="utf-8",
+            )
+
+            result = check_selfdex_plugin.build_payload(root)
+
+        self.assertEqual(result["status"], "fail")
+        finding_ids = {finding["finding_id"] for finding in result["findings"]}
+        self.assertIn("codex-agent-policy-drift", finding_ids)
+
+    def test_rejects_missing_codex_agent_reasoning_effort(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_plugin_fixture(root)
+            reviewer_path = root / ".codex" / "agents" / "reviewer.toml"
+            reviewer_path.write_text(
+                reviewer_path.read_text(encoding="utf-8").replace('model_reasoning_effort = "xhigh"\n', ""),
+                encoding="utf-8",
+            )
+
+            result = check_selfdex_plugin.build_payload(root)
+
+        self.assertEqual(result["status"], "fail")
+        self.assertTrue(
+            any(
+                finding["finding_id"] == "codex-agent-policy-drift"
+                and "model_reasoning_effort" in finding["summary"]
+                for finding in result["findings"]
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -2,24 +2,24 @@
 
 ## Current Task
 
-- task: `review-routing-and-subagent-readiness`
+- task: `subagent-model-effort-alignment`
 - phase: `local_verified`
-- scope: `Make GPT Pro / ChatGPT Apps direction review a product-strategy review path, keep code review on Codex native reviewer subagents, wire docs_researcher into subagent planning, and make selfdex doctor validate the .codex subagent policy surface.`
-- verification_target: `focused subagent planner and setup doctor tests, full unittest discovery, plugin validation, doc drift, campaign boundary check, commit gate check, CLI/npm smoke, reviewer subagent, GitHub post-push check`
+- scope: `Verify the current official Codex subagent naming/config model, keep official role names, align all project-scoped Selfdex subagents to GPT-5.5, and make setup/plugin checks catch stale model or reasoning-effort drift.`
+- verification_target: `focused setup/plugin tests, official subagent policy validators, doc drift, campaign boundary check, diff check, reviewer subagent`
 
 ## Orchestration Profile
 
 - runtime_basis: `official_codex_native_subagents`
-- trigger_basis: `The user approved applying the split where GPT Pro / ChatGPT Apps direction review is for project direction and Codex native reviewer subagents handle code review, then explicitly requested commit and push.`
+- trigger_basis: `The user asked to re-check whether the latest Codex multi-agent/subagent update is applied, called out stale-looking subagent names, and requested all subagents use GPT-5.5 with role-specific reasoning effort.`
 - selected_rules:
   - `state_before_writes`
   - `contract_freeze_before_implementation`
   - `use_official_codex_subagents_terms`
-  - `remove_active_single_session_score_budget_language`
+  - `official_subagent_docs_checked`
   - `preserve_hard_approval_zones`
-  - `separate_product_direction_review_from_code_review`
   - `validate_codex_policy_surface_in_doctor`
-  - `commit_and_push_explicitly_requested`
+  - `align_project_scoped_agents_to_gpt_5_5`
+  - `role_specific_reasoning_effort`
   - `run_record_required`
 - selected_skills:
   - `selfdex-autopilot`
@@ -35,7 +35,7 @@
   - `Read-only explorer, reviewer, docs_researcher, CI/log analysis, and summarization lanes may be used automatically after @selfdex is invoked.`
   - `Write-capable worker lanes require a frozen contract and disjoint write boundary.`
   - `Commit, push, publish, deploy, production writes, secret access, destructive filesystem operations, and destructive Git operations still require separate explicit approval.`
-- selection_reason: `The previous policy made the GPT Pro / ChatGPT Apps direction-review path ambiguous and reviewer feedback found two valid readiness gaps: docs_researcher was not reachable from planner output, and selfdex doctor did not validate .codex subagent setup.`
+- selection_reason: `Official Codex docs confirm built-in/custom subagent roles and project-scoped .codex/agents TOML files; current Selfdex drift is model/effort policy, not role-name replacement.`
 
 ## Evaluation Plan
 
@@ -64,15 +64,11 @@
   - `Do not change package name or version in this task.`
   - `Do not change installer runtime behavior beyond documentation and validation alignment.`
 - hard_checks:
-  - `python -m unittest discover -s tests -p "test_selfdex_plugin.py"`
-  - `python -m unittest discover -s tests -p "test_campaign_budget.py"`
+  - `python -m unittest tests.test_selfdex_setup tests.test_selfdex_plugin`
   - `python scripts/check_selfdex_plugin.py --root . --format json`
   - `python scripts/check_doc_drift.py --root . --format json`
   - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`
-  - `python scripts/check_commit_gate.py --root . --commit-message "feat: adopt codex native subagents" --format json`
   - `git diff --check`
-  - `node bin/selfdex.js --help`
-  - `npm.cmd pack --dry-run --json`
 - evidence_required:
   - `changed files summary`
   - `verification command results`
@@ -81,52 +77,35 @@
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `review_routing_and_subagent_readiness`
+- write_set: `subagent_model_effort_alignment`
 - write_sets:
   - `main`:
     - `STATE.md`
     - `STATE.json`
     - `CAMPAIGN_STATE.md`
     - `CAMPAIGN_STATE.json`
-    - `.gitignore`
     - `AGENTS.md`
     - `AUTOPILOT.md`
     - `README.md`
     - `README.en.md`
     - `docs/SELFDEX_FINAL_GOAL.md`
-    - `docs/SELFDEX_HANDOFF.md`
     - `.agents/skills/selfdex-autopilot/SKILL.md`
     - `.codex/config.toml`
     - `.codex/agents/explorer.toml`
     - `.codex/agents/worker.toml`
     - `.codex/agents/reviewer.toml`
     - `.codex/agents/docs-researcher.toml`
-    - `plugins/selfdex/.codex-plugin/plugin.json`
     - `plugins/selfdex/skills/selfdex/SKILL.md`
-    - `plugins/selfdex/skills/selfdex-commit-gate/SKILL.md`
-    - `plugins/selfdex/skills/selfdex-commit-gate/agents/openai.yaml`
-    - `.agents/skills/selfdex-commit-gate/SKILL.md`
-    - `.agents/skills/selfdex-commit-gate/agents/openai.yaml`
     - `scripts/check_selfdex_plugin.py`
     - `scripts/check_selfdex_setup.py`
     - `scripts/check_campaign_budget.py`
-    - `scripts/check_commit_gate.py`
-    - `scripts/plan_next_task.py`
-    - `scripts/plan_subagent_fit.py`
-    - `scripts/plan_orchestration_fit.py`
+    - `scripts/run_target_codex.py`
     - `scripts/record_run.py`
     - `tests/test_selfdex_plugin.py`
     - `tests/test_selfdex_setup.py`
     - `tests/test_campaign_budget.py`
-    - `tests/test_commit_gate.py`
-    - `tests/test_plan_next_task.py`
-    - `tests/test_plan_subagent_fit.py`
-    - `tests/test_plan_orchestration_fit.py`
-    - `tests/test_record_run.py`
+    - `tests/test_run_target_codex.py`
     - `docs/ORCHESTRATION_DECISION_PLAN.md`
-    - `docs/GOAL_COMPARISON_AREAS.md`
-    - `docs/AREA_EVALUATION_METRICS.md`
-    - `profiles/planner.md`
     - `runs/selfdex/`
     - `ERROR_LOG.md`
 - shared_assets_owner: `main`
@@ -136,7 +115,10 @@
 - `@selfdex` is the user-facing invocation for Selfdex command-center mode.
 - Calling `@selfdex` means the user explicitly permits Selfdex to use official Codex native Subagents/MultiAgentV2 when useful.
 - Selfdex must use official Codex terms in active policy: main agent, subagent, agent thread, explorer, worker, reviewer, docs_researcher.
+- Official built-in role names `explorer` and `worker` stay unchanged; `reviewer` and `docs_researcher` stay as the documented/custom review pattern already used by Codex docs.
 - Selfdex must stop presenting `single-session`, `delegated-*`, `score_total`, and `agent_budget` as active runtime controls.
+- All project-scoped `.codex/agents/*.toml` files must use `model = "gpt-5.5"`.
+- Role-specific reasoning effort is frozen as `explorer=low`, `docs_researcher=medium`, `worker=high`, and `reviewer=xhigh`.
 - Read-only subagents can run after `@selfdex` when useful; write-capable workers still need frozen write boundaries.
 - GPT Pro / ChatGPT Apps direction review is for product direction, product fit, improvement ideas, and additional features.
 - Code diff review stays with Codex native reviewer subagents.
@@ -148,34 +130,34 @@
 
 - reviewer: `required_by_policy_surface_change`
 - reviewer_mode: `local_verification_plus_diff_review`
-- reviewer_target: `official subagent permission boundary, removed legacy topology vocabulary, plugin validator coverage`
-- reviewer_focus: `Do active docs imply uncontrolled autonomy? Do they keep explicit approvals for risky actions?`
-- reviewer_result: `Codex native reviewer subagent found no P0/P1 findings. Two P2 findings were repaired inside scope: planner recommendations now preserve docs_researcher/reviewer for guarded docs-heavy candidates, and selfdex doctor now checks worker policy content beyond the role name.`
+- reviewer_target: `official subagent model and reasoning-effort alignment, doctor/plugin validator coverage, role-name compatibility with official Codex docs`
+- reviewer_focus: `Do active docs overclaim renamed roles? Do validators catch stale GPT-5.4-mini or missing role-specific effort?`
+- reviewer_result: `Codex native reviewer subagent found no P0/P1 findings. Two P2 findings were fixed inside scope: agent policy validators now parse TOML key/value pairs instead of substring matching, and focused tests cover missing model_reasoning_effort separately from stale model values.`
 
 ## Last Update
 
-- timestamp: `2026-05-01T23:13:20+09:00`
+- timestamp: `2026-05-01T23:39:30+09:00`
 - phase: `local_verified`
-- status: `Review-routing and subagent-readiness follow-up implemented, reviewer findings repaired, verified, and recorded.`
+- status: `Subagent model and reasoning-effort alignment implemented, reviewer P2 findings repaired, verified, and recorded.`
 - verification_result:
-  - `python -m unittest discover -s tests`: `pass, 223 tests`
-  - `python -m unittest tests.test_plan_subagent_fit tests.test_plan_next_task tests.test_selfdex_setup tests.test_commit_gate`: `pass, 30 tests`
+  - `OpenAI official docs checked: Codex subagents/custom agents/config and GPT-5.5 reasoning guidance`
+  - `python -m unittest tests.test_selfdex_setup tests.test_selfdex_plugin tests.test_run_target_codex`: `pass, 24 tests after sandbox escalation`
+  - `python -m unittest discover -s tests`: `pass, 227 tests after sandbox escalation`
   - `python scripts/check_selfdex_plugin.py --root . --format json`: `pass`
-  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`: `pass`
   - `python scripts/check_doc_drift.py --root . --format json`: `pass`
-  - `python scripts/plan_next_task.py --root . --format json`: `pass`
+  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`: `pass`
+  - `git diff --check`: `pass with CRLF warnings only`
   - `node bin/selfdex.js --help`: `pass`
-  - `node bin/selfdex.js --version`: `pass`
   - `node bin/selfdex.js install --dry-run`: `pass`
   - `npm.cmd pack --dry-run --json`: `pass after sandbox escalation`
-  - `git diff --check`: `pass with CRLF warnings only`
-- run_artifact: `runs/selfdex/20260501-231320-review-routing-and-subagent-readiness.md`
+  - `reviewer subagent`: `P0/P1 none; two P2 findings fixed`
+- run_artifact: `runs/selfdex/20260501-233915-subagent-model-effort-alignment.md`
 
 ## Retrospective
 
-- task: `review-routing-and-subagent-readiness`
+- task: `subagent-model-effort-alignment`
 - evaluation_fit: `matched`
 - runtime_fit: `official_codex_native_subagents`
 - actual_agent_usage: `main implementation plus Codex native reviewer subagent.`
 - verification_outcome: `pass`
-- next_gate_adjustment: `Future @selfdex sessions should route product/app direction review through GPT Pro / ChatGPT Apps when user-approved, keep code diff review on reviewer subagents, and keep .codex policy files under setup doctor checks.`
+- next_gate_adjustment: `Doctor and plugin checks should reject any Selfdex project-scoped subagent that falls back to stale GPT-5.4-mini or loses the frozen role-specific reasoning effort.`

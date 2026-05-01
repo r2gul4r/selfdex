@@ -7,6 +7,7 @@ import argparse
 import json
 import shutil
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -36,24 +37,49 @@ CODEX_POLICY_FILES = (
     (
         "codex-agent-explorer",
         Path(".codex") / "agents" / "explorer.toml",
-        ('name = "explorer"', 'sandbox_mode = "read-only"'),
+        (),
     ),
     (
         "codex-agent-worker",
         Path(".codex") / "agents" / "worker.toml",
-        ('name = "worker"', 'model = "gpt-5.5"', "frozen task slice", "declared write boundary"),
+        ("frozen task slice", "declared write boundary"),
     ),
     (
         "codex-agent-reviewer",
         Path(".codex") / "agents" / "reviewer.toml",
-        ('name = "reviewer"', 'sandbox_mode = "read-only"'),
+        (),
     ),
     (
         "codex-agent-docs-researcher",
         Path(".codex") / "agents" / "docs-researcher.toml",
-        ('name = "docs_researcher"', 'sandbox_mode = "read-only"'),
+        (),
     ),
 )
+CODEX_AGENT_VALUES = {
+    Path(".codex") / "agents" / "explorer.toml": {
+        "name": "explorer",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "low",
+        "sandbox_mode": "read-only",
+    },
+    Path(".codex") / "agents" / "worker.toml": {
+        "name": "worker",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "high",
+    },
+    Path(".codex") / "agents" / "reviewer.toml": {
+        "name": "reviewer",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "xhigh",
+        "sandbox_mode": "read-only",
+    },
+    Path(".codex") / "agents" / "docs-researcher.toml": {
+        "name": "docs_researcher",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "medium",
+        "sandbox_mode": "read-only",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -170,6 +196,24 @@ def codex_policy_result(root: Path, check_id: str, rel_path: Path, required_snip
             str(path),
         )
     missing = [snippet for snippet in required_snippets if snippet not in text]
+    expected_values = CODEX_AGENT_VALUES.get(rel_path)
+    if expected_values:
+        try:
+            parsed = tomllib.loads(text)
+        except tomllib.TOMLDecodeError as exc:
+            return CheckResult(
+                check_id,
+                "subagent_policy",
+                "fail",
+                "high",
+                f"Project-scoped Codex subagent policy file is invalid TOML: {exc}",
+                str(path),
+            )
+        for key, expected in expected_values.items():
+            actual = parsed.get(key)
+            if actual != expected:
+                expected_text = f'"{expected}"' if isinstance(expected, str) else repr(expected)
+                missing.append(f"{key} = {expected_text} (actual: {actual!r})")
     if missing:
         return CheckResult(
             check_id,

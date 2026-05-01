@@ -116,13 +116,15 @@ Before implementation writes:
   Subagents/MultiAgentV2 when useful.
 - The main agent owns requirements, task choice, approvals, integration, final
   response, and run records.
-- `explorer` is read-only and maps code paths, evidence, contracts, risks, and
-  candidate write boundaries.
-- `docs_researcher` is read-only and checks official docs or API behavior.
-- `worker` owns one frozen write boundary and must stop if the boundary expands
-  or overlaps another write owner.
-- `reviewer` is read-only and checks correctness, regressions, security, and
-  missing tests.
+- Project-scoped Selfdex subagents all use `gpt-5.5`.
+- `explorer` uses low reasoning and maps code paths, evidence, contracts,
+  risks, and candidate write boundaries in read-only mode.
+- `docs_researcher` uses medium reasoning and checks official docs or API
+  behavior in read-only mode.
+- `worker` uses high reasoning, owns one frozen write boundary, and must stop
+  if the boundary expands or overlaps another write owner.
+- `reviewer` uses xhigh reasoning and checks correctness, regressions,
+  security, and missing tests in read-only mode.
 - Prefer subagents when noisy exploration, tests, logs, docs, implementation
   slices, or review can run independently and return concise summaries.
 - Be careful with parallel write-heavy work. Use worker subagents only when write

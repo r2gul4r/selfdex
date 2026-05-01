@@ -60,7 +60,11 @@ execution unless they become product-direction questions.
 
 ## Model Usage Rules
 
-- Fast exploration and lightweight scans: mini or medium.
+- Project-scoped Selfdex subagents all use `gpt-5.5`.
+- `explorer`: low reasoning for fast read-only scouting.
+- `docs_researcher`: medium reasoning for official docs/API checks.
+- `worker`: high reasoning for bounded implementation.
+- `reviewer`: xhigh reasoning for non-trivial implementation review.
 - Candidate evaluation and contract freeze: `gpt-5.5` high.
 - Complex architecture, risky changes, security, permissions, and broad
   refactors: `gpt-5.5` xhigh.
@@ -81,7 +85,8 @@ instructions, output contracts, and verification before increasing effort.
 - The main agent owns requirements, candidate choice, approval boundaries,
   integration, final reporting, and run records.
 - Read-only subagents may handle exploration, documentation/API checks,
-  CI/log analysis, review, and summarization.
+  CI/log analysis, review, and summarization. Their project-scoped model is
+  `gpt-5.5`, with reasoning effort tuned per role.
 - Write-capable worker subagents require a frozen contract and a disjoint write
   boundary.
 - Tightly coupled integration stays in the main agent. Selfdex should not use

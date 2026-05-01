@@ -145,10 +145,15 @@ Selfdex가 찾는 다음 작업 유형:
 Selfdex는 공식 Codex native Subagents/MultiAgentV2 기준을 쓴다:
 
 - `main agent`: 요구사항, 작업 선택, 승인 경계, 통합, 최종 보고, run record
-- `explorer`: read-only 코드베이스 탐색과 근거 수집
-- `docs_researcher`: read-only 공식 문서/API 동작 확인
-- `worker`: 고정된 write boundary 하나 안에서 구현
-- `reviewer`: read-only correctness, regression, security, missing tests 리뷰
+- `explorer`: `gpt-5.5` low, read-only 코드베이스 탐색과 근거 수집
+- `docs_researcher`: `gpt-5.5` medium, read-only 공식 문서/API 동작 확인
+- `worker`: `gpt-5.5` high, 고정된 write boundary 하나 안에서 구현
+- `reviewer`: `gpt-5.5` xhigh, read-only correctness, regression, security, missing tests 리뷰
+
+`explorer`와 `worker`는 Codex built-in agent 이름과 맞춘다. `reviewer`와
+`docs_researcher`는 Codex의 custom agent 패턴에 맞춘 프로젝트 scoped 역할이다.
+이름을 예쁘게 바꾸는 것보다 Codex가 실제로 인식하는 agent name을 안정적으로
+유지하는 쪽을 우선한다.
 
 작고 결합된 작업은 main agent가 바로 처리한다. 탐색, 문서 확인, 로그 분석, 리뷰, 분리된 구현 slice가 독립적으로 움직일 수 있으면 공식 subagents를 쓴다. 예전 로컬 제어 로직은 active runtime이 아니다.
 
@@ -179,7 +184,7 @@ ChatGPT Apps와 MCP surface는 read-only가 먼저다. 첫 app surface는 등록
 - `package.json`과 `bin/selfdex.js`는 npm-style `selfdex` CLI를 정의한다.
 - `install.ps1`은 Selfdex를 bootstrap하고 home-local 플러그인을 설치한다.
 - `plugins/selfdex/`는 `@selfdex` 호출에 쓰는 Codex 플러그인을 담고 있다.
-- `.codex/config.toml`과 `.codex/agents/*.toml`은 공식 Codex native Subagents/MultiAgentV2 역할을 정의한다.
+- `.codex/config.toml`과 `.codex/agents/*.toml`은 공식 Codex native Subagents/MultiAgentV2 역할, `gpt-5.5` 모델, 역할별 reasoning effort를 정의한다.
 - `.agents/plugins/marketplace.json`은 repo-local 플러그인 패키지를 알린다.
 - `scripts/install_selfdex_plugin.py`는 선택한 home에 플러그인을 설치한다.
 - `scripts/check_selfdex_setup.py`는 설치 후 core setup, local fallback, 권장 Codex integration 상태를 확인한다.

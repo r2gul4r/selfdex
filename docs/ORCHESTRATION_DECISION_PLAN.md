@@ -9,13 +9,17 @@ Would official Codex native subagents make this task safer, cleaner, or faster?
 
 ## Official Roles
 
-| Role | Purpose |
-| :-- | :-- |
-| `main` | Own requirements, task choice, approval boundaries, integration, final report, and run records. |
-| `explorer` | Read-only codebase scouting, evidence collection, and write-boundary recommendation. |
-| `docs_researcher` | Read-only official docs or API behavior checks. |
-| `worker` | Implementation inside one frozen and disjoint write boundary. |
-| `reviewer` | Read-only correctness, regression, security, and missing-test review. |
+| Role | Model / effort | Purpose |
+| :-- | :-- | :-- |
+| `main` | current session | Own requirements, task choice, approval boundaries, integration, final report, and run records. |
+| `explorer` | `gpt-5.5` low | Read-only codebase scouting, evidence collection, and write-boundary recommendation. |
+| `docs_researcher` | `gpt-5.5` medium | Read-only official docs or API behavior checks. |
+| `worker` | `gpt-5.5` high | Implementation inside one frozen and disjoint write boundary. |
+| `reviewer` | `gpt-5.5` xhigh | Read-only correctness, regression, security, and missing-test review. |
+
+Keep these runtime names stable. `explorer` and `worker` match Codex built-in
+agent names, and the custom `reviewer` / `docs_researcher` names follow the
+official custom-agent pattern where the `name` field is the source of truth.
 
 ## Decision Model
 

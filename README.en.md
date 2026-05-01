@@ -164,11 +164,18 @@ Selfdex uses official Codex native Subagents/MultiAgentV2 concepts:
 
 - `main agent`: requirements, task choice, approval boundaries, integration,
   final reporting, and run records
-- `explorer`: read-only codebase exploration and evidence gathering
-- `docs_researcher`: read-only official docs and API behavior checks
-- `worker`: implementation inside one frozen write boundary
-- `reviewer`: read-only correctness, regression, security, and missing-test
-  review
+- `explorer`: `gpt-5.5` low, read-only codebase exploration and evidence
+  gathering
+- `docs_researcher`: `gpt-5.5` medium, read-only official docs and API
+  behavior checks
+- `worker`: `gpt-5.5` high, implementation inside one frozen write boundary
+- `reviewer`: `gpt-5.5` xhigh, read-only correctness, regression, security,
+  and missing-test review
+
+`explorer` and `worker` match Codex built-in agent names. `reviewer` and
+`docs_researcher` are project-scoped custom roles that follow Codex custom-agent
+patterns. Selfdex keeps names stable because the `name` field is the runtime
+source of truth.
 
 Small tightly coupled work can stay in the main agent. Exploration, docs
 checks, log analysis, review, and disjoint implementation slices should use
@@ -211,7 +218,8 @@ Installed and tested surfaces:
 - `install.ps1` bootstraps Selfdex and installs the home-local plugin.
 - `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
 - `.codex/config.toml` and `.codex/agents/*.toml` define the official Codex
-  native Subagents/MultiAgentV2 roles.
+  native Subagents/MultiAgentV2 roles, `gpt-5.5` model selection, and
+  role-specific reasoning effort.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
 - `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
 - `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and

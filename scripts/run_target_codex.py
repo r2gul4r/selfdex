@@ -55,7 +55,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--candidate-index", type=int, default=1, help="1-based candidate index. Defaults to 1.")
     parser.add_argument("--limit", type=int, default=5, help="Top candidate scan limit. Defaults to 5.")
     parser.add_argument("--timestamp", help="Run artifact timestamp in YYYYMMDD-HHMMSS format.")
-    parser.add_argument("--model", default="gpt-5.4", help="Codex model for app-server thread/start.")
+    parser.add_argument("--model", default="gpt-5.5", help="Codex model for app-server thread/start.")
     parser.add_argument("--timeout-seconds", type=int, default=1800, help="Codex app-server timeout budget.")
     parser.add_argument("--execute", action="store_true", help="Actually create a branch and run Codex app-server.")
     parser.add_argument("--branch-name", help="Optional target branch name. Defaults to selfdex/<project>/<timestamp>-<slug>.")
@@ -173,7 +173,7 @@ def build_orchestration_payload(
     candidate_index: int = 1,
     limit: int = 5,
     timestamp: str | None = None,
-    model: str = "gpt-5.4",
+    model: str = "gpt-5.5",
     timeout_seconds: int = 1800,
     execute: bool = False,
     branch_name: str | None = None,

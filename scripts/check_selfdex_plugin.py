@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -64,6 +65,34 @@ REQUIRED_CODEX_AGENT_FILES = (
     ".codex/agents/reviewer.toml",
     ".codex/agents/docs-researcher.toml",
 )
+REQUIRED_CODEX_AGENT_SNIPPETS = {
+    ".codex/agents/worker.toml": ("frozen task slice", "declared write boundary"),
+}
+REQUIRED_CODEX_AGENT_VALUES = {
+    ".codex/agents/explorer.toml": {
+        "name": "explorer",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "low",
+        "sandbox_mode": "read-only",
+    },
+    ".codex/agents/worker.toml": {
+        "name": "worker",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "high",
+    },
+    ".codex/agents/reviewer.toml": {
+        "name": "reviewer",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "xhigh",
+        "sandbox_mode": "read-only",
+    },
+    ".codex/agents/docs-researcher.toml": {
+        "name": "docs_researcher",
+        "model": "gpt-5.5",
+        "model_reasoning_effort": "medium",
+        "sandbox_mode": "read-only",
+    },
+}
 LEGACY_ACTIVE_RUNTIME_PATTERNS = (
     "Use lightweight `single-session` by default",
     "lightweight `single-session`",
@@ -267,10 +296,41 @@ def validate(root: Path) -> tuple[list[Finding], dict[str, Any]]:
                 Finding("missing-selfdex-command", "high", path, "Selfdex plugin references a missing command.")
             )
     for path in REQUIRED_CODEX_AGENT_FILES:
-        if not (root / path).exists():
+        agent_path = root / path
+        if not agent_path.exists():
             findings.append(
                 Finding("missing-codex-agent-config", "high", path, "Selfdex native subagent configuration is missing.")
             )
+            continue
+        agent_text = agent_path.read_text(encoding="utf-8")
+        try:
+            parsed_agent = tomllib.loads(agent_text)
+        except tomllib.TOMLDecodeError as exc:
+            findings.append(
+                Finding("codex-agent-invalid-toml", "high", path, f"Selfdex native subagent TOML is invalid: {exc}")
+            )
+            continue
+        for key, expected in REQUIRED_CODEX_AGENT_VALUES.get(path, {}).items():
+            actual = parsed_agent.get(key)
+            if actual != expected:
+                findings.append(
+                    Finding(
+                        "codex-agent-policy-drift",
+                        "high",
+                        path,
+                        f"Selfdex native subagent configuration expected {key}={expected!r}, got {actual!r}.",
+                    )
+                )
+        for snippet in REQUIRED_CODEX_AGENT_SNIPPETS.get(path, ()):
+            if snippet not in agent_text:
+                findings.append(
+                    Finding(
+                        "codex-agent-policy-drift",
+                        "high",
+                        path,
+                        f"Selfdex native subagent configuration is missing required snippet: {snippet}",
+                    )
+                )
 
     metadata = {
         "plugin_path": PLUGIN_JSON.as_posix(),

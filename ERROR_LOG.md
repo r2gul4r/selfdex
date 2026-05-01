@@ -413,3 +413,11 @@ Append-only log for execution, tool, and verification errors.
 - summary: `Focused verification first failed on environment setup rather than implementation behavior.`
 - details: `The shell PATH had no python/py interpreter. The bundled Codex Python worked, but tempfile-created directories were not writable under this sandbox, even when TMP/TEMP pointed at repo tmp. Updated test_selfdex_setup.py to use a deterministic repo-local temporary workspace like the existing commit-gate tests, then reran the focused suite successfully.`
 - status: `resolved`
+
+## 2026-05-01T23:32:00+09:00 - subagent model alignment verification
+
+- time: `2026-05-01T23:32:00+09:00`
+- location: `focused unittest, selfdex doctor`
+- summary: `Verification exposed environment/setup state separate from the subagent config patch.`
+- details: `Focused unittest failed under the sandbox because tests/test_selfdex_plugin.py uses Python TemporaryDirectory under the Windows Temp path; the same focused suite and full unittest discovery passed after approved sandbox escalation. A direct selfdex doctor check against C:\Users\Administrator reported the home-local @selfdex plugin directory and marketplace entry as missing, while the project-scoped .codex subagent policy checks passed. No global plugin install was performed in this task.`
+- status: `resolved_for_tests_deferred_for_home_plugin_install`

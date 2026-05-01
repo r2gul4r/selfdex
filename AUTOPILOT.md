@@ -44,7 +44,11 @@ review.
 
 Model routing:
 
-- Fast exploration / lightweight scans: mini or medium.
+- Project-scoped subagents use `gpt-5.5` by default.
+- `explorer`: low reasoning for fast read-only scouting.
+- `docs_researcher`: medium reasoning for official docs/API checks.
+- `worker`: high reasoning for bounded implementation.
+- `reviewer`: xhigh reasoning for non-trivial implementation review.
 - Candidate evaluation / contract freeze: `gpt-5.5` high.
 - Complex architecture / risky changes / security / permissions / broad
   refactors: `gpt-5.5` xhigh.
@@ -65,13 +69,14 @@ official Codex native Subagents/MultiAgentV2 when useful.
 
 - The main agent owns requirements, task choice, approval boundaries,
   integration, final reporting, and run records.
-- `explorer` is read-only and maps code paths, evidence, contracts, risks, and
-  candidate write boundaries.
-- `docs_researcher` is read-only and checks official docs or API behavior.
-- `worker` owns one frozen write boundary and must stop if the boundary expands
-  or overlaps another write owner.
-- `reviewer` is read-only and checks correctness, regressions, security, and
-  missing tests.
+- `explorer` uses `gpt-5.5` low and maps code paths, evidence, contracts,
+  risks, and candidate write boundaries in read-only mode.
+- `docs_researcher` uses `gpt-5.5` medium and checks official docs or API
+  behavior in read-only mode.
+- `worker` uses `gpt-5.5` high, owns one frozen write boundary, and must stop
+  if the boundary expands or overlaps another write owner.
+- `reviewer` uses `gpt-5.5` xhigh and checks correctness, regressions,
+  security, and missing tests in read-only mode.
 
 Use subagents when noisy exploration, tests, logs, docs, implementation slices,
 or review can run independently and return concise summaries. Keep tightly
@@ -133,6 +138,9 @@ task scoring totals, or local agent budget knobs as active runtime controls.
   the user explicitly changes it.
 - `subagent_depth`: `1`, avoiding recursive delegation unless explicitly
   requested.
+- `subagent_model`: `gpt-5.5` for all project-scoped Selfdex subagents.
+- `subagent_reasoning_effort`: `explorer=low`, `docs_researcher=medium`,
+  `worker=high`, `reviewer=xhigh`.
 - `repair_attempts`: `2`.
 - `review_default`: `non_trivial_implementation_only`.
 - `direction_review_default`: `recommend_and_wait_for_user_approval`.

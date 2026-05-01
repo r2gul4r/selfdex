@@ -60,12 +60,24 @@ def write_codex_policy(root: Path) -> None:
         ),
         encoding="utf-8",
     )
-    (agents / "explorer.toml").write_text('name = "explorer"\nsandbox_mode = "read-only"\n', encoding="utf-8")
+    (agents / "explorer.toml").write_text(
+        "\n".join(
+            [
+                'name = "explorer"',
+                'model = "gpt-5.5"',
+                'model_reasoning_effort = "low"',
+                'sandbox_mode = "read-only"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
     (agents / "worker.toml").write_text(
         "\n".join(
             [
                 'name = "worker"',
                 'model = "gpt-5.5"',
+                'model_reasoning_effort = "high"',
                 'developer_instructions = """',
                 "Implement only the frozen task slice assigned by the main agent.",
                 "Stay inside the declared write boundary.",
@@ -75,9 +87,28 @@ def write_codex_policy(root: Path) -> None:
         ),
         encoding="utf-8",
     )
-    (agents / "reviewer.toml").write_text('name = "reviewer"\nsandbox_mode = "read-only"\n', encoding="utf-8")
+    (agents / "reviewer.toml").write_text(
+        "\n".join(
+            [
+                'name = "reviewer"',
+                'model = "gpt-5.5"',
+                'model_reasoning_effort = "xhigh"',
+                'sandbox_mode = "read-only"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
     (agents / "docs-researcher.toml").write_text(
-        'name = "docs_researcher"\nsandbox_mode = "read-only"\n',
+        "\n".join(
+            [
+                'name = "docs_researcher"',
+                'model = "gpt-5.5"',
+                'model_reasoning_effort = "medium"',
+                'sandbox_mode = "read-only"',
+                "",
+            ]
+        ),
         encoding="utf-8",
     )
 
@@ -178,6 +209,55 @@ class SelfdexSetupTests(unittest.TestCase):
             check_ids = {check["check_id"]: check for check in payload["checks"]}
             self.assertEqual(check_ids["codex-agent-worker"]["status"], "fail")
             self.assertIn("stale", check_ids["codex-agent-worker"]["summary"])
+
+    def test_blocks_when_readonly_agent_model_or_effort_is_stale(self) -> None:
+        with temporary_pair() as (root, home):
+            write_root(root)
+            write_codex_policy(root)
+            write_installed_plugin(home, root)
+            (root / ".codex" / "agents" / "explorer.toml").write_text(
+                "\n".join(
+                    [
+                        'name = "explorer"',
+                        'model = "gpt-5.4-mini"',
+                        'model_reasoning_effort = "low"',
+                        'sandbox_mode = "read-only"',
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
+
+            self.assertEqual(payload["status"], "fail")
+            check_ids = {check["check_id"]: check for check in payload["checks"]}
+            self.assertEqual(check_ids["codex-agent-explorer"]["status"], "fail")
+            self.assertIn('model = "gpt-5.5"', check_ids["codex-agent-explorer"]["summary"])
+
+    def test_blocks_when_readonly_agent_reasoning_effort_is_missing(self) -> None:
+        with temporary_pair() as (root, home):
+            write_root(root)
+            write_codex_policy(root)
+            write_installed_plugin(home, root)
+            (root / ".codex" / "agents" / "reviewer.toml").write_text(
+                "\n".join(
+                    [
+                        'name = "reviewer"',
+                        'model = "gpt-5.5"',
+                        'sandbox_mode = "read-only"',
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
+
+            self.assertEqual(payload["status"], "fail")
+            check_ids = {check["check_id"]: check for check in payload["checks"]}
+            self.assertEqual(check_ids["codex-agent-reviewer"]["status"], "fail")
+            self.assertIn("model_reasoning_effort", check_ids["codex-agent-reviewer"]["summary"])
 
 
 if __name__ == "__main__":
