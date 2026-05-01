@@ -22,6 +22,7 @@ PLUGIN_NAME = "selfdex"
 PLUGIN_REL = Path("plugins") / PLUGIN_NAME
 PLUGIN_JSON_REL = PLUGIN_REL / ".codex-plugin" / "plugin.json"
 SKILL_REL = PLUGIN_REL / "skills" / PLUGIN_NAME / "SKILL.md"
+GLOBAL_SKILL_REL = Path("skills") / PLUGIN_NAME
 MARKETPLACE_REL = Path(".agents") / "plugins" / "marketplace.json"
 ROOT_CONFIG_NAME = "selfdex-root.json"
 
@@ -231,6 +232,18 @@ def copy_plugin_files(source_plugin: Path, target_plugin: Path, *, selfdex_root:
     return count + 1
 
 
+def copy_skill_files(source_skill: Path, target_skill: Path, *, selfdex_root: Path) -> int:
+    count = 0
+    for source_file in sorted(path for path in source_skill.rglob("*") if path.is_file()):
+        rel_path = source_file.relative_to(source_skill)
+        target_file = target_skill / rel_path
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_file, target_file)
+        count += 1
+    append_installed_checkout(target_skill / "SKILL.md", selfdex_root)
+    return count
+
+
 def append_installed_checkout(skill_path: Path, selfdex_root: Path) -> None:
     text = skill_path.read_text(encoding="utf-8")
     marker = "## Installed Checkout"
@@ -251,7 +264,9 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
     root = root.resolve()
     home = home.expanduser().resolve()
     source_plugin = root / PLUGIN_REL
+    source_skill = root / PLUGIN_REL / "skills" / PLUGIN_NAME
     target_plugin = home / "plugins" / PLUGIN_NAME
+    target_skill = home / GLOBAL_SKILL_REL
     marketplace_path = home / MARKETPLACE_REL
     effective_dry_run = dry_run or not yes
 
@@ -275,6 +290,15 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
                 "high",
                 str(target_plugin),
                     "Selfdex plugin directory already exists; rerun with --force to update it.",
+            )
+        )
+    if target_skill.exists() and not force:
+        findings.append(
+            Finding(
+                "existing-skill-directory",
+                "high",
+                str(target_skill),
+                "Selfdex skill directory already exists; rerun with --force to replace it.",
             )
         )
 
@@ -304,6 +328,14 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
     )
     operations.append(
         {
+            "action": "copy_global_skill",
+            "source": str(source_skill),
+            "target": str(target_skill),
+            "status": "planned" if effective_dry_run and not findings else "blocked" if findings else "ready",
+        }
+    )
+    operations.append(
+        {
             "action": "update_marketplace",
             "target": str(marketplace_path),
             "status": marketplace_status if not findings else "blocked",
@@ -314,6 +346,7 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
     if not findings and not effective_dry_run:
         target_plugin.mkdir(parents=True, exist_ok=True)
         files_copied = copy_plugin_files(source_plugin, target_plugin, selfdex_root=root)
+        files_copied += copy_skill_files(source_skill, target_skill, selfdex_root=root)
         write_json(marketplace_path, marketplace)
         for operation in operations:
             if operation["status"] in {"ready", marketplace_status}:
@@ -329,7 +362,9 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
         "root": str(root),
         "home": str(home),
         "source_plugin": str(source_plugin),
+        "source_skill": str(source_skill),
         "target_plugin": str(target_plugin),
+        "target_skill": str(target_skill),
         "marketplace_path": str(marketplace_path),
         "marketplace_source_path": source_path,
         "operation_count": len(operations),
@@ -351,6 +386,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- dry_run: `{payload['dry_run']}`",
         f"- writes_enabled: `{payload['writes_enabled']}`",
         f"- target_plugin: `{payload['target_plugin']}`",
+        f"- target_skill: `{payload['target_skill']}`",
         f"- marketplace_path: `{payload['marketplace_path']}`",
         "",
         "## Operations",

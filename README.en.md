@@ -32,9 +32,9 @@ npx selfdex install
 ```
 
 The install path clones or updates Selfdex, installs the `@selfdex` Codex
-plugin into the Codex discovery home (`CODEX_HOME` or `$HOME/.codex`), then
-runs `selfdex doctor` automatically. Core Selfdex setup is completed by the
-installer; account-bound integrations such as GitHub or
+plugin package and global `selfdex` skill into the Codex discovery home
+(`CODEX_HOME` or `$HOME/.codex`), then runs `selfdex doctor` automatically.
+Core Selfdex setup is completed by the installer; account-bound integrations such as GitHub or
 ChatGPT Apps are reported as recommended user actions when they are not already
 available.
 
@@ -76,8 +76,9 @@ selfdex doctor
 ```
 
 `selfdex doctor` checks that the plugin home matches the Codex discovery home,
-then checks the project-scoped Codex subagent policy files: `.codex/config.toml`
-and `.codex/agents/*.toml`.
+that the global `selfdex` skill is installed for `@selfdex` mentions, then
+checks the project-scoped Codex subagent policy files: `.codex/config.toml` and
+`.codex/agents/*.toml`.
 
 Requirements for the bootstrap path:
 
@@ -225,8 +226,9 @@ Installed and tested surfaces:
   role-specific reasoning effort.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
   After install, the same structure is created under the Codex plugin home.
-- `scripts/install_selfdex_plugin.py` installs the plugin into a selected plugin
-  home. The default is `CODEX_HOME` or `$HOME/.codex`.
+- `scripts/install_selfdex_plugin.py` installs the plugin package and global
+  skill into a selected plugin home. The default is `CODEX_HOME` or
+  `$HOME/.codex`.
 - `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
   recommended Codex integrations after install.
 - `scripts/check_commit_gate.py` checks whether reviewed and verified work is

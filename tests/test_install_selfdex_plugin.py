@@ -104,9 +104,11 @@ class InstallSelfdexPluginTests(unittest.TestCase):
             payload = install_selfdex_plugin.build_payload(checkout, home, yes=True)
 
             target_plugin = home / "plugins" / "selfdex"
+            target_skill = home / "skills" / "selfdex"
             marketplace_path = home / ".agents" / "plugins" / "marketplace.json"
             root_config = json.loads((target_plugin / "selfdex-root.json").read_text(encoding="utf-8"))
             skill_text = (target_plugin / "skills" / "selfdex" / "SKILL.md").read_text(encoding="utf-8")
+            global_skill_text = (target_skill / "SKILL.md").read_text(encoding="utf-8")
             marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
 
             self.assertEqual(payload["status"], "pass")
@@ -114,6 +116,8 @@ class InstallSelfdexPluginTests(unittest.TestCase):
             self.assertEqual(root_config["selfdex_root"], str(checkout.resolve()))
             self.assertIn("## Installed Checkout", skill_text)
             self.assertIn(str(checkout.resolve()), skill_text)
+            self.assertIn("## Installed Checkout", global_skill_text)
+            self.assertIn(str(checkout.resolve()), global_skill_text)
             self.assertEqual(marketplace["plugins"][0]["source"]["path"], "./plugins/selfdex")
             self.assertEqual(marketplace["plugins"][0]["policy"]["authentication"], "ON_INSTALL")
 
@@ -132,6 +136,22 @@ class InstallSelfdexPluginTests(unittest.TestCase):
             finding_ids = {finding["finding_id"] for finding in payload["findings"]}
             self.assertIn("existing-plugin-directory", finding_ids)
             self.assertEqual((existing / "marker.txt").read_text(encoding="utf-8"), "keep\n")
+
+    def test_refuses_existing_global_skill_without_force(self) -> None:
+        with tempfile.TemporaryDirectory() as checkout_dir, tempfile.TemporaryDirectory() as home_dir:
+            checkout = Path(checkout_dir)
+            home = Path(home_dir)
+            write_checkout(checkout)
+            existing = home / "skills" / "selfdex"
+            existing.mkdir(parents=True)
+            (existing / "SKILL.md").write_text("keep\n", encoding="utf-8")
+
+            payload = install_selfdex_plugin.build_payload(checkout, home, yes=True)
+
+            self.assertEqual(payload["status"], "fail")
+            finding_ids = {finding["finding_id"] for finding in payload["findings"]}
+            self.assertIn("existing-skill-directory", finding_ids)
+            self.assertEqual((existing / "SKILL.md").read_text(encoding="utf-8"), "keep\n")
 
     def test_force_preserves_other_marketplace_entries(self) -> None:
         with tempfile.TemporaryDirectory() as checkout_dir, tempfile.TemporaryDirectory() as home_dir:

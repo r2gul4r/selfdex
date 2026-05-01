@@ -138,10 +138,11 @@ none
 - Separate GPT Pro / ChatGPT Apps product direction review from Codex reviewer subagent code review and harden subagent readiness checks.
 - Align project-scoped Codex subagents to `gpt-5.5` with role-specific reasoning effort and TOML-based validator checks.
 - Fix the installer and doctor so the `@selfdex` plugin installs into the Codex discovery home by default.
+- Install a global Selfdex skill so `@selfdex` appears through the Codex skill mention surface.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260502-012900-codex-home-plugin-install-fix.md`
-- summary: `The installer and doctor now target the Codex discovery home by default, and the local @selfdex plugin was repaired under C:\Users\Administrator\.codex.`
+- artifact_path: `runs/selfdex/20260502-014200-selfdex-skill-mention-install-fix.md`
+- summary: `The installer now installs a global Selfdex skill under the Codex discovery home so @selfdex can appear through the skill mention surface.`

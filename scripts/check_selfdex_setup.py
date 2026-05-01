@@ -248,6 +248,7 @@ def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> 
     home = home.expanduser().resolve()
     resolved_codex_home = codex_home.resolve() if codex_home is not None else codex_home_from(home)
     target_plugin = home / "plugins" / PLUGIN_NAME
+    target_skill = home / "skills" / PLUGIN_NAME / "SKILL.md"
     marketplace_path = home / ".agents" / "plugins" / "marketplace.json"
     root_config_path = target_plugin / ROOT_CONFIG_NAME
 
@@ -298,6 +299,18 @@ def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> 
             if marketplace_has_selfdex(marketplace_path)
             else "Codex plugin home marketplace is missing the selfdex plugin entry.",
             str(marketplace_path),
+        )
+    )
+    checks.append(
+        CheckResult(
+            "selfdex-global-skill",
+            "core",
+            "pass" if target_skill.exists() else "fail",
+            "info" if target_skill.exists() else "high",
+            "Codex global skill @selfdex entry is installed."
+            if target_skill.exists()
+            else "Codex global skill @selfdex entry is missing; @ mention may fall back to file search.",
+            str(target_skill),
         )
     )
 

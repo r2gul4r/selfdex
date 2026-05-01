@@ -97,7 +97,7 @@
   "latest_run": {
     "status": "local_verified",
     "project_key": "selfdex",
-    "artifact_path": "runs/selfdex/20260502-012900-codex-home-plugin-install-fix.md",
-    "summary": "The installer and doctor now target the Codex discovery home by default, and the local @selfdex plugin was repaired under C:\\Users\\Administrator\\.codex."
+    "artifact_path": "runs/selfdex/20260502-014200-selfdex-skill-mention-install-fix.md",
+    "summary": "The installer now installs a global Selfdex skill under the Codex discovery home so @selfdex can appear through the skill mention surface."
   }
 }

@@ -115,12 +115,15 @@ def write_codex_policy(root: Path) -> None:
 
 def write_installed_plugin(home: Path, root: Path) -> None:
     plugin = home / "plugins" / "selfdex"
+    global_skill = home / "skills" / "selfdex"
     skill = plugin / "skills" / "selfdex"
     manifest = plugin / ".codex-plugin"
+    global_skill.mkdir(parents=True)
     skill.mkdir(parents=True)
     manifest.mkdir(parents=True)
     (manifest / "plugin.json").write_text('{"name": "selfdex"}\n', encoding="utf-8")
     (skill / "SKILL.md").write_text("# Selfdex\n", encoding="utf-8")
+    (global_skill / "SKILL.md").write_text("# Selfdex\n", encoding="utf-8")
     (plugin / "selfdex-root.json").write_text(
         json.dumps({"schema_version": 1, "selfdex_root": str(root.resolve())}),
         encoding="utf-8",
@@ -164,6 +167,7 @@ class SelfdexSetupTests(unittest.TestCase):
             self.assertEqual(payload["readiness"], "ready_with_recommended_actions")
             check_ids = {check["check_id"]: check for check in payload["checks"]}
             self.assertEqual(check_ids["selfdex-plugin-directory"]["status"], "pass")
+            self.assertEqual(check_ids["selfdex-global-skill"]["status"], "pass")
             self.assertEqual(check_ids["github-actions-fallback"]["status"], "pass")
             self.assertEqual(check_ids["gmail-not-required"]["status"], "pass")
             self.assertEqual(check_ids["github-plugin"]["status"], "manual_action")
@@ -191,6 +195,19 @@ class SelfdexSetupTests(unittest.TestCase):
             self.assertEqual(payload["status"], "fail")
             self.assertEqual(payload["readiness"], "blocked")
             self.assertGreater(payload["high_failure_count"], 0)
+
+    def test_blocks_when_global_selfdex_skill_is_missing(self) -> None:
+        with temporary_pair() as (root, home):
+            write_root(root)
+            write_codex_policy(root)
+            write_installed_plugin(home, root)
+            shutil.rmtree(home / "skills" / "selfdex")
+
+            payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
+
+            self.assertEqual(payload["status"], "fail")
+            check_ids = {check["check_id"]: check for check in payload["checks"]}
+            self.assertEqual(check_ids["selfdex-global-skill"]["status"], "fail")
 
     def test_blocks_when_codex_policy_surface_is_missing(self) -> None:
         with temporary_pair() as (root, home):
