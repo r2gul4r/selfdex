@@ -11,15 +11,25 @@ description: Use when working in the Selfdex repository or from a Selfdex-genera
 - Keep the loop bounded: classify, freeze, implement, verify, repair inside the frozen scope, record.
 - Cross-project analysis starts read-only. Cross-project writes need explicit user approval and an isolated target-project write boundary.
 - Never weaken hard approval gates for destructive operations, secrets, paid APIs, deploys, database writes, production writes, global config, or installers.
+- Treat GPT-5.5 prompt guidance as the operating discipline: clear roles, tool boundaries, success criteria, stop conditions, verification, and compact evidence before higher effort.
+- Do not treat `codex_multiagent` as the active baseline. Historical records may be reference evidence only.
+
+## Runtime Lanes
+
+- Use lightweight `single-session` for small documentation, test, local policy, and narrow implementation work.
+- Use frozen-contract `single-session` for non-trivial but tightly coupled work.
+- Use Codex native Subagents/MultiAgentV2 only when explorer, worker, or reviewer lanes have disjoint write ownership or read-only scope and independent verification value.
+- Do not call GPT Pro extended mode automatically. Product direction review requires the user to ask for it or explicitly approve it.
 
 ## Execution Flow
 
 1. Restate the current task and compare it with `STATE.md`.
 2. Record score, hard triggers, selected rules, selected skills, topology, budget, write sets, and verification target before implementation files change.
 3. Freeze expected outcome, success criteria, non-goals, stop conditions, allowed side effects, and final evidence shape.
-4. Use repo tools first. Prefer existing scripts and tests over ad hoc checks.
-5. Verify with the focused command first, then the broader repository checks that match the frozen contract.
-6. Record run evidence under `runs/` for non-trivial work and update `CAMPAIGN_STATE.md` when the campaign queue or latest run changes.
+4. Prefer the lightest safe lane; high score alone does not justify subagents.
+5. Use repo tools first. Prefer existing scripts and tests over ad hoc checks.
+6. Verify with the focused command first, then the broader repository checks that match the frozen contract.
+7. Record run evidence under `runs/` for non-trivial work and update `CAMPAIGN_STATE.md` when the campaign queue or latest run changes.
 
 ## Skill Routing
 
@@ -27,6 +37,7 @@ description: Use when working in the Selfdex repository or from a Selfdex-genera
 - Keep selected skills in `STATE.md` so later sessions can audit why they were used.
 - For OpenAI model, prompt, or API migration work, use `openai-docs` first and prefer official OpenAI docs.
 - Do not install skills, plugins, or MCP servers, and do not edit global Codex config, unless the user explicitly approves that setup work.
+- Use Subagents only as a Codex-native execution backend when the frozen contract proves separable work; do not route through legacy multi-agent kit assumptions.
 
 ## Prompt Shape
 

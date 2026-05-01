@@ -43,7 +43,12 @@
     "complex_or_risky_model": "gpt-5.5-xhigh",
     "routine_implementation_model": "medium-or-high",
     "final_code_review_model": "gpt-5.5-xhigh",
-    "product_direction_model": "GPT-Pro-extended-user-approved-only"
+    "product_direction_model": "GPT-Pro-extended-user-approved-only",
+    "prompt_guidance_role": "operating principle for roles, tool boundaries, success criteria, stop conditions, verification, and compact evidence",
+    "prompt_guidance_auto_call": false,
+    "lightweight_default_lane": "single-session",
+    "subagent_backend": "Codex native Subagents/MultiAgentV2 optional when explorer, worker, or reviewer lanes split cleanly",
+    "legacy_multiagent_baseline": false
   },
   "first_app_surface": {
     "surface_kind": "read_only",
@@ -66,9 +71,9 @@
   "current_locks": [],
   "candidate_queue": [],
   "latest_run": {
-    "status": "completed",
+    "status": "local_verified",
     "project_key": "selfdex",
-    "artifact_path": "runs/selfdex/20260501-174208-gpt-direction-readme-finalization.md",
-    "summary": "GPT-5.5 xhigh review accepted the direction; README was rewritten around install and first use, verification completed, commit/push pending."
+    "artifact_path": "runs/selfdex/20260501-195550-github-actions-ci-fix-and-status-routine.md",
+    "summary": "GitHub Actions failure root cause was fixed locally and a GitHub-only post-push status checker was added; new remote check is pending until the fix commit is pushed."
   }
 }

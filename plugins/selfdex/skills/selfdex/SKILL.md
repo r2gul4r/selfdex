@@ -8,6 +8,12 @@ description: Use when the user invokes @selfdex or asks Selfdex to read the curr
 Use this skill from a target project session. Treat the current working directory
 as the user-selected target project unless the user names another path.
 
+Selfdex is a GPT-5.5 prompt-guided command center, not a legacy multi-agent kit.
+Use clear task contracts, write boundaries, stop conditions, and verification
+commands as the default control surface. Codex native Subagents/MultiAgentV2 are
+optional only when read-only exploration, implementation, or review can be split
+cleanly and verified independently.
+
 ## Locate Selfdex
 
 Find the Selfdex command-center repository in this order:
@@ -37,6 +43,10 @@ this skill can find the right Selfdex root on another machine.
 5. If approval is explicit, keep execution inside the frozen target boundary
    and preserve hard approval gates.
 
+Use lightweight `single-session` by default. Recommend Subagents only when a
+specific explorer, worker, or reviewer lane would reduce risk or wall-clock time
+more than the handoff cost.
+
 Use this read-only planning command shape:
 
 ```powershell
@@ -65,6 +75,8 @@ with `--execute` until the user explicitly approves target-project writes.
   the user explicitly approves that setup step.
 - If the task becomes product direction or milestone strategy, recommend GPT
   Pro extended direction review and wait for the user's approval.
+- Do not call GPT Pro extended mode automatically. GPT-5.5 prompt guidance is an
+  operating principle for clear instructions, not a standing model invocation.
 
 ## Output
 

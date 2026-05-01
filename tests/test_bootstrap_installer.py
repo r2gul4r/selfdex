@@ -1,12 +1,25 @@
 from __future__ import annotations
 
 import subprocess
+import shutil
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "install.ps1"
+
+
+def powershell_executable() -> str | None:
+    return shutil.which("pwsh") or shutil.which("powershell")
+
+
+def powershell_command_args(executable: str, *args: str) -> list[str]:
+    command = [executable, "-NoProfile"]
+    if Path(executable).name.lower().startswith("powershell"):
+        command.extend(["-ExecutionPolicy", "Bypass"])
+    command.extend(args)
+    return command
 
 
 class BootstrapInstallerTests(unittest.TestCase):
@@ -25,6 +38,10 @@ class BootstrapInstallerTests(unittest.TestCase):
         self.assertNotIn("Remove-Item", text)
 
     def test_bootstrap_script_parses_as_powershell(self) -> None:
+        executable = powershell_executable()
+        if executable is None:
+            self.skipTest("PowerShell runtime is not available")
+
         command = (
             "$errors = $null; "
             "[System.Management.Automation.Language.Parser]::ParseFile("
@@ -33,7 +50,7 @@ class BootstrapInstallerTests(unittest.TestCase):
         )
 
         result = subprocess.run(
-            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+            powershell_command_args(executable, "-Command", command),
             cwd=ROOT,
             capture_output=True,
             text=True,
@@ -43,19 +60,20 @@ class BootstrapInstallerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_bootstrap_dry_run_does_not_clone_or_install(self) -> None:
+        executable = powershell_executable()
+        if executable is None:
+            self.skipTest("PowerShell runtime is not available")
+
         install_root = "C:/tmp/selfdex-bootstrap-dry-run"
         result = subprocess.run(
-            [
-                "powershell",
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
+            powershell_command_args(
+                executable,
                 "-File",
                 str(INSTALLER),
                 "-DryRun",
                 "-InstallRoot",
                 install_root,
-            ],
+            ),
             cwd=ROOT,
             capture_output=True,
             text=True,

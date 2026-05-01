@@ -22,19 +22,9 @@
       ]
     },
     {
-      "project_id": "codex_multiagent",
-      "path": "../codex_multiagent",
-      "role": "multi-agent policy kit validation target",
-      "write_policy": "read-only",
-      "verification": [
-        "read-only candidate generation",
-        "human rubric scoring"
-      ]
-    },
-    {
-      "project_id": "fs",
-      "path": "../fs",
-      "role": "small static project validation target",
+      "project_id": "apex_analist",
+      "path": "../apex_analist",
+      "role": "analytics frontend validation target",
       "write_policy": "read-only",
       "verification": [
         "read-only candidate generation",

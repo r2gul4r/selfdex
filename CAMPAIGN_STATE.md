@@ -31,6 +31,11 @@
 - routine_implementation_model: `medium-or-high`
 - final_code_review_model: `gpt-5.5-xhigh`
 - product_direction_model: `GPT-Pro-extended-user-approved-only`
+- prompt_guidance_role: `operating principle for roles, tool boundaries, success criteria, stop conditions, verification, and compact evidence`
+- prompt_guidance_auto_call: `False`
+- lightweight_default_lane: `single-session`
+- subagent_backend: `Codex native Subagents/MultiAgentV2 optional when explorer, worker, or reviewer lanes split cleanly`
+- legacy_multiagent_baseline: `False`
 
 ## First App Surface
 
@@ -105,10 +110,12 @@ none
 - Add a one-command installer for home-local `@selfdex` plugin setup from a cloned checkout.
 - Add a true one-line PowerShell bootstrap installer that clones or updates Selfdex and installs the `@selfdex` plugin.
 - Add an npm-compatible CLI so the post-publish command can be `npx selfdex install`.
+- Reposition Selfdex runtime policy around GPT-5.5 prompt guidance, lightweight default execution, and optional Codex native Subagents.
+- Fix GitHub Actions bootstrap installer test portability and add a GitHub-only post-push status check routine.
 
 ## Latest Run
 
-- status: `completed`
+- status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260501-174208-gpt-direction-readme-finalization.md`
-- summary: `GPT-5.5 xhigh review accepted the direction; README was rewritten around install and first use, verification completed, commit/push pending.`
+- artifact_path: `runs/selfdex/20260501-195550-github-actions-ci-fix-and-status-routine.md`
+- summary: `GitHub Actions failure root cause was fixed locally and a GitHub-only post-push status checker was added; new remote check is pending until the fix commit is pushed.`

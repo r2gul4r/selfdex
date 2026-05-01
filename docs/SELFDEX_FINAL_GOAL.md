@@ -18,6 +18,11 @@ read-only, and turn repository signals into concrete, reviewable work without
 losing safety, traceability, or user control. It is not yet proven as a general
 autonomous engineer; that claim requires external read-only validation.
 
+Selfdex is not a repackaged multi-agent kit. It uses GPT-5.5 prompt guidance as
+the operating discipline for clear roles, tool boundaries, success criteria,
+stop conditions, verification, and compact evidence. Codex native Subagents are
+an optional backend for separable work, not the default engine.
+
 The intended end state is active, supervised development. Given a target
 project, Selfdex should infer the project's direction, suggest better next
 moves even when the user did not name them, rank small useful tasks, freeze one
@@ -60,6 +65,23 @@ execution unless they become product-direction questions.
 - Product direction, milestone, and strategic priority: GPT / Pro extended
   mode only when the user approves or calls it.
 
+These rules describe routing discipline. They do not authorize automatic GPT
+Pro extended calls. For routine work, first improve prompt shape, tool
+instructions, output contracts, and verification before increasing effort.
+
+## Runtime Model
+
+- Default lane: lightweight `single-session` for small documentation, test,
+  local policy, or narrow implementation tasks.
+- Bounded lane: `single-session` with frozen state contract for non-trivial but
+  tightly coupled implementation.
+- Optional backend: Codex native Subagents/MultiAgentV2 when read-only
+  exploration, implementation, or review can be split cleanly and verified
+  independently.
+- No legacy baseline: historical `codex_multiagent` validation artifacts may be
+  cited as reference evidence, but `codex_multiagent` is not the active Selfdex
+  baseline or proof set.
+
 ## Operating Contract
 
 - Selfdex is user-invoked, not a background daemon.
@@ -69,8 +91,9 @@ execution unless they become product-direction questions.
 - Destructive commands, secrets, paid APIs, deploys, database writes, and
   production changes remain hard approval zones.
 - Subagents are an orchestration decision-support tool, not a goal. Use them
-  only when host support, task authority, write sets, discovery lanes, or
-  reviewer checks make delegation safer or faster than local work.
+  only when host support, task authority, write sets, discovery lanes, reviewer
+  checks, and verification independence make delegation safer or faster than
+  local work.
 - Machine-readable safety contracts live in `STATE.json` and
   `CAMPAIGN_STATE.json`; `STATE.md` and `CAMPAIGN_STATE.md` remain
   human-readable mirrors for review.
@@ -131,8 +154,10 @@ without writing to them.
 
 - Add `PROJECT_REGISTRY.md` or a machine-readable equivalent.
 - Record project path, role, verification commands, and write policy.
-- Register 2-3 external repositories read-only before any cross-project write
-  work is considered.
+- Maintain active external validation targets read-only before any cross-project
+  write work is considered. The current active set excludes legacy
+  `codex_multiagent` evidence and uses the remaining registered targets as the
+  live proof set.
 - Produce top candidates for each external project with source project and
   evidence.
 - Manually score those candidates with `docs/CANDIDATE_QUALITY_RUBRIC.md` for
@@ -216,8 +241,9 @@ Goal: support honest orchestration decisions and host-supported delegation when
 they genuinely reduce risk or time.
 
 - Decide topology from write-set separability and verification independence.
-- Support explorer-first, worker, and reviewer lane recommendations, and execute
-  them only when the host Codex environment and task authority allow it.
+- Support explorer-first, worker, and reviewer lane recommendations through
+  Codex native Subagents, and execute them only when the host environment, task
+  authority, ownership, and verification split allow it.
 - Keep one owner per write set.
 - Record spawn decision, budget, and outcome.
 - Avoid delegation when the next step is a single blocking discovery result.
@@ -230,6 +256,8 @@ task.
 - Consume completed campaign queue items.
 - Write run records automatically.
 - Run bounded repair when verification fails.
+- After approved commit/push steps, read GitHub Actions status directly instead
+  of routing CI feedback through Gmail.
 - Update `CAMPAIGN_STATE.md` with result and next candidate.
 - Keep improvements small enough to review and revert.
 - Keep multi-project evidence separated by project key under `runs/`.

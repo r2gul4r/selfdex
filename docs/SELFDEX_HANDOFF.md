@@ -5,15 +5,18 @@ machine or another Codex session.
 
 ## Goal
 
-Selfdex is an aggressive but bounded recursive improvement harness. The target
-loop is:
+Selfdex is a GPT-5.5 prompt-guided command center for approved Codex work on a
+user-selected project. The target loop is:
 
 ```text
 register projects -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
 ```
 
-`codex_multiagent` remains the conservative safety baseline. Selfdex is the
-fast-moving autopilot layer.
+The old `codex_multiagent` project is legacy/reference evidence only. It is no
+longer the active Selfdex baseline or registry proof target. Current runtime
+positioning is lightweight `single-session` by default, with Codex native
+Subagents used only when work splits into independently useful explorer,
+worker, or reviewer lanes.
 
 ## Operating Rules
 
@@ -24,9 +27,13 @@ fast-moving autopilot layer.
   installer/global Codex config edits, secret/token reads, deploys, paid API
   calls, DB writes, and production mutations remain gated.
 - Non-trivial work updates `STATE.md` before implementation writes.
-- Completed work is committed before moving to the next task.
-- Do not edit `codex_multiagent`, global config, installers, secrets, deploys,
+- Completed work is committed before moving to the next task when the user asks
+  for commit/push.
+- Do not edit external projects, global config, installers, secrets, deploys,
   paid APIs, or databases unless explicitly requested.
+- GPT-5.5 prompt guidance is an operating principle, not permission to call GPT
+  Pro extended mode automatically. Product direction review still waits for
+  explicit user approval or user request.
 
 ## Recent Pushed Commits
 
@@ -40,15 +47,14 @@ fast-moving autopilot layer.
 
 ## Current State
 
-- Working tree should be clean after `f273535`.
-- Latest completed task split file metric models and line-analysis helpers out
-  of `scripts/collect_repo_metrics.py` into `scripts/repo_metrics_utils.py`.
-- The reviewer sidecar found an import-boundary risk; it was fixed with
-  package-aware imports and direct/module CLI tests.
-- The planner's next selected candidate is:
-  `scripts/extract_refactor_candidates.py 책임 분리와 경계 정리`.
-- Recommended topology for that next task is currently `autopilot-mixed` with
-  sidecar exploration/review after the contract is frozen.
+- Selfdex has a repo-local plugin path for future `@selfdex` invocation.
+- The intended public installer remains `npx selfdex install` after npm
+  publication.
+- npm publication is blocked until the runtime-positioning refactor is verified
+  and recorded.
+- Active external validation targets are recorded in `PROJECT_REGISTRY.md`.
+  Historical `codex_multiagent` artifacts under `runs/external-validation/`
+  should not be deleted.
 
 ## Verification Baseline
 
@@ -60,15 +66,20 @@ python -m unittest discover -s tests
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json
+$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_github_actions_status.py --root . --format json
 git diff --check
 ```
 
 When files are changed, run `scripts/check_campaign_budget.py` with each changed
 path listed explicitly by repeated `--changed-path` arguments.
 
+Use GitHub Actions as the post-push feedback path. Do not read Gmail just to
+detect CI failures.
+
 ## Subagent Lesson
 
-Use subagents when write ownership is disjoint or when a read-only reviewer can
-inspect an already-formed patch. For tightly coupled extraction work, main
-should usually implement the first narrow slice, then spawn a reviewer to check
-schema, import, and verification gaps.
+Use Codex native Subagents when write ownership is disjoint, read-only
+exploration can run beside local work, or a reviewer can inspect an
+already-formed non-trivial patch. For small, routine, or tightly coupled work,
+stay in lightweight `single-session`; handoff cost is usually higher than the
+parallel gain.

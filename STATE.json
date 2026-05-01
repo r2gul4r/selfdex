@@ -2,49 +2,49 @@
   "schema_version": 1,
   "analysis_kind": "selfdex_state_contract",
   "current_task": {
-    "task": "gpt-5.5 direction review and README finalization",
-    "phase": "completed",
-    "scope": "Use GPT-5.5 xhigh direction review to judge Selfdex purpose, apply any small required fixes, rewrite README if the project is directionally ready, then verify, commit, and push.",
-    "verification_target": "direction review evidence, README/doc drift, campaign budget, plugin/npm installer checks, full unittest, git diff check, commit, and push"
+    "task": "github-actions-ci-fix-and-post-push-status-routine",
+    "phase": "local_verified",
+    "scope": "Fix the failed GitHub Actions check for the pushed Selfdex commit and add a GitHub-only post-push status check routine so Selfdex does not need Gmail for CI feedback.",
+    "verification_target": "focused bootstrap installer tests, GitHub status routine tests, repository check subset, GitHub Actions run status after push"
   },
   "orchestration_profile": {
-    "score_total": 9,
+    "score_total": 8,
     "score_breakdown": {
-      "product_direction_review": 3,
-      "README_public_surface": 2,
-      "installer_and_plugin_surface": 2,
-      "commit_push_release_boundary": 2
+      "failing_public_ci": 3,
+      "workflow_status_feature": 2,
+      "installer_cross_platform_test": 1,
+      "state_and_public_doc_update": 1,
+      "github_api_boundary": 1
     },
     "hard_triggers": [
-      "user_requested_gpt_5_5_xhigh_direction_review",
-      "public_readme_rewrite",
-      "commit_and_push_requested",
-      "installer_and_plugin_surface"
+      "github_actions_failure",
+      "workflow_after_commit_push_semantics",
+      "cross_platform_ci_behavior"
     ],
     "selected_rules": [
       "state_before_writes",
       "contract_freeze_before_implementation",
-      "gpt_direction_review_user_approved",
-      "socratic_project_review",
-      "README_finalization_if_directionally_ready",
-      "bounded_fixes_only_before_readme",
-      "commit_push_after_verification",
       "preserve_existing_dirty_worktree",
+      "include_existing_uncommitted_runtime_positioning_diff",
+      "no_gmail_dependency_for_ci_status",
+      "github_read_only_status_check",
+      "bounded_repair_loop",
       "run_record_required"
     ],
     "selected_skills": [
-      "selfdex-autopilot"
+      "selfdex-autopilot",
+      "github:gh-fix-ci"
     ],
-    "execution_topology": "autopilot-mixed",
-    "orchestration_value": "high",
-    "agent_budget": 1,
-    "efficiency_basis": "The user explicitly requested GPT-5.5 Pro xhigh direction review; main can update state and inspect locally while the reviewer reads the project read-only.",
-    "spawn_decision": "spawned_gpt_5_5_xhigh_direction_reviewer",
-    "selection_reason": "The task asks for a strategic readiness judgment before final README and commit/push."
+    "execution_topology": "single-session",
+    "orchestration_value": "medium",
+    "agent_budget": 0,
+    "efficiency_basis": "The CI root cause is a narrow test portability issue and the GitHub status routine is a small self-contained read-only script plus docs/tests; subagent handoff would add cost without reducing risk.",
+    "spawn_decision": "no_spawn",
+    "selection_reason": "The user asked to fix the failed GitHub checks and fold GitHub status checking into the normal post-push routine; the work is bounded to CI diagnosis, local fix, and read-only GitHub status tooling."
   },
   "writer_slot": {
     "writer_slot": "main",
-    "write_set": "direction_review_readme_finalization",
+    "write_set": "github_actions_ci_fix_and_status_routine",
     "write_sets": {
       "main": [
         "STATE.md",
@@ -54,61 +54,66 @@
         "README.md",
         "AUTOPILOT.md",
         "docs/SELFDEX_FINAL_GOAL.md",
-        "ERROR_LOG.md",
-        "runs/",
-        "package.json",
-        "bin/selfdex.js",
-        "install.ps1",
-        "plugins/selfdex/",
-        ".agents/plugins/marketplace.json",
-        "scripts/",
-        "tests/"
-      ],
-      "reviewer": [
-        "read-only project review"
+        "docs/SELFDEX_HANDOFF.md",
+        "PROJECT_REGISTRY.md",
+        "project_registry.json",
+        ".agents/skills/selfdex-autopilot/SKILL.md",
+        "plugins/selfdex/skills/selfdex/SKILL.md",
+        "tests/test_bootstrap_installer.py",
+        "scripts/check_github_actions_status.py",
+        "tests/test_github_actions_status.py",
+        "runs/selfdex/"
       ]
     },
     "shared_assets_owner": "main"
   },
   "contract_freeze": [
-    "Call GPT-5.5 xhigh as a read-only direction reviewer.",
-    "Use the review to decide between needs_changes_first and ready_for_readme.",
-    "Keep fixes bounded to P0/P1 direction, install, safety, or README-blocking issues.",
-    "Rewrite README if direction is ready enough.",
-    "Run repository verification; external validation package may return needs_review when external value is not fully proven.",
-    "Commit with Conventional Commits format and push to origin after successful verification."
+    "Fix only the observed CI failure: Ubuntu GitHub runner lacks the powershell executable used by installer tests.",
+    "Prefer portable PowerShell executable detection in tests instead of weakening installer coverage.",
+    "Add a dependency-free read-only GitHub Actions status checker that can run after commit/push.",
+    "Use GitHub API or connector output for CI status; do not use Gmail as a status source.",
+    "Preserve and verify the existing uncommitted runtime-positioning diff from the prior completed task.",
+    "Do not perform npm publish, destructive Git, or real deployment."
   ],
   "reviewer": {
-    "reviewer": "gpt-5.5",
-    "reviewer_mode": "xhigh",
-    "reviewer_target": "Selfdex product direction, purpose coherence, Socratic gaps, README finalization readiness",
-    "reviewer_focus": "directional validity, overengineering risk, user path clarity, install safety, approval gate coherence",
-    "reviewer_result": "ready_for_readme; P0 none; P1 rewrite README around install, first-use flow, safety model, and explicit current-vs-post-publish install story"
+    "reviewer": "not_required",
+    "reviewer_mode": "none",
+    "reviewer_target": "not required for narrow CI test portability fix and read-only status checker",
+    "reviewer_focus": "CI portability, GitHub API safety, workflow semantics",
+    "reviewer_result": "not_required"
   },
   "last_update": {
-    "timestamp": "2026-05-01T17:59:30+09:00",
-    "phase": "completed",
-    "status": "GPT-5.5 xhigh review returned ready_for_readme; README rewritten, Unicode git path budget bug fixed, verification completed, commit/push pending.",
+    "timestamp": "2026-05-01T19:55:50+09:00",
+    "phase": "local_verified",
+    "status": "CI fix and GitHub status routine verified locally; post-push GitHub Actions status check remains to run on the new commit SHA.",
     "verification_result": [
-      "GPT-5.5 xhigh direction review: ready_for_readme",
-      "node bin/selfdex.js --help: pass",
-      "node bin/selfdex.js install --dry-run --install-root ./.tmp-tests/selfdex-npx-dry-run: pass",
-      "npm pack --dry-run --json: pass",
-      "python scripts/check_selfdex_plugin.py --root . --format json: pass",
+      "GitHub Actions run 25208966691: failure",
+      "failing job 73915267474 step make check: FileNotFoundError: No such file or directory: 'powershell'",
+      "python -m unittest discover -s tests -p \"test_bootstrap_installer.py\": pass",
+      "python -m unittest discover -s tests -p \"test_github_actions_status.py\": pass",
+      "python -m compileall -q scripts tests: pass",
+      "python -m unittest discover -s tests: pass, 207 tests after sandbox escalation",
+      "python scripts/check_github_actions_status.py --repo r2gul4r/selfdex --sha bd8e921c75f74f1272e8313a19cfc6df5edf0365 --format json: expected fail, detects old failing workflow run",
       "python scripts/check_doc_drift.py --root . --format json: pass",
       "python scripts/check_campaign_budget.py --root . --include-git-diff --format json: pass",
-      "python -m unittest tests.test_campaign_budget: pass, 14 tests after sandbox escalation",
-      "python -m compileall -q scripts tests: pass after sandbox escalation",
-      "python -m unittest discover -s tests: pass, 201 tests after sandbox escalation",
-      "python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format json: pass",
-      "python scripts/build_project_direction.py --root . --format json: pass",
-      "python scripts/build_external_candidate_snapshot.py --root . --format json: pass after longer sequential timeout",
-      "python scripts/plan_external_project.py --root . --project-id daboyeo --format json: pass after longer sequential timeout",
-      "python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json: pass as dry-run blocked/not executed",
-      "python scripts/build_external_validation_package.py --root . --format json: needs_review by design; external value remains review-gated",
       "git diff --check: pass with line-ending warnings only",
-      "commit: created; final hash reported after amend",
-      "push: pending"
+      "node bin/selfdex.js --help: pass",
+      "node bin/selfdex.js install --dry-run: pass",
+      "npm.cmd pack --dry-run --json: pass after sandbox escalation",
+      "npm.cmd publish --access public --dry-run: pass after sandbox escalation; dry-run only"
     ]
+  },
+  "retrospective": {
+    "task": "github-actions-ci-fix-and-post-push-status-routine",
+    "score_total": 8,
+    "evaluation_fit": "full checks fit because the task changes CI behavior, status tooling, and public workflow docs.",
+    "orchestration_fit": "single-session selected because the failure and new status routine are tightly bounded.",
+    "predicted_topology": "single-session",
+    "actual_topology": "single-session",
+    "spawn_count": 0,
+    "rework_or_reclassification": "new user request supersedes completed runtime-positioning task",
+    "reviewer_findings": "not required",
+    "verification_outcome": "local pass; remote post-push check pending",
+    "next_gate_adjustment": "Post-push GitHub status check should become the normal feedback path; Gmail is not part of CI status handling."
   }
 }

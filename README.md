@@ -15,6 +15,11 @@ Selfdex is not a background daemon, not a blind refactor bot, and not a tool
 that silently rewrites your repositories. It is meant to sit between you and
 Codex as the control layer that keeps the work useful, bounded, and auditable.
 
+Selfdex is not a multi-agent kit. Its default runtime model is a GPT-5.5
+prompt-guided command center: clear roles, bounded tool use, explicit stop
+conditions, local verification, and compact run evidence. Codex native
+Subagents are an optional backend only when work splits cleanly.
+
 ## Install
 
 The intended published install command is:
@@ -119,6 +124,20 @@ This project would be better if it moved in this direction,
 and this is the smallest safe first step.
 ```
 
+## Runtime Model
+
+Selfdex uses the lightest safe execution lane:
+
+- lightweight `single-session` for small documentation, tests, local policy, or
+  narrow implementation changes
+- frozen-contract `single-session` for non-trivial but tightly coupled work
+- Codex native Subagents/MultiAgentV2 only when explorer, worker, or reviewer
+  lanes are independently useful and independently verifiable
+
+GPT-5.5 prompt guidance is an operating principle, not an automatic GPT call.
+Product, milestone, roadmap, or priority review still requires the user to ask
+for GPT / Pro extended mode or explicitly approve it.
+
 ## Safety Model
 
 Selfdex starts read-only for external projects.
@@ -170,6 +189,7 @@ Still intentionally bounded:
 - no automatic multi-candidate execution
 - no unapproved target-project writes
 - no automatic GPT direction review
+- no legacy `codex_multiagent` baseline
 - no npm publish step
 - no claim that read-only validation replaces implementation evidence
 
@@ -267,6 +287,11 @@ Core control files:
   `examples/external_validation_planner_sample.json`, and
   `examples/candidate_quality_sample.json` are validation fixtures.
 
+Active external validation targets are listed in `PROJECT_REGISTRY.md`.
+Historical `codex_multiagent` reports remain under `runs/external-validation/`
+as legacy/reference evidence, but that project is no longer the active Selfdex
+baseline or registry proof target.
+
 Installer and plugin files:
 
 - `package.json` defines the npm package metadata and executable.
@@ -301,6 +326,12 @@ python scripts/plan_external_project.py --root . --project-id daboyeo --format j
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json
 ```
 
+After an approved commit and push, use GitHub as the CI feedback source:
+
+```bash
+python scripts/check_github_actions_status.py --root . --format json
+```
+
 CI runs the baseline through `.github/workflows/check.yml` with:
 
 ```bash
@@ -320,4 +351,5 @@ Selfdex is currently ready as a supervised local command center foundation:
 
 The next product step is not broader autonomy. It is making the approved
 project-session flow smoother while keeping read-only planning, explicit
-approval, local verification, and run records intact.
+approval, local verification, lightweight default execution, optional native
+Subagents, and run records intact.

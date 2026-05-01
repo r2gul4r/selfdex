@@ -16,6 +16,11 @@ The loop may analyze explicitly registered projects read-only, but
 cross-project writes stay approval-gated. External read-only validation is
 required before treating Selfdex as generally useful beyond this repository.
 
+Selfdex is not based on the old `codex_multiagent` kit. Historical
+`codex_multiagent` validation records remain useful as legacy evidence, but the
+active runtime model is GPT-5.5 prompt-guided coordination with Codex native
+Subagents available only as an optional execution backend.
+
 ## Role Split And Model Use
 
 - GPT / Pro extended mode decides what is worth doing only at the product,
@@ -46,6 +51,26 @@ Model routing:
 - Product direction / milestone / strategic priority: GPT / Pro extended mode,
   only when user-approved.
 
+GPT-5.5 prompt guidance is an operating principle, not an automatic model call.
+Prefer clear role boundaries, tool guidance, success criteria, stop conditions,
+and verification commands before increasing reasoning effort.
+
+## Runtime Lanes
+
+Use the lightest lane that can finish the approved task safely:
+
+- `lightweight-single`: small documentation, test, local policy, or narrow code
+  changes. Use one Codex lane, focused checks, and no GPT direction review.
+- `bounded-single`: non-trivial but tightly coupled implementation. Freeze the
+  contract, keep one writer, verify locally, and record evidence.
+- `native-subagents`: use Codex native Subagents only when explorer, worker, or
+  reviewer lanes can run independently with disjoint ownership or read-only
+  scope, and the expected parallel or review gain is higher than handoff cost.
+
+Do not use Subagents just because the task score is high. High score means
+evaluate risk and evidence depth; it does not make multi-agent execution the
+default.
+
 ## Loop
 
 1. Infer the project direction: purpose, audience, product signals,
@@ -60,8 +85,9 @@ Model routing:
 6. Pick the smallest high-leverage task.
 7. Freeze acceptance, non-goals, write sets, and checks in the structured
    state contract.
-8. Recommend or use explorer, worker, and reviewer lanes when host policy,
-   authorization, and budget allow it.
+8. Recommend or use explorer, worker, and reviewer lanes only when host policy,
+   authorization, budget, disjoint ownership, and verification independence make
+   them useful.
 9. For approved target projects, run one candidate through a target-project
    Codex session on a new branch.
 10. Integrate outputs.
@@ -88,7 +114,8 @@ Model routing:
 ## Control Knobs
 
 - `risk_appetite`: `medium-high` by default, bounded by hard approval zones.
-- `default_agent_budget`: `2`.
+- `default_agent_budget`: `2` as an allowance for separable work, not a default
+  spawn requirement.
 - `max_agent_budget`: `4`.
 - `repair_attempts`: `2`.
 - `review_default`: `non_trivial_implementation_only`.
@@ -193,10 +220,13 @@ Defer candidates that:
 ## External Validation
 
 Selfdex should not claim general autonomous engineering ability from internal
-self-improvement alone. The next proof point is read-only validation on 2-3
-external repositories registered in `PROJECT_REGISTRY.md`. A candidate is useful
-only when a human reviewer agrees it describes a real problem, has user value,
-is small enough to freeze, can be verified locally, and is low-risk to reverse.
+self-improvement alone. The active proof point is read-only validation on the
+currently registered external targets in `PROJECT_REGISTRY.md`, presently
+`daboyeo` and `apex_analist`. Historical `codex_multiagent` reports remain
+reference evidence only; they are no longer the active baseline for Selfdex
+direction. A candidate is useful only when a human reviewer agrees it describes
+a real problem, has user value, is small enough to freeze, can be verified
+locally, and is low-risk to reverse.
 
 ## Run Record
 
