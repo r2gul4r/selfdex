@@ -2,171 +2,170 @@
 
 ## Current Task
 
-- task: `deduplicate external project registry test fixtures`
-- phase: `verified`
-- scope: `move duplicated test fixture writers for external project registry and goal-cycle project contents into the shared external validation test utility`
-- verification_target: `focused external candidate snapshot and external project planning tests, duplicate metrics for the selected files, compileall, full unittest, planner, doc drift, campaign budget, and diff check`
+- task: `gpt-5.5 direction review and README finalization`
+- phase: `completed`
+- scope: `Use GPT-5.5 xhigh direction review to judge Selfdex purpose, apply any small required fixes, rewrite README if the project is directionally ready, then verify, commit, and push.`
+- verification_target: `direction review evidence, README/doc drift, campaign budget, plugin/npm installer checks, full unittest, git diff check, commit, and push`
 
 ## Orchestration Profile
 
-- score_total: `3`
+- score_total: `9`
 - score_breakdown:
-  - `shared_test_fixture_extraction`: 2
-  - `verification_and_run_record`: 1
+  - `product_direction_review`: 3
+  - `README_public_surface`: 2
+  - `installer_and_plugin_surface`: 2
+  - `commit_push_release_boundary`: 2
 - hard_triggers:
-  - `none`
+  - `user_requested_gpt_5_5_xhigh_direction_review`
+  - `public_readme_rewrite`
+  - `commit_and_push_requested`
+  - `installer_and_plugin_surface`
 - selected_rules:
   - `state_before_writes`
   - `contract_freeze_before_implementation`
-  - `single_write_lane`
+  - `gpt_direction_review_user_approved`
+  - `socratic_project_review`
+  - `README_finalization_if_directionally_ready`
+  - `bounded_fixes_only_before_readme`
+  - `commit_push_after_verification`
   - `preserve_existing_dirty_worktree`
   - `run_record_required`
 - selected_skills:
   - `selfdex-autopilot`
-- execution_topology: `autopilot-single`
-- orchestration_value: `low`
-- agent_budget: `0`
-- efficiency_basis: `The selected duplicate is shared test fixture setup across two tests and can be reduced by extending the existing external validation test utility.`
-- spawn_decision: `no_spawn_user_did_not_authorize_subagents`
-- selection_reason: `Planner selected write_multi_registry + write_registry duplicate cleanup after external validation payload fixture dedup was verified.`
+- execution_topology: `autopilot-mixed`
+- orchestration_value: `high`
+- agent_budget: `1`
+- efficiency_basis: `The user explicitly requested GPT-5.5 Pro xhigh direction review; main can update state and inspect locally while the reviewer reads the project read-only.`
+- spawn_decision: `spawned_gpt_5_5_xhigh_direction_reviewer`
+- selection_reason: `The task asks for a strategic readiness judgment before final README and commit/push.`
 
 ## Evaluation Plan
 
-- evaluation_need: `light`
+- evaluation_need: `strict`
 - project_invariants:
-  - `Do not modify external target repositories.`
-  - `Do not execute real target-project Codex sessions.`
-  - `Do not touch secrets, deploys, paid APIs, databases, production systems, installers, or global Codex config.`
-  - `Do not change production external snapshot or external project planning behavior.`
-  - `Do not revert or rewrite existing uncommitted roadmap artifacts.`
+  - `Do not weaken approval gates for destructive operations, secrets, paid APIs, deploys, databases, production writes, or cross-workspace writes.`
+  - `Do not run npm publish in this task.`
+  - `Do not install Selfdex into the real user home in verification.`
+  - `Do not execute target-project Codex sessions.`
+  - `Keep ChatGPT Apps/MCP target execution read-only until explicit future approval.`
+  - `Commit and push only after local verification passes or any gap is explicitly recorded.`
 - task_acceptance:
-  - `Shared fixture helpers write files, goal-cycle project contents, and registry rows used by both selected tests.`
-  - `External candidate snapshot tests keep read-only scan, non-read-only skip, explicit selection, missing id, scanner error, run-history, and markdown assertions.`
-  - `External project planning tests keep registered, ad-hoc, missing, and project-scoped artifact assertions.`
-  - `Duplicate metrics for the two selected files no longer report the selected registry/goal fixture duplicate groups.`
-  - `Planner reports no remaining selected candidate or moves beyond this duplicate.`
+  - `GPT-5.5 xhigh review gives a clear verdict on project direction and purpose.`
+  - `Socratic Q/A review is recorded or summarized in the run artifact.`
+  - `If required P0/P1 direction fixes exist, they are fixed before README finalization.`
+  - `If direction is ready, README is rewritten around install, purpose, usage, safety, verification, and current boundaries.`
+  - `State, campaign, and run records are updated.`
+  - `Verification passes.`
+  - `Changes are committed with Conventional Commits format and pushed to origin.`
 - non_goals:
-  - `Do not change scripts/build_external_candidate_snapshot.py.`
-  - `Do not change scripts/plan_external_project.py.`
-  - `Do not broaden fixture text beyond what current tests require.`
+  - `Do not publish to npm.`
+  - `Do not alter npm credentials or registry auth.`
+  - `Do not perform real target-project writes.`
+  - `Do not add background autonomy or infinite loops.`
+  - `Do not remove existing safety contracts just to make the project look simpler.`
 - hard_checks:
-  - `python -m unittest tests.test_external_candidate_snapshot tests.test_plan_external_project`
-  - `python scripts/collect_repo_metrics.py --root . --paths tests\test_external_candidate_snapshot.py tests\test_plan_external_project.py --pretty --min-duplicate-lines 10`
+  - `GPT-5.5 xhigh direction review completed`
+  - `node bin/selfdex.js --help`
+  - `node bin/selfdex.js install --dry-run --install-root <temp-path>`
+  - `npm pack --dry-run --json`
+  - `python scripts/check_selfdex_plugin.py --root . --format json`
+  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`
+  - `python scripts/check_doc_drift.py --root . --format json`
   - `python -m compileall -q scripts tests`
   - `python -m unittest discover -s tests`
-  - `python scripts/plan_next_task.py --root . --format json`
-  - `python scripts/check_doc_drift.py --root . --format json`
-  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`
   - `git diff --check`
+  - `git status --short`
 - llm_review_rubric:
-  - `Check that registry verification text differences remain configurable.`
-  - `Check that goal-cycle fixture contents still trigger project_direction candidates.`
-  - `Check that explicit multi-project registry order remains deterministic.`
+  - `Does the project explain why it exists in concrete user terms?`
+  - `Does the README avoid over-claiming unsafe autonomy?`
+  - `Does the install flow avoid personal nickname exposure in the user command?`
+  - `Are safety gates understandable without burying the main user path?`
 - evidence_required:
-  - `focused tests pass`
-  - `duplicate metrics for selected paths report group_count=0`
-  - `full unittest pass`
-  - `compileall pass`
-  - `planner command pass and no longer selects this duplicate`
-  - `doc drift pass`
-  - `campaign budget pass`
-  - `diff check pass`
+  - `GPT review verdict`
+  - `README rewrite summary or fix summary`
+  - `verification command results`
+  - `commit hash`
+  - `push result`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `external project registry fixture dedup`
+- write_set: `direction_review_readme_finalization`
 - write_sets:
   - `main`:
     - `STATE.md`
+    - `STATE.json`
     - `CAMPAIGN_STATE.md`
-    - `ERROR_LOG.md`
-    - `tests/external_validation_test_utils.py`
-    - `tests/test_external_candidate_snapshot.py`
-    - `tests/test_plan_external_project.py`
-    - `runs/selfdex/20260430-141130-external-project-registry-fixtures-dedup.md`
-    - `tests/test_candidate_quality_template.py`
-    - `tests/test_external_validation_report.py`
-    - `runs/selfdex/20260430-140651-external-validation-test-fixtures-dedup.md`
-    - `tests/test_run_target_codex.py`
-    - `runs/selfdex/20260430-140249-target-codex-main-test-dedup.md`
-    - `PROJECT_REGISTRY.md`
+    - `CAMPAIGN_STATE.json`
     - `README.md`
-    - `project_registry.json`
-    - `.github/workflows/check.yml`
-    - `runs/external-validation/`
-    - `runs/selfdex/20260430-115900-readme-rewrite.md`
-    - `runs/selfdex/20260430-122133-target-codex-bounded-timeout.md`
-    - `runs/selfdex/20260430-124209-roadmap-completion.md`
-    - `runs/selfdex/20260430-131306-run-history-penalty-dedup.md`
-    - `runs/selfdex/20260430-131838-project-direction-responsibility-split.md`
-    - `runs/selfdex/20260430-132542-product-signal-block-dedup.md`
-    - `runs/selfdex/20260430-133640-target-codex-app-server-split.md`
-    - `runs/selfdex/20260430-135412-slug-helper-dedup.md`
-    - `scripts/build_external_candidate_snapshot.py`
-    - `scripts/build_external_validation_package.py`
-    - `scripts/build_external_validation_report.py`
-    - `scripts/build_project_direction.py`
-    - `scripts/list_project_registry.py`
-    - `scripts/plan_external_project.py`
-    - `scripts/plan_next_task.py`
-    - `scripts/project_direction_evidence.py`
-    - `scripts/project_direction_opportunities.py`
-    - `scripts/record_run.py`
-    - `scripts/run_history_penalty.py`
-    - `scripts/run_target_codex.py`
-    - `scripts/slug_utils.py`
-    - `scripts/target_codex_app_server.py`
-    - `tests/test_build_project_direction.py`
-    - `tests/test_external_validation_package.py`
-    - `tests/test_plan_next_task.py`
-    - `tests/test_project_direction_evidence.py`
-    - `tests/test_project_direction_opportunities.py`
-    - `tests/test_project_registry.py`
-    - `tests/test_record_run.py`
-    - `tests/test_run_history_penalty.py`
-    - `tests/test_slug_utils.py`
+    - `AUTOPILOT.md`
+    - `docs/SELFDEX_FINAL_GOAL.md`
+    - `ERROR_LOG.md`
+    - `runs/`
+    - `package.json`
+    - `bin/selfdex.js`
+    - `install.ps1`
+    - `plugins/selfdex/`
+    - `.agents/plugins/marketplace.json`
+    - `scripts/`
+    - `tests/`
+  - `reviewer`:
+    - `read-only project review`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Extend `tests/external_validation_test_utils.py` with shared project registry and goal-cycle fixture writers.
-- Replace duplicated local fixture writers in the selected tests.
-- Preserve test behavior and verification strings.
-- Verify duplicate metrics and planner movement.
-- Record the run under `runs/selfdex/`.
+- Call GPT-5.5 xhigh as a read-only direction reviewer.
+- Use the review to decide between `needs_changes_first` and `ready_for_readme`.
+- Keep fixes bounded to P0/P1 direction, install, safety, or README-blocking issues.
+- Rewrite README if direction is ready enough.
+- Run repository verification; external validation package may return `needs_review` when external value is not fully proven.
+- Commit with Conventional Commits format and push to origin after successful verification.
 
 ## Reviewer
 
-- reviewer: `not_selected`
-- reviewer_target: `none`
-- reviewer_focus: `focused tests and duplicate metrics cover this test-fixture extraction`
-- reviewer_result: `not run`
+- reviewer: `gpt-5.5`
+- reviewer_mode: `xhigh`
+- reviewer_target: `Selfdex product direction, purpose coherence, Socratic gaps, README finalization readiness`
+- reviewer_focus: `directional validity, overengineering risk, user path clarity, install safety, approval gate coherence`
+- reviewer_result: `ready_for_readme; P0 none; P1 rewrite README around install, first-use flow, safety model, and explicit current-vs-post-publish install story`
 
 ## Last Update
 
-- timestamp: `2026-04-30T14:18:07+09:00`
-- phase: `verified`
-- status: `Shared external project registry fixtures were extracted and the planner reports no remaining candidates.`
+- timestamp: `2026-05-01T17:59:30+09:00`
+- phase: `completed`
+- status: `GPT-5.5 xhigh review returned ready_for_readme; README rewritten, Unicode git path budget bug fixed, verification completed, commit/push pending.`
 - verification_result:
-  - `python -m unittest tests.test_external_candidate_snapshot tests.test_plan_external_project`: `passed after sandbox escalation and one fixture literal repair; ran 12 tests`
-  - `python scripts/collect_repo_metrics.py --root . --paths tests\test_external_candidate_snapshot.py tests\test_plan_external_project.py --pretty --min-duplicate-lines 10`: `passed; group_count=0`
-  - `python -m compileall -q scripts tests`: `passed`
-  - `python scripts/plan_next_task.py --root . --format json`: `passed; candidate_count=0, selected=null`
-  - `python scripts/check_doc_drift.py --root . --format json`: `passed; finding_count=0`
-  - `git diff --check`: `passed; exit 0 with LF-to-CRLF working-copy warnings`
-  - `python -m unittest discover -s tests`: `passed after sandbox escalation; ran 170 tests`
+  - `GPT-5.5 xhigh direction review`: `ready_for_readme`
+  - `node bin/selfdex.js --help`: `pass`
+  - `node bin/selfdex.js install --dry-run --install-root ./.tmp-tests/selfdex-npx-dry-run`: `pass`
+  - `npm pack --dry-run --json`: `pass`
+  - `python scripts/check_selfdex_plugin.py --root . --format json`: `pass`
+  - `python scripts/check_doc_drift.py --root . --format json`: `pass`
+  - `python scripts/check_campaign_budget.py --root . --include-git-diff --format json`: `pass`
+  - `python -m unittest tests.test_campaign_budget`: `pass, 14 tests after sandbox escalation`
+  - `python -m compileall -q scripts tests`: `pass after sandbox escalation`
+  - `python -m unittest discover -s tests`: `pass, 201 tests after sandbox escalation`
+  - `python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format json`: `pass`
+  - `python scripts/build_project_direction.py --root . --format json`: `pass`
+  - `python scripts/build_external_candidate_snapshot.py --root . --format json`: `pass after longer sequential timeout`
+  - `python scripts/plan_external_project.py --root . --project-id daboyeo --format json`: `pass after longer sequential timeout`
+  - `python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json`: `pass as dry-run blocked/not executed`
+  - `python scripts/build_external_validation_package.py --root . --format json`: `needs_review by design; external value remains review-gated`
+  - `git diff --check`: `pass with line-ending warnings only`
+  - `commit`: `created; final hash reported after amend`
+  - `push`: `pending`
 
 ## Retrospective
 
-- task: `deduplicate external project registry test fixtures`
-- score_total: `3`
-- evaluation_fit: `light checks fit because focused tests plus duplicate metrics covered the shared fixture extraction`
-- orchestration_fit: `autopilot-single fit because the remaining candidate was a small two-test fixture refactor`
-- predicted_topology: `autopilot-single`
-- actual_topology: `autopilot-single`
-- spawn_count: `0`
-- rework_or_reclassification: `one fixture literal repair after focused tests exposed a corrupted non-ASCII project-name assertion`
-- reviewer_findings: `not run`
-- verification_outcome: `passed; full suite required approved rerun because sandboxed Windows Temp fixture writes are denied`
-- next_gate_adjustment: `planner reports no remaining candidates; next work should come from a fresh scan or a new user-selected direction`
+- task: `gpt-5.5 direction review and README finalization`
+- score_total: `9`
+- evaluation_fit: `strict checks fit because the work changes public documentation, installer story, and commit/push state.`
+- orchestration_fit: `autopilot-mixed fit because GPT direction review runs read-only while main owns all writes and integration.`
+- predicted_topology: `autopilot-mixed`
+- actual_topology: `autopilot-mixed`
+- spawn_count: `1`
+- rework_or_reclassification: `new user goal supersedes completed npm CLI task`
+- reviewer_findings: `ready_for_readme; README was too internal and needed install/first-use/safety path moved to the front`
+- verification_outcome: `pass with expected needs_review external validation package status`
+- next_gate_adjustment: `public npm publish remains the next explicit approval-gated setup step`

@@ -1,0 +1,36 @@
+{
+  "name": "selfdex",
+  "version": "0.1.0",
+  "description": "Invoke Selfdex from a target project session for read-only planning and approval-gated Codex handoff.",
+  "author": {
+    "name": "Selfdex",
+    "url": "https://github.com/r2gul4r/selfdex"
+  },
+  "homepage": "https://github.com/r2gul4r/selfdex",
+  "repository": "https://github.com/r2gul4r/selfdex",
+  "license": "MIT",
+  "keywords": [
+    "selfdex",
+    "codex",
+    "project-planning",
+    "approval-gated"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Selfdex",
+    "shortDescription": "Call Selfdex from the current project session.",
+    "longDescription": "Selfdex reads the current project read-only, selects one bounded next task, freezes a contract, asks for approval before target writes, and records outcomes in the Selfdex command-center repository.",
+    "developerName": "Selfdex",
+    "category": "Productivity",
+    "capabilities": [
+      "Read-only planning",
+      "Approval-gated orchestration"
+    ],
+    "defaultPrompt": [
+      "@selfdex read this project and choose the next safe task",
+      "@selfdex make a read-only plan for this repo",
+      "@selfdex show the current approval-gated handoff"
+    ],
+    "brandColor": "#2563EB"
+  }
+}

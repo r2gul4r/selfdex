@@ -3,9 +3,9 @@
 - validation_mode: `read_only`
 - external_value_proven: `False`
 - project_count: `1`
-- candidate_count: `3`
+- candidate_count: `0`
 - scanner_error_count: `0`
-- human_review_status: `pending`
+- human_review_status: `not_started`
 
 ## Selection
 
@@ -18,12 +18,10 @@
 
 ### fs
 
-- status: `scanned`
+- status: `skipped`
 - write_policy: `read-only`
-- candidate_count: `3`
-- human_review_status: `pending`
-- project_direction: fs is the clearest documented project anchor.
+- candidate_count: `0`
+- human_review_status: `not_started`
+- skip_reason: `path_missing`
 - top_candidates:
-  - `project_direction` score=`40.5` decision=`pick` title=Prove and improve the primary user journey
-  - `project_direction` score=`37.8` decision=`monitor` title=Protect the most important project direction with one scenario check
-  - `project_direction` score=`36.45` decision=`monitor` title=Make the project thesis explicit for future work
+  - none

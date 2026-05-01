@@ -1,119 +1,181 @@
 # Selfdex
 
-[![check](https://github.com/r2gul4r/selfdex/actions/workflows/check.yml/badge.svg)](https://github.com/r2gul4r/selfdex/actions/workflows/check.yml)
+Selfdex is a supervised command center for Codex work on a project you choose.
 
-Selfdex is a local AI project lead for Codex work.
-
-Given a target folder, Selfdex reads the project, infers its product and
-technical direction, proposes better next moves the user may not have named,
-chooses one small safe first step, runs Codex in the target project only after
-approval, verifies the result, and records what happened.
-
-It is not just a bugfix finder or code-review helper. Those are baseline
-hygiene. The real goal is to help a project keep moving in a better direction
-when the user is busy, uncertain, or boxed in by the current shape of the code.
+It reads the selected project first, decides one useful next improvement,
+evolution, or feature task, asks for approval, sends only the approved bounded
+work to Codex, verifies the result, and records evidence.
 
 ```text
-target folder -> understand direction -> find opportunities -> choose one task
--> freeze contract -> run Codex on a branch -> verify -> record -> repeat
+select project -> read direction -> choose next task -> ask approval
+-> freeze contract -> delegate to Codex -> verify -> record
 ```
 
-## North Star
+Selfdex is not a background daemon, not a blind refactor bot, and not a tool
+that silently rewrites your repositories. It is meant to sit between you and
+Codex as the control layer that keeps the work useful, bounded, and auditable.
 
-Selfdex should become the control layer between a human and long-running Codex
-work:
+## Install
 
-- understand what the project is trying to become
-- notice useful product, workflow, data, or architecture opportunities
-- keep normal bugfix, refactor, and test-gap work as baseline hygiene
-- select exactly one bounded candidate per loop
-- execute only inside an approved target project boundary
-- keep high-risk work behind explicit approval
-- leave enough evidence that the run can be reviewed, resumed, or reverted
+The intended published install command is:
 
-The strongest Selfdex candidate is not merely "a small issue exists." It is:
+```bash
+npx selfdex install
+```
+
+Preview the install without cloning or writing plugin files:
+
+```bash
+npx selfdex install --dry-run
+```
+
+This npm command works after the `selfdex` package is published. Until then,
+use a cloned checkout and run the bootstrap locally:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Preview the local bootstrap:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
+```
+
+Install only the `@selfdex` Codex plugin from an existing checkout:
+
+```bash
+python scripts/install_selfdex_plugin.py --root . --yes --format markdown
+```
+
+Preview the plugin install:
+
+```bash
+python scripts/install_selfdex_plugin.py --root . --dry-run --format markdown
+```
+
+Requirements for the bootstrap path:
+
+- Node.js and npm for the `npx` entrypoint
+- PowerShell for `install.ps1`
+- Git for clone or update
+- Python 3 for the plugin installer
+- Codex with plugin discovery enabled
+
+Publishing to npm, npm credentials, and registry ownership are separate
+approval-gated setup steps. They are not performed by this repository's tests
+or bootstrap verification.
+
+## Use
+
+After the plugin is installed or enabled, open Codex in the target project
+session and call:
 
 ```text
-This project would be better if we moved in this direction,
+@selfdex read this project and choose the next safe task
+```
+
+Selfdex treats the current session directory as the selected project unless you
+name another path.
+
+The first response should be a read-only plan:
+
+- selected task
+- why it matters
+- proposed write boundary
+- non-goals
+- verification commands
+- risk level
+- approval requirement
+- Codex handoff prompt
+
+If you approve the target-project write, Selfdex may run the bounded execution
+path. If you do not approve it, the loop stops at the plan.
+
+## What It Does
+
+Selfdex separates direction, coordination, and implementation:
+
+- GPT / Pro extended mode is used only when the user asks for high-level
+  product, milestone, roadmap, or priority direction.
+- Selfdex reads, ranks, freezes, asks approval, records, and prevents
+  uncontrolled autonomy.
+- Codex implements, verifies, debugs, reviews diffs, and repairs inside the
+  approved contract.
+
+Selfdex looks for several kinds of next work:
+
+- `repair`: restore broken behavior
+- `hardening`: make existing behavior harder to break
+- `improvement`: improve maintainability or clarity
+- `capability`: add a missing system ability
+- `automation`: automate repeated coordination work
+- `direction`: move the project toward a better product or technical path
+
+The preferred candidate is not just "something is wrong." It is:
+
+```text
+This project would be better if it moved in this direction,
 and this is the smallest safe first step.
 ```
 
-## Operating Model
+## Safety Model
 
-Selfdex is user-invoked. It is not a background daemon and it does not silently
-rewrite projects.
+Selfdex starts read-only for external projects.
 
-The normal loop is:
+Target-project writes require explicit approval in the current thread. Even
+folder-wide approval does not bypass hard approval zones.
 
-1. Pick or receive a target folder.
-2. Infer the project direction: purpose, audience, product signals, technical
-   signals, constraints, and strategic opportunities.
-3. Scan repository hygiene signals: test gaps, refactor opportunities, feature
-   gaps, TODOs, stubs, and placeholders.
-4. Rank direction opportunities before routine hygiene when the evidence is
-   strong enough.
-5. Freeze one task contract: outcome, write boundary, non-goals, checks, and
-   stop conditions.
-6. Create an isolated branch in the target repository when execution is
-   approved.
-7. Start a target-project Codex session from that target `cwd`.
-8. Run verification or record exactly why verification was skipped.
-9. Record result, changed files, checks, repair attempts, and stop/failure
-   reason under Selfdex `runs/<project_key>/`.
-
-## Safety Contract
-
-Selfdex can be aggressive about finding better work, but conservative about
-side effects.
-
-Hard approval is still required for:
+Hard approval is always required for:
 
 - destructive filesystem or Git history operations
 - secrets, credentials, private keys, or token access
 - paid API calls
 - public deploys
 - database migrations or production writes
-- cross-workspace changes outside the approved target boundary
+- cross-workspace changes outside the approved boundary
 - global Codex config, installer, plugin, or MCP setup changes
 
-Folder approval can let Selfdex work inside a target repository, but it does
-not bypass those hard zones.
+ChatGPT Apps and MCP surfaces are read-only first. The initial app surface may
+show registered projects, the next recommended task, recent run records, and
+approval status. It must not expose target-project write execution until that
+surface is explicitly approved.
 
 ## Current Capabilities
 
-Implemented pieces:
+Installed and tested surfaces:
 
-- `scripts/build_project_direction.py` infers a project direction snapshot from
-  local repository evidence.
-- `scripts/build_external_candidate_snapshot.py` combines direction
-  opportunities with test-gap, refactor, and feature-gap candidates, then adds
-  cluster and run-history metadata.
-- `scripts/plan_external_project.py` freezes one target-project task contract
-  and generates a Codex execution prompt while separating evidence-only files
-  from proposed write files.
-- `scripts/run_target_codex.py` can plan one candidate, create a target branch
-  in execution mode, call a Codex app-server adapter, and write a project-scoped
-  run artifact with bounded timeout and branch metadata.
-- `scripts/build_external_validation_package.py` writes read-only external
-  validation snapshots, scores, reports, and summary artifacts under
-  `runs/external-validation/`.
-- `scripts/check_campaign_budget.py` checks that the current work stays inside
-  the frozen Selfdex contract.
-- `scripts/check_doc_drift.py` keeps this README aligned with repo tools.
+- `package.json` and `bin/selfdex.js` define the npm-style `selfdex` CLI.
+- `install.ps1` bootstraps Selfdex and installs the home-local plugin.
+- `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
+- `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
+- `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
+- `scripts/plan_external_project.py` reads a target project and emits a frozen
+  task contract without editing the target.
+- `scripts/run_target_codex.py` can run the approved target-project execution
+  path with branch and run-record metadata.
+- `scripts/build_control_surface_snapshot.py` builds the read-only control
+  surface payload.
+- `scripts/control_surface_mcp_server.py` exposes the read-only payload through
+  a dependency-free local `/mcp` JSON-RPC scaffold.
+- `scripts/check_selfdex_plugin.py`, `scripts/check_campaign_budget.py`, and
+  `scripts/check_doc_drift.py` validate plugin wiring, contract boundaries, and
+  README drift.
+- `scripts/*.py` contains the remaining scanners, planners, recorders,
+  extractors, and checkers.
 
 Still intentionally bounded:
 
 - no background polling loop
-- no autonomous multi-candidate execution
-- no unapproved writes to target projects
-- no automatic bypass for secrets, deploys, paid APIs, databases, or destructive
-  commands
-- no claim that read-only validation replaces target-project implementation
-  evidence
+- no automatic multi-candidate execution
+- no unapproved target-project writes
+- no automatic GPT direction review
+- no npm publish step
+- no claim that read-only validation replaces implementation evidence
 
 ## Quick Start
 
-Inspect Selfdex itself:
+Inspect this repository:
 
 ```bash
 python scripts/build_project_direction.py --root . --format markdown
@@ -128,22 +190,7 @@ python scripts/build_external_candidate_snapshot.py --root . --format markdown
 python scripts/build_external_candidate_snapshot.py --root . --project-id daboyeo --format markdown
 ```
 
-Reproduce the external validation proof package:
-
-```bash
-python scripts/build_external_validation_package.py --root . --format markdown
-```
-
-The package writes:
-
-```text
-runs/external-validation/<project_id>-snapshot.md
-runs/external-validation/<project_id>-human-score.md
-runs/external-validation/<project_id>-report.md
-runs/external-validation/summary.md
-```
-
-Build a target-project contract without editing the target:
+Create a target-project contract without editing the target:
 
 ```bash
 python scripts/plan_external_project.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
@@ -155,10 +202,17 @@ Run the target-project orchestrator in dry-run mode:
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
 ```
 
-When target execution is explicitly approved, add `--execute`:
+Run approved target execution only after explicit approval:
 
 ```bash
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --execute --format markdown
+```
+
+Build the read-only control surface:
+
+```bash
+python scripts/build_control_surface_snapshot.py --root . --format markdown
+python scripts/control_surface_mcp_server.py --root . --describe-tools
 ```
 
 Maintenance checks:
@@ -172,57 +226,58 @@ python scripts/extract_test_gap_candidates.py --root . --format markdown
 
 ## Records
 
-Selfdex records target-project runs centrally, not inside the target project by
-default.
+Selfdex records work centrally under `runs/`.
+
+Target-project records use:
 
 ```text
 runs/<project_key>/<YYYYMMDD-HHMMSS>-<task-slug>.md
 ```
 
-Each run artifact should include:
+Each non-trivial run should include:
 
-- project id, project root, and branch
+- project id and project root
 - selected candidate
-- frozen task contract
-- Codex thread or session id when available
+- frozen contract
+- approval status
 - changed files
 - verification commands and results
 - repair attempts
 - final status: `completed`, `failed`, `blocked`, or `stopped`
-- failure or stop reason
+- next candidate or stop reason
 
 ## Repository Map
 
 Core control files:
 
 - `AGENTS.md` defines repository execution rules.
-- `AUTOPILOT.md` defines the long-running supervised loop.
-- `CAMPAIGN_STATE.md` tracks campaign-level intent, budget, locks, and latest
-  run.
-- `STATE.md` tracks the active task contract and write ownership.
-- `project_registry.json` is the tool-readable project registry source of
-  truth.
-- `PROJECT_REGISTRY.md` mirrors the registry for humans and records the
-  read-only boundary.
+- `AUTOPILOT.md` defines the supervised loop policy.
+- `CAMPAIGN_STATE.json` is the machine-readable campaign contract.
+- `CAMPAIGN_STATE.md` mirrors campaign intent for humans.
+- `STATE.json` is the machine-readable active task contract.
+- `STATE.md` mirrors the active task and write boundary for humans.
+- `project_registry.json` is the tool-readable project registry.
+- `PROJECT_REGISTRY.md` mirrors the registry and read-only boundary.
 - `docs/SELFDEX_FINAL_GOAL.md` is the north-star contract.
-- `docs/CANDIDATE_QUALITY_RUBRIC.md` defines human scoring for candidate
-  usefulness.
+- `docs/CANDIDATE_QUALITY_RUBRIC.md` defines candidate usefulness scoring.
 - `docs/SELFDEX_HANDOFF.md` keeps cross-machine continuity notes.
-- `docs/ORCHESTRATION_DECISION_PLAN.md` describes orchestration-fit decisions.
+- `docs/ORCHESTRATION_DECISION_PLAN.md` describes orchestration decisions.
 - `runs/` stores run evidence.
-
-Tooling:
-
-- `scripts/*.py` contains the local scanners, planners, recorders, checkers,
-  and target Codex runner.
 - `examples/quality_signal_samples.json`,
   `examples/external_validation_planner_sample.json`, and
-  `examples/candidate_quality_sample.json` are sample payloads for validation
-  and reporting tools.
+  `examples/candidate_quality_sample.json` are validation fixtures.
+
+Installer and plugin files:
+
+- `package.json` defines the npm package metadata and executable.
+- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1`.
+- `install.ps1` clones or updates Selfdex and invokes the plugin installer.
+- `plugins/selfdex/` contains the repo-local Codex plugin package.
+- `.agents/plugins/marketplace.json` advertises the plugin for Codex.
 
 ## Verification
 
-Use the narrow checks for README and contract changes:
+Use narrow checks for documentation and contract edits:
 
 ```bash
 python scripts/check_doc_drift.py --root . --format json
@@ -230,9 +285,12 @@ python scripts/check_campaign_budget.py --root . --include-git-diff --format jso
 git diff --check
 ```
 
-Use the full repo checks after code or workflow changes:
+Use full checks after code, installer, plugin, or workflow changes:
 
 ```bash
+node bin/selfdex.js --help
+node bin/selfdex.js install --dry-run --install-root C:/tmp/selfdex-npx-dry-run
+npm pack --dry-run
 python -m compileall -q scripts tests
 python -m unittest discover -s tests
 python scripts/check_coverage_signal.py --input examples/quality_signal_samples.json --format json
@@ -243,20 +301,23 @@ python scripts/plan_external_project.py --root . --project-id daboyeo --format j
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json
 ```
 
-CI runs the same baseline through `.github/workflows/check.yml` with
-`make check`.
+CI runs the baseline through `.github/workflows/check.yml` with:
 
-## Design Bias
+```bash
+make check
+```
 
-Selfdex should be willing to challenge the current project shape, but only in
-reviewable increments.
+## Current Direction
 
-The project should prefer:
+Selfdex is currently ready as a supervised local command center foundation:
 
-- direction before hygiene
-- evidence before edits
-- one candidate before loops
-- branch isolation before target writes
-- local verification before confidence
-- recorded outcomes before memory
-- small reversible progress before broad autonomy
+- project-session invocation exists through `@selfdex`
+- install is prepared for `npx selfdex install` after npm publication
+- read-only planning exists for selected external projects
+- target execution remains approval-gated
+- run evidence and state contracts are recorded
+- verification protects the current safety model
+
+The next product step is not broader autonomy. It is making the approved
+project-session flow smoother while keeping read-only planning, explicit
+approval, local verification, and run records intact.

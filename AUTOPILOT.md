@@ -6,15 +6,45 @@ Codex work.
 ## Final Goal Contract
 
 `docs/SELFDEX_FINAL_GOAL.md` is the north-star contract. It defines Selfdex as
-a user-invoked control harness for long-running Codex sessions:
+a user-invoked command center for supervised Codex work on a selected project:
 
 ```text
-register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+select project -> understand direction -> choose next work -> ask approval -> freeze -> delegate to Codex -> verify -> record -> repeat
 ```
 
 The loop may analyze explicitly registered projects read-only, but
 cross-project writes stay approval-gated. External read-only validation is
 required before treating Selfdex as generally useful beyond this repository.
+
+## Role Split And Model Use
+
+- GPT / Pro extended mode decides what is worth doing only at the product,
+  milestone, roadmap, and priority level. Selfdex may recommend this review,
+  but the user must explicitly approve or call it.
+- Selfdex coordinates the loop: read-only discovery, candidate extraction,
+  one-task selection, contract freeze, approval management, run records, and
+  autonomy limits.
+- Codex decides how to implement safely: file edits, tests, debugging, diff
+  review, and bounded repairs.
+
+Use GPT direction review only when goals conflict, candidates are strategically
+ambiguous, code evidence cannot decide feature priority, product direction must
+reset, a major surface such as ChatGPT Apps, MCP, public UI, or automation loop
+is being considered, or the user asks for strategy review. Do not use it for
+routine coding, tests, refactors, bug fixes, documentation drift, or diff
+review.
+
+Model routing:
+
+- Fast exploration / lightweight scans: mini or medium.
+- Candidate evaluation / contract freeze: `gpt-5.5` high.
+- Complex architecture / risky changes / security / permissions / broad
+  refactors: `gpt-5.5` xhigh.
+- Routine implementation: medium or high.
+- Final code review / large diff review / security-sensitive review:
+  `gpt-5.5` xhigh.
+- Product direction / milestone / strategic priority: GPT / Pro extended mode,
+  only when user-approved.
 
 ## Loop
 
@@ -28,7 +58,8 @@ required before treating Selfdex as generally useful beyond this repository.
    user value, novelty, feasibility, evidence, risk, reversibility, and
    verification fit.
 6. Pick the smallest high-leverage task.
-7. Freeze acceptance, non-goals, write sets, and checks.
+7. Freeze acceptance, non-goals, write sets, and checks in the structured
+   state contract.
 8. Recommend or use explorer, worker, and reviewer lanes when host policy,
    authorization, and budget allow it.
 9. For approved target projects, run one candidate through a target-project
@@ -40,7 +71,8 @@ required before treating Selfdex as generally useful beyond this repository.
 
 ## Campaign State
 
-`CAMPAIGN_STATE.md` owns long-running intent:
+`CAMPAIGN_STATE.json` owns machine-readable long-running intent, and
+`CAMPAIGN_STATE.md` mirrors it for human review:
 
 - campaign goal
 - risk appetite
@@ -50,7 +82,8 @@ required before treating Selfdex as generally useful beyond this repository.
 - latest run summary
 - next candidate queue
 
-`STATE.md` owns the current task only.
+`STATE.json` owns the current machine-readable task contract.
+`STATE.md` mirrors the current task for review and continuity.
 
 ## Control Knobs
 
@@ -58,7 +91,8 @@ required before treating Selfdex as generally useful beyond this repository.
 - `default_agent_budget`: `2`.
 - `max_agent_budget`: `4`.
 - `repair_attempts`: `2`.
-- `review_default`: `on`.
+- `review_default`: `non_trivial_implementation_only`.
+- `direction_review_default`: `recommend_and_wait_for_user_approval`.
 - `explorer_default`: `on` for broad or uncertain work.
 - `parallel_default`: `on` when write sets are disjoint.
 
@@ -75,6 +109,65 @@ The autopilot must stop for explicit approval before:
 
 Folder-wide approval can allow Selfdex to run Codex inside a registered target
 folder, but it does not bypass the hard approval zones above.
+
+## First App Surface
+
+ChatGPT Apps and MCP surfaces start read-only. The first surface may expose only:
+
+- registered projects
+- next recommended task
+- latest run records
+- approval status
+
+Write-capable target execution must remain hidden until explicitly approved.
+
+## Project-Session Invocation
+
+Selfdex may be packaged as a repo-local Codex plugin named `selfdex`. After a
+separate install or enable step, a user can call it from a target project
+session with `@selfdex`.
+
+The plugin entrypoint must:
+
+- treat the current session cwd as the selected target project by default
+- locate the Selfdex command-center repo without editing global config
+- run read-only planning before any target write
+- ask for explicit approval before branch creation, target-project writes, or
+  `run_target_codex.py --execute`
+- record results under the Selfdex `runs/` tree
+
+Creating or installing the plugin globally is a setup action and requires
+explicit approval.
+
+For cross-machine setup, the intended published npm command is:
+
+```bash
+npx selfdex install
+```
+
+The npm package must expose a `selfdex` binary and delegate to the bounded
+bootstrap installer. Publishing, package-name verification, and npm credentials
+are separate approval-gated setup steps. The installer still depends on
+PowerShell, Git, and Python on the target machine.
+
+Until the npm package is published, the one-line PowerShell bootstrap is:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/r2gul4r/selfdex/main/install.ps1)))"
+```
+
+The bootstrap clones or updates Selfdex and then runs the home-local plugin
+installer. A cloned checkout may also run the plugin-only installer:
+
+```bash
+python scripts/install_selfdex_plugin.py --root . --yes --format markdown
+```
+
+The bootstrap supports `-DryRun`, `-InstallRoot`, `-RepoUrl`, and `-Branch`.
+The plugin installer is dry-run by default unless `--yes` is passed. These
+install paths may write only the selected Selfdex checkout, the home-local
+plugin copy, and `.agents/plugins/marketplace.json`; target-project writes stay
+behind normal approval.
 
 ## Candidate Selection
 

@@ -1,13 +1,16 @@
 # Selfdex Final Goal
 
-Selfdex is a bounded, auditable local control harness for long-running Codex
-work.
+Selfdex is a bounded, auditable command center for user-selected project
+improvement work.
 
-Its final goal is to make Codex work more controllable than the default
-request-response loop by adding a durable supervised improvement cycle:
+Its fixed final goal is to read a project the user selected, understand what
+the project is trying to become, choose the next useful improvement,
+evolution, or feature task, ask the user for approval, then safely delegate the
+approved work to Codex and record the result.
 
 ```text
-register projects -> understand direction -> scan -> ask -> classify -> rank -> freeze -> orchestrate -> implement -> verify -> record -> repeat
+select project -> understand direction -> choose next work -> ask approval
+-> freeze contract -> delegate to Codex safely -> verify -> record -> repeat
 ```
 
 Selfdex should inspect itself first, then explicitly registered projects
@@ -15,12 +18,47 @@ read-only, and turn repository signals into concrete, reviewable work without
 losing safety, traceability, or user control. It is not yet proven as a general
 autonomous engineer; that claim requires external read-only validation.
 
-The intended end state is still active, supervised development: given a target
+The intended end state is active, supervised development. Given a target
 project, Selfdex should infer the project's direction, suggest better next
 moves even when the user did not name them, rank small useful tasks, freeze one
-contract, produce a Codex/GPT execution prompt, execute only after approval on
-an isolated branch, verify, attempt bounded repair, produce a patch or PR-ready
+contract, produce a Codex execution prompt, execute only after approval on an
+isolated branch, verify, attempt bounded repair, produce a patch or PR-ready
 summary, and record evidence under `runs/<project_key>/`.
+
+## Role Split
+
+- GPT / Pro extended mode is for high-level direction only: product direction,
+  milestones, roadmap decisions, and strategic priority. It is not called
+  automatically for every task.
+- Selfdex translates direction into bounded work. It reads the selected project
+  read-only first, extracts candidates, chooses exactly one small safe
+  high-leverage task, freezes the contract, asks for approval before
+  target-project writes, and records the result.
+- Codex implements and verifies. It reads files, edits code, runs checks,
+  debugs failures, reviews diffs, and repairs implementation issues without
+  silently redefining project direction.
+
+GPT direction review is recommended only when project goals conflict, all
+candidates are strategically ambiguous, feature priority cannot be decided from
+code evidence, a milestone or product direction needs reset, a major surface
+such as ChatGPT Apps, MCP, public UI, or automation loop is being considered,
+or the user explicitly asks for product or strategy review.
+
+Do not use GPT direction review for routine coding, tests, refactors, bug
+fixes, documentation drift, or diff review. Those stay inside Selfdex/Codex
+execution unless they become product-direction questions.
+
+## Model Usage Rules
+
+- Fast exploration and lightweight scans: mini or medium.
+- Candidate evaluation and contract freeze: `gpt-5.5` high.
+- Complex architecture, risky changes, security, permissions, and broad
+  refactors: `gpt-5.5` xhigh.
+- Routine implementation: medium or high.
+- Final code review, large diff review, and security-sensitive review:
+  `gpt-5.5` xhigh.
+- Product direction, milestone, and strategic priority: GPT / Pro extended
+  mode only when the user approves or calls it.
 
 ## Operating Contract
 
@@ -33,8 +71,13 @@ summary, and record evidence under `runs/<project_key>/`.
 - Subagents are an orchestration decision-support tool, not a goal. Use them
   only when host support, task authority, write sets, discovery lanes, or
   reviewer checks make delegation safer or faster than local work.
-- Every non-trivial run leaves evidence in `STATE.md`, `CAMPAIGN_STATE.md`, and
-  eventually `runs/<project_key>/YYYYMMDD-HHMMSS-<slug>.md`.
+- Machine-readable safety contracts live in `STATE.json` and
+  `CAMPAIGN_STATE.json`; `STATE.md` and `CAMPAIGN_STATE.md` remain
+  human-readable mirrors for review.
+- If JSON and markdown mirrors differ, Selfdex must surface a warning and
+  treat JSON as the source of truth for safety-critical checks.
+- Every non-trivial run leaves evidence in the state files and eventually
+  `runs/<project_key>/YYYYMMDD-HHMMSS-<slug>.md`.
 
 ## Improvement Types
 
@@ -121,6 +164,42 @@ The next stage after this is supervised modification:
 read-only plan -> folder approval -> isolated branch -> bounded patch -> verification -> bounded repair -> PR-ready summary -> runs/<project_key>/ evidence
 ```
 
+### Phase 2.6 - Read-Only Control Surface
+
+Goal: expose only the safe first app surface before any write-capable app or MCP
+automation exists.
+
+- Show registered projects.
+- Show the next recommended task.
+- Show latest run records.
+- Show approval status.
+- Do not expose target-project writes, branch creation, target Codex execution,
+  secrets, deploys, paid APIs, databases, production writes, installer changes,
+  or global config changes.
+
+### Phase 2.7 - Project-Session Invocation
+
+Goal: make Selfdex easy to call from the project session where the user is
+already working.
+
+- Package a repo-local Codex plugin named `selfdex`.
+- After installation or enabling, allow `@selfdex` from a target project
+  session.
+- Treat the current session cwd as the selected project unless the user names
+  another path.
+- Route through Selfdex read-only planning before asking for approval.
+- Keep plugin installation, global config edits, and write-capable target
+  execution as explicit approval steps.
+- Provide an npm-compatible installer entrypoint so the intended published
+  command is `npx selfdex install`. The npm package must only bootstrap
+  Selfdex and the local plugin; `npm publish`, package-name verification, and
+  npm credentials remain separate approval-gated setup steps.
+- Provide a true one-line bootstrap installer:
+  `powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/r2gul4r/selfdex/main/install.ps1)))"`.
+  It must clone or update Selfdex, then install the home-local plugin. The
+  clone-first plugin installer remains available as
+  `python scripts/install_selfdex_plugin.py --root . --yes --format markdown`.
+
 ### Phase 3 - Socratic Planner
 
 Goal: turn raw candidates into better decisions.
@@ -157,11 +236,11 @@ task.
 
 ## Current North Star
 
-Selfdex should become a bounded, auditable local control harness:
+Selfdex should become a bounded, auditable local command center:
 
 ```text
-It reads the registered workspaces, asks useful questions, picks the highest
-leverage safe task, freezes boundaries, verifies the result, records evidence,
-and makes the next session easy to resume without pretending it has unsafe or
-unproven autonomy.
+It reads the project the user chose, decides the next useful improvement,
+evolution, or feature task, asks approval, sends only approved bounded work to
+Codex, verifies the result, records evidence, and makes the next session easy
+to resume without pretending it has unsafe or unproven autonomy.
 ```

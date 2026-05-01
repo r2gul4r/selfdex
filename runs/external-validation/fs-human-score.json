@@ -2,68 +2,13 @@
   "schema_version": 1,
   "analysis_kind": "candidate_quality_evaluation",
   "status": "pass",
-  "candidate_count": 3,
+  "candidate_count": 0,
   "verdict_counts": {
-    "strong": 3,
+    "strong": 0,
     "usable": 0,
     "defer": 0,
     "split": 0,
     "invalid": 0
   },
-  "results": [
-    {
-      "candidate": "Prove and improve the primary user journey",
-      "source_project": "fs",
-      "source_signal": "project_direction",
-      "evidence": "Project direction: fs is the clearest documented project anchor.",
-      "suggested_verification": "python -m unittest discover -s tests",
-      "scores": {
-        "real_problem": 3,
-        "user_value": 3,
-        "local_verifiability": 3,
-        "scope_smallness": 3,
-        "risk_reversibility": 3
-      },
-      "total": 15,
-      "verdict": "strong",
-      "issues": [],
-      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
-    },
-    {
-      "candidate": "Protect the most important project direction with one scenario check",
-      "source_project": "fs",
-      "source_signal": "project_direction",
-      "evidence": "Project direction: fs is the clearest documented project anchor.",
-      "suggested_verification": "python -m unittest discover -s tests",
-      "scores": {
-        "real_problem": 3,
-        "user_value": 3,
-        "local_verifiability": 3,
-        "scope_smallness": 3,
-        "risk_reversibility": 3
-      },
-      "total": 15,
-      "verdict": "strong",
-      "issues": [],
-      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
-    },
-    {
-      "candidate": "Make the project thesis explicit for future work",
-      "source_project": "fs",
-      "source_signal": "project_direction",
-      "evidence": "The scanned evidence does not expose a strong project thesis.",
-      "suggested_verification": "manual documentation review",
-      "scores": {
-        "real_problem": 3,
-        "user_value": 3,
-        "local_verifiability": 3,
-        "scope_smallness": 3,
-        "risk_reversibility": 3
-      },
-      "total": 15,
-      "verdict": "strong",
-      "issues": [],
-      "human_notes": "Scored from repository evidence only; no target-project writes were performed."
-    }
-  ]
+  "results": []
 }

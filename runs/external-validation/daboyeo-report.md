@@ -15,12 +15,12 @@
 
 ## Candidates
 
-- `strong` total=`14` priority=`54.05` title=ingest_lotte + ingest_megabox 중복 정리
-  quality_status: `scored`
-  human_review_status: `pending`
 - `strong` total=`14` priority=`51.75` title=showtime_payload 중복 정리
   quality_status: `scored`
   human_review_status: `pending`
 - `strong` total=`13` priority=`49.45` title=scripts/ingest/collect_all_to_tidb.py 책임 분리와 경계 정리
+  quality_status: `scored`
+  human_review_status: `pending`
+- `strong` total=`14` priority=`46.05` title=ingest_lotte + ingest_megabox 중복 정리
   quality_status: `scored`
   human_review_status: `pending`

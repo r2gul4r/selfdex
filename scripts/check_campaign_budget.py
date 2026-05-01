@@ -57,6 +57,9 @@ class CampaignBudget:
     default_agent_budget: int | None
     max_agent_budget: int | None
     hard_approval_zones: list[str]
+    model_usage_policy: dict[str, str]
+    first_app_surface: dict[str, str]
+    source: str
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,7 @@ class StateContract:
     phase: str
     agent_budget: int | None
     write_paths: list[str]
+    source: str
 
 
 @dataclass(frozen=True)
@@ -80,6 +84,24 @@ class Violation:
             "severity": self.severity,
             "message": self.message,
             "evidence": self.evidence,
+        }
+
+
+@dataclass(frozen=True)
+class MirrorWarning:
+    warning_id: str
+    source: str
+    field: str
+    canonical: str
+    mirror: str
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "warning_id": self.warning_id,
+            "source": self.source,
+            "field": self.field,
+            "canonical": self.canonical,
+            "mirror": self.mirror,
         }
 
 
@@ -143,12 +165,60 @@ def parse_list_section(text: str, heading: str) -> list[str]:
     return items
 
 
-def parse_campaign_budget(text: str) -> CampaignBudget:
+def parse_key_value_section(text: str, heading: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    pattern = re.compile(r"^\s*-\s*([A-Za-z0-9_.-]+):\s*(.+?)\s*$")
+    for line in extract_markdown_section(text, heading):
+        match = pattern.match(line)
+        if match:
+            values[match.group(1)] = clean_markdown_value(match.group(2))
+    return values
+
+
+def contract_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, list):
+        return "; ".join(str(item) for item in value)
+    return str(value)
+
+
+def parse_json_string_map(payload: Any) -> dict[str, str]:
+    if not isinstance(payload, dict):
+        return {}
+    return {str(key): contract_value(value) for key, value in payload.items()}
+
+
+def parse_campaign_budget(text: str, *, source: str = "CAMPAIGN_STATE.md") -> CampaignBudget:
     campaign_lines = extract_markdown_section(text, "Campaign")
     return CampaignBudget(
         default_agent_budget=parse_int_field(campaign_lines, "default_agent_budget"),
         max_agent_budget=parse_int_field(campaign_lines, "max_agent_budget"),
         hard_approval_zones=parse_list_section(text, "Hard Approval Zones"),
+        model_usage_policy=parse_key_value_section(text, "Model Usage Policy"),
+        first_app_surface=parse_key_value_section(text, "First App Surface"),
+        source=source,
+    )
+
+
+def parse_campaign_budget_json(payload: dict[str, Any], *, source: str = "CAMPAIGN_STATE.json") -> CampaignBudget:
+    campaign = payload.get("campaign")
+    if not isinstance(campaign, dict):
+        campaign = {}
+    zones = payload.get("hard_approval_zones")
+    if not isinstance(zones, list):
+        zones = []
+    return CampaignBudget(
+        default_agent_budget=int(campaign["default_agent_budget"])
+        if isinstance(campaign.get("default_agent_budget"), int)
+        else None,
+        max_agent_budget=int(campaign["max_agent_budget"])
+        if isinstance(campaign.get("max_agent_budget"), int)
+        else None,
+        hard_approval_zones=[str(zone) for zone in zones],
+        model_usage_policy=parse_json_string_map(payload.get("model_usage_policy")),
+        first_app_surface=parse_json_string_map(payload.get("first_app_surface")),
+        source=source,
     )
 
 
@@ -173,7 +243,7 @@ def extract_write_paths(text: str) -> list[str]:
     return paths
 
 
-def parse_state_contract(text: str) -> StateContract:
+def parse_state_contract(text: str, *, source: str = "STATE.md") -> StateContract:
     current_task_lines = extract_markdown_section(text, "Current Task")
     profile_lines = extract_markdown_section(text, "Orchestration Profile")
     return StateContract(
@@ -181,7 +251,164 @@ def parse_state_contract(text: str) -> StateContract:
         phase=parse_text_field(current_task_lines, "phase"),
         agent_budget=parse_int_field(profile_lines, "agent_budget"),
         write_paths=extract_write_paths(text),
+        source=source,
     )
+
+
+def parse_state_contract_json(payload: dict[str, Any], *, source: str = "STATE.json") -> StateContract:
+    task = payload.get("current_task")
+    if not isinstance(task, dict):
+        task = {}
+    profile = payload.get("orchestration_profile")
+    if not isinstance(profile, dict):
+        profile = {}
+    writer_slot = payload.get("writer_slot")
+    if not isinstance(writer_slot, dict):
+        writer_slot = {}
+    write_sets = writer_slot.get("write_sets")
+    paths: list[str] = []
+    seen: set[str] = set()
+    if isinstance(write_sets, dict):
+        for values in write_sets.values():
+            if not isinstance(values, list):
+                continue
+            for value in values:
+                cleaned = str(value)
+                if looks_like_path(cleaned) and cleaned not in seen:
+                    seen.add(cleaned)
+                    paths.append(cleaned)
+    agent_budget = profile.get("agent_budget")
+    return StateContract(
+        task=str(task.get("task") or ""),
+        phase=str(task.get("phase") or ""),
+        agent_budget=agent_budget if isinstance(agent_budget, int) else None,
+        write_paths=paths,
+        source=source,
+    )
+
+
+def read_json_object(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path.name} must contain a JSON object")
+    return payload
+
+
+def load_campaign_budget(root: Path) -> CampaignBudget:
+    json_payload = read_json_object(root / "CAMPAIGN_STATE.json")
+    if json_payload is not None:
+        return parse_campaign_budget_json(json_payload)
+    campaign_text = (root / "CAMPAIGN_STATE.md").read_text(encoding="utf-8")
+    return parse_campaign_budget(campaign_text)
+
+
+def load_state_contract(root: Path) -> StateContract:
+    json_payload = read_json_object(root / "STATE.json")
+    if json_payload is not None:
+        return parse_state_contract_json(json_payload)
+    state_text = (root / "STATE.md").read_text(encoding="utf-8")
+    return parse_state_contract(state_text)
+
+
+def compare_optional_values(
+    *,
+    warnings: list[MirrorWarning],
+    source: str,
+    field: str,
+    canonical: object,
+    mirror: object,
+) -> None:
+    if canonical == mirror:
+        return
+    warnings.append(
+        MirrorWarning(
+            warning_id="structured-markdown-mirror-drift",
+            source=source,
+            field=field,
+            canonical=str(canonical),
+            mirror=str(mirror),
+        )
+    )
+
+
+def find_mirror_warnings(root: Path, campaign: CampaignBudget, contract: StateContract) -> list[MirrorWarning]:
+    warnings: list[MirrorWarning] = []
+    if campaign.source == "CAMPAIGN_STATE.json" and (root / "CAMPAIGN_STATE.md").exists():
+        mirror = parse_campaign_budget(
+            (root / "CAMPAIGN_STATE.md").read_text(encoding="utf-8"),
+            source="CAMPAIGN_STATE.md",
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="default_agent_budget",
+            canonical=campaign.default_agent_budget,
+            mirror=mirror.default_agent_budget,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="max_agent_budget",
+            canonical=campaign.max_agent_budget,
+            mirror=mirror.max_agent_budget,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="hard_approval_zones",
+            canonical=campaign.hard_approval_zones,
+            mirror=mirror.hard_approval_zones,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="model_usage_policy",
+            canonical=campaign.model_usage_policy,
+            mirror=mirror.model_usage_policy,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="first_app_surface",
+            canonical=campaign.first_app_surface,
+            mirror=mirror.first_app_surface,
+        )
+    if contract.source == "STATE.json" and (root / "STATE.md").exists():
+        mirror = parse_state_contract(
+            (root / "STATE.md").read_text(encoding="utf-8"),
+            source="STATE.md",
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="STATE.md",
+            field="task",
+            canonical=contract.task,
+            mirror=mirror.task,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="STATE.md",
+            field="phase",
+            canonical=contract.phase,
+            mirror=mirror.phase,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="STATE.md",
+            field="agent_budget",
+            canonical=contract.agent_budget,
+            mirror=mirror.agent_budget,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="STATE.md",
+            field="write_paths",
+            canonical=sorted(contract.write_paths),
+            mirror=sorted(mirror.write_paths),
+        )
+    return warnings
 
 
 def relative_to_root(root: Path, value: str) -> tuple[str | None, str | None]:
@@ -210,7 +437,7 @@ def normalize_contract_paths(root: Path, paths: list[str]) -> tuple[list[str], l
                 Violation(
                     violation_id="invalid-contract-path",
                     severity="high",
-                    message="STATE.md write_sets contains a path outside the repository.",
+                    message="State contract write_sets contains a path outside the repository.",
                     evidence=f"{path}: {error}",
                 )
             )
@@ -255,9 +482,9 @@ def hard_approval_matches(path: str, zones: list[str]) -> list[str]:
 def git_changed_paths(root: Path) -> list[str]:
     paths: list[str] = []
     commands = (
-        ("git", "diff", "--name-only"),
-        ("git", "diff", "--name-only", "--cached"),
-        ("git", "ls-files", "--others", "--exclude-standard"),
+        ("git", "-c", "core.quotePath=false", "diff", "--name-only"),
+        ("git", "-c", "core.quotePath=false", "diff", "--name-only", "--cached"),
+        ("git", "-c", "core.quotePath=false", "ls-files", "--others", "--exclude-standard"),
     )
     for command in commands:
         process = subprocess.run(
@@ -282,13 +509,31 @@ def check_budget(
     contract: StateContract,
 ) -> list[Violation]:
     violations: list[Violation] = []
+    if campaign.source != "CAMPAIGN_STATE.json":
+        violations.append(
+            Violation(
+                violation_id="missing-structured-campaign-contract",
+                severity="high",
+                message="CAMPAIGN_STATE.json is required as the campaign source of truth.",
+                evidence=campaign.source,
+            )
+        )
+    if contract.source != "STATE.json":
+        violations.append(
+            Violation(
+                violation_id="missing-structured-state-contract",
+                severity="high",
+                message="STATE.json is required as the active task source of truth.",
+                evidence=contract.source,
+            )
+        )
     if campaign.max_agent_budget is None:
         violations.append(
             Violation(
                 violation_id="missing-campaign-max-budget",
                 severity="high",
-                message="CAMPAIGN_STATE.md does not define max_agent_budget.",
-                evidence="## Campaign",
+                message="Campaign contract does not define max_agent_budget.",
+                evidence=campaign.source,
             )
         )
     if campaign.default_agent_budget is not None and campaign.max_agent_budget is not None:
@@ -309,8 +554,8 @@ def check_budget(
             Violation(
                 violation_id="missing-state-agent-budget",
                 severity="high",
-                message="STATE.md does not define agent_budget.",
-                evidence="## Orchestration Profile",
+                message="State contract does not define agent_budget.",
+                evidence=contract.source,
             )
         )
     elif contract.agent_budget < 0:
@@ -318,7 +563,7 @@ def check_budget(
             Violation(
                 violation_id="negative-state-agent-budget",
                 severity="high",
-                message="STATE.md agent_budget must be non-negative.",
+                message="State contract agent_budget must be non-negative.",
                 evidence=f"agent_budget={contract.agent_budget}",
             )
         )
@@ -327,7 +572,7 @@ def check_budget(
             Violation(
                 violation_id="state-agent-budget-exceeds-campaign-max",
                 severity="high",
-                message="STATE.md agent_budget exceeds CAMPAIGN_STATE.md max_agent_budget.",
+                message="State contract agent_budget exceeds campaign max_agent_budget.",
                 evidence=(
                     f"agent_budget={contract.agent_budget}, "
                     f"max_agent_budget={campaign.max_agent_budget}"
@@ -345,10 +590,9 @@ def build_payload(
     allow_hard_approval: bool = False,
 ) -> dict[str, Any]:
     root = root.resolve()
-    campaign_text = (root / "CAMPAIGN_STATE.md").read_text(encoding="utf-8")
-    state_text = (root / "STATE.md").read_text(encoding="utf-8")
-    campaign = parse_campaign_budget(campaign_text)
-    contract = parse_state_contract(state_text)
+    campaign = load_campaign_budget(root)
+    contract = load_state_contract(root)
+    mirror_warnings = find_mirror_warnings(root, campaign, contract)
 
     selected_paths = list(changed_paths or [])
     if include_git_diff:
@@ -396,7 +640,7 @@ def build_payload(
                 Violation(
                     violation_id="out-of-contract-path",
                     severity="high",
-                    message="Changed path is not declared in STATE.md write_sets.",
+                    message="Changed path is not declared in the state contract write_sets.",
                     evidence=relative,
                 )
             )
@@ -406,10 +650,18 @@ def build_payload(
         "analysis_kind": "selfdex_campaign_budget_check",
         "root": str(root),
         "status": "pass" if not violations else "fail",
+        "contract_sources": {
+            "campaign": campaign.source,
+            "state": contract.source,
+        },
+        "mirror_warning_count": len(mirror_warnings),
+        "mirror_warnings": [warning.to_dict() for warning in mirror_warnings],
         "campaign_budget": {
             "default_agent_budget": campaign.default_agent_budget,
             "max_agent_budget": campaign.max_agent_budget,
             "hard_approval_zones": campaign.hard_approval_zones,
+            "model_usage_policy": campaign.model_usage_policy,
+            "first_app_surface": campaign.first_app_surface,
         },
         "state_contract": {
             "task": contract.task,
@@ -431,6 +683,9 @@ def render_markdown(payload: dict[str, Any]) -> str:
         "",
         f"- status: `{payload['status']}`",
         f"- violation_count: `{payload['violation_count']}`",
+        f"- mirror_warning_count: `{payload['mirror_warning_count']}`",
+        f"- campaign_source: `{payload['contract_sources']['campaign']}`",
+        f"- state_source: `{payload['contract_sources']['state']}`",
         f"- task: `{contract['task']}`",
         f"- phase: `{contract['phase']}`",
         f"- agent_budget: `{contract['agent_budget']}`",
@@ -462,6 +717,14 @@ def render_markdown(payload: dict[str, Any]) -> str:
         )
     if not payload["violations"]:
         lines.append("- none")
+    lines.extend(["", "## Mirror Warnings", ""])
+    for warning in payload["mirror_warnings"]:
+        lines.append(
+            f"- `{warning['warning_id']}` {warning['source']} {warning['field']}: "
+            f"canonical=`{warning['canonical']}` mirror=`{warning['mirror']}`"
+        )
+    if not payload["mirror_warnings"]:
+        lines.append("- none")
     return "\n".join(lines) + "\n"
 
 
@@ -475,7 +738,7 @@ def main(argv: list[str] | None = None) -> int:
             include_git_diff=args.include_git_diff,
             allow_hard_approval=args.allow_hard_approval,
         )
-    except (FileNotFoundError, RuntimeError) as exc:
+    except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
 

@@ -3,9 +3,9 @@
 - validation_mode: `read_only`
 - external_value_proven: `False`
 - project_count: `1`
-- candidate_count: `3`
+- candidate_count: `0`
 - scanner_error_count: `0`
-- human_review_status: `pending`
+- human_review_status: `not_started`
 
 ## Selection
 
@@ -18,12 +18,10 @@
 
 ### codex_multiagent
 
-- status: `scanned`
+- status: `skipped`
 - write_policy: `read-only`
-- candidate_count: `3`
-- human_review_status: `pending`
-- project_direction: Codex Multi-Agent Kit is the clearest documented project anchor.
+- candidate_count: `0`
+- human_review_status: `not_started`
+- skip_reason: `path_missing`
 - top_candidates:
-  - `refactor` score=`55.2` decision=`pick` title=New-DefaultState + New-WorkspaceStateFromContext 중복 정리
-  - `refactor` score=`55.2` decision=`pick` title=generate_default_state + generate_workspace_state_from_context 중복 정리
-  - `refactor` score=`55.2` decision=`pick` title=toml_get_scalar + toml_get_array 중복 정리
+  - none

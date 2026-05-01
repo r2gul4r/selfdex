@@ -25,7 +25,12 @@ README_TEMPLATE = """# Selfdex
 | :-- | :-- |
 | `AGENTS.md` | Rules |
 | `AUTOPILOT.md` | Policy |
+| `package.json` | Npm package |
+| `bin/selfdex.js` | Npm CLI |
+| `install.ps1` | Bootstrap installer |
+| `CAMPAIGN_STATE.json` | Campaign source |
 | `CAMPAIGN_STATE.md` | Campaign |
+| `STATE.json` | State source |
 | `STATE.md` | Task state |
 | `PROJECT_REGISTRY.md` | Registry |
 | `docs/SELFDEX_FINAL_GOAL.md` | Goal |
@@ -53,7 +58,13 @@ def write_repo(root: Path, readme: str = README_TEMPLATE) -> None:
     (root / "README.md").write_text(readme, encoding="utf-8")
     (root / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
     (root / "AUTOPILOT.md").write_text("# Autopilot\n", encoding="utf-8")
+    (root / "package.json").write_text("{}", encoding="utf-8")
+    (root / "bin").mkdir()
+    (root / "bin" / "selfdex.js").write_text("#!/usr/bin/env node\n", encoding="utf-8")
+    (root / "install.ps1").write_text("# Install\n", encoding="utf-8")
+    (root / "CAMPAIGN_STATE.json").write_text("{}", encoding="utf-8")
     (root / "CAMPAIGN_STATE.md").write_text("# Campaign\n", encoding="utf-8")
+    (root / "STATE.json").write_text("{}", encoding="utf-8")
     (root / "STATE.md").write_text("# State\n", encoding="utf-8")
     (root / "PROJECT_REGISTRY.md").write_text("# Registry\n", encoding="utf-8")
     (root / "runs").mkdir()
@@ -103,6 +114,20 @@ class DocDriftTests(unittest.TestCase):
         self.assertEqual(payload["status"], "fail")
         finding_paths = {finding["path"] for finding in payload["findings"]}
         self.assertIn("scripts/record_run.py", finding_paths)
+
+    def test_fails_when_required_json_contract_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_repo(root)
+            (root / "STATE.json").unlink()
+
+            payload = check_doc_drift.build_payload(root)
+
+        self.assertEqual(payload["status"], "fail")
+        finding_ids = {finding["finding_id"] for finding in payload["findings"]}
+        finding_paths = {finding["path"] for finding in payload["findings"]}
+        self.assertIn("missing-core-path", finding_ids)
+        self.assertIn("STATE.json", finding_paths)
 
     def test_fails_when_quick_start_report_command_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

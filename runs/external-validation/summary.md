@@ -1,10 +1,10 @@
 # External Validation Summary
 
-- status: `pass`
-- external_value_proven: `True`
-- generated_at: `2026-04-30T04:01:55Z`
+- status: `needs_review`
+- external_value_proven: `False`
+- generated_at: `2026-05-01T08:57:07Z`
 - project_count: `3`
-- candidate_count: `9`
+- candidate_count: `3`
 
 ## Rubric
 
@@ -21,8 +21,8 @@
 | project | status | candidates | scored | verdicts | artifacts |
 | :-- | :-- | --: | --: | :-- | :-- |
 | daboyeo | pass | 3 | 3 | strong:3 | runs/external-validation/daboyeo-snapshot.md<br>runs/external-validation/daboyeo-human-score.md<br>runs/external-validation/daboyeo-human-score.json<br>runs/external-validation/daboyeo-report.md |
-| codex_multiagent | pass | 3 | 3 | strong:3 | runs/external-validation/codex_multiagent-snapshot.md<br>runs/external-validation/codex_multiagent-human-score.md<br>runs/external-validation/codex_multiagent-human-score.json<br>runs/external-validation/codex_multiagent-report.md |
-| fs | pass | 3 | 3 | strong:3 | runs/external-validation/fs-snapshot.md<br>runs/external-validation/fs-human-score.md<br>runs/external-validation/fs-human-score.json<br>runs/external-validation/fs-report.md |
+| codex_multiagent | pass | 0 | 0 | none | runs/external-validation/codex_multiagent-snapshot.md<br>runs/external-validation/codex_multiagent-human-score.md<br>runs/external-validation/codex_multiagent-human-score.json<br>runs/external-validation/codex_multiagent-report.md |
+| fs | pass | 0 | 0 | none | runs/external-validation/fs-snapshot.md<br>runs/external-validation/fs-human-score.md<br>runs/external-validation/fs-human-score.json<br>runs/external-validation/fs-report.md |
 
 ## Notes
 

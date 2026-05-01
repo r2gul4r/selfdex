@@ -1,0 +1,26 @@
+{
+  "name": "selfdex",
+  "version": "0.1.0",
+  "description": "Selfdex installer CLI for Codex project-session orchestration.",
+  "license": "UNLICENSED",
+  "bin": {
+    "selfdex": "bin/selfdex.js"
+  },
+  "files": [
+    "bin/",
+    "install.ps1",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test:npm-cli": "node bin/selfdex.js --help"
+  },
+  "keywords": [
+    "codex",
+    "installer",
+    "plugin",
+    "workflow"
+  ]
+}

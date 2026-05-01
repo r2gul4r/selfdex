@@ -254,3 +254,98 @@ Append-only log for execution, tool, and verification errors.
   summary: `Focused external project fixture tests exposed a non-ASCII fixture literal that changed while rewriting the test file.`
   details: `The registry fixture dedupe rewrote tests/test_plan_external_project.py and left the ad-hoc project-name slug assertion dependent on a corrupted non-ASCII literal. Replaced that one fixture with an ASCII project name because Unicode slug behavior is already covered by dedicated slug/run-target tests, then reran the focused suite successfully.`
   status: `resolved`
+## 2026-05-01T14:10:18+09:00 - final-goal structured contract focused test
+
+- time: `2026-05-01T14:10:18+09:00`
+- location: `tests/test_campaign_budget.py`
+- summary: `Focused campaign budget test failed while adding structured-contract mirror warnings.`
+- details: `test_reports_markdown_mirror_warning_when_json_differs expected markdown mirror drift, but the helper rewrote the markdown fixture before writing JSON contracts.`
+- status: `resolved; write_json_fixture now preserves existing markdown mirrors before writing JSON fixtures.`
+
+## 2026-05-01T14:42:54+09:00 - read-only MCP wrapper focused test
+
+- time: `2026-05-01T14:42:54+09:00`
+- location: `tests/test_control_surface_mcp_server.py`
+- summary: `Sandboxed focused MCP wrapper tests failed because fixture writes to Windows Temp were denied.`
+- details: `The new focused tests create temporary registry, campaign, and run fixture files under AppData Local Temp. The sandbox denied those writes; the same focused suite passed after approved sandbox escalation: 5 tests OK.`
+- status: `resolved`
+
+## 2026-05-01T14:55:00+09:00 - model usage contract focused tests
+
+- time: `2026-05-01T14:55:00+09:00`
+- location: `tests/test_campaign_budget.py tests/test_control_surface_snapshot.py tests/test_control_surface_mcp_server.py`
+- summary: `Sandboxed focused contract tests failed because fixture writes to Windows Temp were denied.`
+- details: `The focused tests create temporary campaign, state, project registry, and run fixture files under AppData Local Temp. The sandbox denied those writes; the same focused suite then ran with approved sandbox escalation.`
+- status: `resolved`
+
+## 2026-05-01T14:56:00+09:00 - model usage mirror warning test
+
+- time: `2026-05-01T14:56:00+09:00`
+- location: `tests/test_campaign_budget.py`
+- summary: `Focused mirror-warning test did not actually create model policy drift.`
+- details: `The assertion expected a model_usage_policy mirror warning, but the changed markdown fixture was applied to the wrong test path. Moved the fixture mutation into the mirror-warning test and reran the focused suite successfully.`
+- status: `resolved`
+
+## 2026-05-01T15:01:32+09:00 - model usage contract review
+
+- time: `2026-05-01T15:01:32+09:00`
+- location: `scripts/check_campaign_budget.py scripts/check_doc_drift.py tests/test_campaign_budget.py tests/test_doc_drift.py`
+- summary: `Codex gpt-5.5 xhigh review blocked on two P2 contract coverage gaps.`
+- details: `The first review found JSON source-of-truth was optional when JSON files were missing, and first_app_surface mirror drift had no direct regression test. Added missing structured-contract violations, missing core path doc drift detection, and first_app_surface drift coverage. Second review accepted with no P0/P1/P2 findings.`
+- status: `resolved`
+
+## 2026-05-01T15:08:00+09:00 - repo-local plugin scaffold
+
+- time: `2026-05-01T15:08:00+09:00`
+- location: `plugin-creator scaffold for .agents/plugins/marketplace.json`
+- summary: `Plugin scaffold could not create the repo-local marketplace directory under .agents/plugins without elevated permissions.`
+- details: `The scaffold created plugins/selfdex but failed with access denied while creating .agents/plugins. Created the repo-local marketplace directory with approved escalation, then completed manifest, skill, marketplace, and validation files without installing anything globally.`
+- status: `resolved`
+
+## 2026-05-01T16:15:10+09:00 - repo-local plugin focused verification
+
+- time: `2026-05-01T16:15:10+09:00`
+- location: `scripts/check_selfdex_plugin.py and tests/test_selfdex_plugin.py`
+- summary: `Focused plugin verification initially failed under the sandbox.`
+- details: `The plain python command was not on PATH, so verification switched to the bundled Python executable. The plugin unittest then hit the known Windows sandbox TemporaryDirectory fixture limitation and passed after approved sandbox escalation: 3 tests OK.`
+- status: `resolved`
+
+## 2026-05-01T16:16:31+09:00 - skill quick validation
+
+- time: `2026-05-01T16:16:31+09:00`
+- location: `skill-creator/scripts/quick_validate.py plugins/selfdex/skills/selfdex`
+- summary: `The optional skill-creator validator could not run with the bundled Python environment.`
+- details: `quick_validate.py imports PyYAML, but the bundled Python used for repository checks does not include yaml. The repository-local plugin validator still checked skill frontmatter, manifest wiring, marketplace wiring, and required safety phrases successfully.`
+- status: `deferred`
+
+## 2026-05-01T16:57:59+09:00 - one-command installer smoke
+
+- time: `2026-05-01T16:57:59+09:00`
+- location: `scripts/install_selfdex_plugin.py --home C:\tmp\selfdex-install-smoke-20260501-165149 --yes`
+- summary: `Sandboxed installer smoke could not create the C:\tmp test home directory.`
+- details: `The installer smoke intentionally targeted a fake home under C:\tmp, not the real Codex home. The workspace sandbox denied creating the test home directory; the same command passed after approved sandbox escalation and wrote the plugin copy, root config, and marketplace entry under that test home.`
+- status: `resolved`
+
+## 2026-05-01T17:02:31+09:00 - bootstrap parser smoke
+
+- time: `2026-05-01T17:02:31+09:00`
+- location: `PowerShell parser smoke for install.ps1`
+- summary: `The first direct parser smoke used broken nested PowerShell quoting.`
+- details: `The test suite parser check passed, but the manual parser command let the outer shell consume variables and quotes. Reran the parser smoke with escaped PowerShell variables and it passed.`
+- status: `resolved`
+
+## 2026-05-01T17:31:45+09:00 - npm installer CLI verification
+
+- time: `2026-05-01T17:31:45+09:00`
+- location: `npm pack, npm view, and Python unittest verification`
+- summary: `Initial npm and unittest verification hit sandbox permission limits instead of implementation failures.`
+- details: `npm pack first tried to write the default AppData npm cache and failed with EPERM, then passed with npm_config_cache under .tmp-tests. npm view selfdex was blocked by sandbox network access, then returned registry E404 after approved escalation. Python focused tests using TemporaryDirectory failed under sandbox but passed after approved escalation.`
+- status: `resolved`
+
+## 2026-05-01T17:59:30+09:00 - README finalization verification
+
+- time: `2026-05-01T17:59:30+09:00`
+- location: `external validation package and campaign budget check`
+- summary: `Parallel external-project verification timed out at 120 seconds, and a Unicode run-record path exposed a quoted git path parsing bug.`
+- details: `The external project checks passed when rerun sequentially with longer timeouts except build_external_validation_package.py, which returned status needs_review as designed because external value remains review-gated. check_campaign_budget.py initially treated a Korean run-record filename from git output as out of contract; fixed git_changed_paths to call git with core.quotePath=false and added a Unicode path regression test.`
+- status: `resolved`

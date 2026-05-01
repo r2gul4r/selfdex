@@ -25,7 +25,12 @@ except ModuleNotFoundError:
 CORE_PATHS = (
     "AGENTS.md",
     "AUTOPILOT.md",
+    "package.json",
+    "bin/selfdex.js",
+    "install.ps1",
+    "CAMPAIGN_STATE.json",
     "CAMPAIGN_STATE.md",
+    "STATE.json",
     "STATE.md",
     "PROJECT_REGISTRY.md",
     "docs/SELFDEX_FINAL_GOAL.md",
@@ -129,15 +134,38 @@ def existing_core_paths(root: Path) -> list[str]:
     return paths
 
 
+def missing_core_paths(root: Path) -> list[str]:
+    missing: list[str] = []
+    for value in CORE_PATHS:
+        path = root / value
+        if value.endswith("/"):
+            if not path.is_dir():
+                missing.append(value)
+        elif not path.exists():
+            missing.append(value)
+    return missing
+
+
 def find_doc_drift(root: Path) -> tuple[list[DriftFinding], dict[str, Any]]:
     readme_path = root / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8")
     documented_paths = documented_code_paths(readme_text)
     quick_start = "\n".join(extract_markdown_section(readme_text, "Quick Start"))
     core_paths = existing_core_paths(root)
+    missing_paths = missing_core_paths(root)
     report_scripts = generated_report_scripts(root)
 
     findings: list[DriftFinding] = []
+    for path in missing_paths:
+        findings.append(
+            DriftFinding(
+                finding_id="missing-core-path",
+                severity="high",
+                path=path,
+                summary=f"Required core path `{path}` is missing.",
+            )
+        )
+
     for path in core_paths:
         if not is_documented(path, documented_paths):
             findings.append(
@@ -175,6 +203,7 @@ def find_doc_drift(root: Path) -> tuple[list[DriftFinding], dict[str, Any]]:
         "readme_path": str(readme_path),
         "documented_paths": documented_paths,
         "core_paths": core_paths,
+        "missing_core_paths": missing_paths,
         "generated_report_scripts": report_scripts,
         "quick_start_report_commands": [
             command for command in QUICK_START_REPORT_COMMANDS if command in report_scripts

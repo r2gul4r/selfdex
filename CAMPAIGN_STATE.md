@@ -3,14 +3,40 @@
 ## Campaign
 
 - name: `selfdex-bootstrap`
-- goal: `Build a bounded recursive improvement harness that can register projects, scan, ask Socratic questions, classify work, rank candidates, orchestrate agents when useful, implement, verify, record, and repeat.`
+- goal: `Make Selfdex the command center that reads a user-selected project, chooses the next improvement, evolution, or feature task, asks for approval, then safely delegates execution to Codex and records the result.`
 - risk_appetite: `medium-high`
 - default_agent_budget: `2`
 - max_agent_budget: `4`
 - repair_attempts: `2`
-- review_default: `on`
+- review_default: `non_trivial_implementation_only`
+- reviewer_model: `gpt-5.5`
+- reviewer_mode: `xhigh`
+- direction_review_default: `recommend_and_wait_for_user_approval`
+- direction_review_mode: `GPT Pro extended mode`
 - explorer_default: `on`
 - parallel_default: `on_when_disjoint`
+
+## Model Usage Policy
+
+- gpt_direction_review_role: `high-level product, milestone, roadmap, and priority direction only`
+- gpt_direction_review_approval: `user-approved-or-user-called-only`
+- gpt_direction_review_auto_call: `False`
+- gpt_direction_review_triggers: `project goals conflict or are unclear; candidate tasks are all strategically ambiguous; feature priority cannot be decided from code evidence alone; milestone or product direction needs to be reset; major surface such as ChatGPT Apps, MCP, public UI, or automation loop is being considered; user asks for product or strategy review`
+- gpt_direction_review_non_triggers: `routine coding; tests; refactors; bug fixes; documentation drift; diff review`
+- selfdex_role: `coordinate the loop, freeze contracts, manage approval, record evidence, and prevent uncontrolled autonomy`
+- codex_role: `implement safely, verify, debug failures, review diffs, and stop when work becomes a product-direction question`
+- fast_exploration_model: `mini-or-medium`
+- candidate_contract_model: `gpt-5.5-high`
+- complex_or_risky_model: `gpt-5.5-xhigh`
+- routine_implementation_model: `medium-or-high`
+- final_code_review_model: `gpt-5.5-xhigh`
+- product_direction_model: `GPT-Pro-extended-user-approved-only`
+
+## First App Surface
+
+- surface_kind: `read_only`
+- write_capable_target_execution_exposed: `False`
+- allowed_fields: `registered projects; next recommended task; latest run records; approval status`
 
 ## Hard Approval Zones
 
@@ -73,10 +99,16 @@ none
 - Deduplicate target Codex blocked CLI tests.
 - Deduplicate external validation test payload fixtures.
 - Deduplicate external project registry test fixtures.
+- Wrap the read-only control surface snapshot as a dependency-free local MCP JSON-RPC tool scaffold.
+- Align model usage, approval gates, JSON source-of-truth enforcement, and read-only control-surface approval status.
+- Package Selfdex as a repo-local Codex plugin for future `@selfdex` project-session invocation.
+- Add a one-command installer for home-local `@selfdex` plugin setup from a cloned checkout.
+- Add a true one-line PowerShell bootstrap installer that clones or updates Selfdex and installs the `@selfdex` plugin.
+- Add an npm-compatible CLI so the post-publish command can be `npx selfdex install`.
 
 ## Latest Run
 
 - status: `completed`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260430-141130-external-project-registry-fixtures-dedup.md`
-- summary: `Moved duplicated external project registry and goal-cycle fixture writers into the shared external validation test helper; planner now reports no remaining candidates.`
+- artifact_path: `runs/selfdex/20260501-174208-gpt-direction-readme-finalization.md`
+- summary: `GPT-5.5 xhigh review accepted the direction; README was rewritten around install and first use, verification completed, commit/push pending.`
