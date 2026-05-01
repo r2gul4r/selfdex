@@ -219,6 +219,10 @@ already working.
   command is `npx selfdex install`. The npm package must only bootstrap
   Selfdex and the local plugin; `npm publish`, package-name verification, and
   npm credentials remain separate approval-gated setup steps.
+- The default installer should finish with a setup doctor that verifies the
+  Selfdex plugin, local fallback scripts, and recommended Codex integrations.
+  Account-bound plugins or model entitlements must be reported as user actions,
+  not silently installed.
 - Provide a true one-line bootstrap installer:
   `powershell -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm https://raw.githubusercontent.com/r2gul4r/selfdex/main/install.ps1)))"`.
   It must clone or update Selfdex, then install the home-local plugin. The

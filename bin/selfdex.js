@@ -3,6 +3,7 @@
 "use strict";
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
 
@@ -15,11 +16,13 @@ function printMainHelp() {
 
 Usage:
   selfdex install [options]
+  selfdex doctor [options]
   selfdex --help
   selfdex --version
 
 Commands:
   install    Clone or update Selfdex, then install the @selfdex Codex plugin.
+  doctor     Check whether the local Selfdex setup is ready.
 
 Install options:
   --dry-run                 Show what would happen without cloning or installing.
@@ -27,6 +30,7 @@ Install options:
   --repo-url <url>          Git repository URL used by the bootstrap installer.
   --branch <name>           Git branch used by the bootstrap installer.
   --skip-plugin-install     Clone or update Selfdex without installing @selfdex.
+  --skip-doctor             Do not run the setup doctor after install.
   --python <path>           Python executable used by the plugin installer.
   -h, --help                Show install help.
 `);
@@ -42,7 +46,22 @@ Options:
   --repo-url <url>          Git repository URL used by the bootstrap installer.
   --branch <name>           Git branch used by the bootstrap installer.
   --skip-plugin-install     Clone or update Selfdex without installing @selfdex.
+  --skip-doctor             Do not run the setup doctor after install.
   --python <path>           Python executable used by the plugin installer.
+  -h, --help                Show this help.
+`);
+}
+
+function printDoctorHelp() {
+  console.log(`Usage:
+  selfdex doctor [options]
+
+Options:
+  --install-root <path>     Selfdex checkout path. Defaults to $HOME/selfdex.
+  --home <path>             Home directory that owns the Codex plugin install.
+  --codex-home <path>       Codex home directory. Defaults to CODEX_HOME or $HOME/.codex.
+  --format <json|markdown>  Output format. Defaults to markdown.
+  --python <path>           Python executable used by the setup doctor.
   -h, --help                Show this help.
 `);
 }
@@ -67,6 +86,7 @@ function parseInstallArgs(args) {
     repoUrl: null,
     branch: null,
     skipPluginInstall: false,
+    skipDoctor: false,
     python: null,
   };
 
@@ -95,12 +115,62 @@ function parseInstallArgs(args) {
       case "--skip-plugin-install":
         options.skipPluginInstall = true;
         break;
+      case "--skip-doctor":
+        options.skipDoctor = true;
+        break;
       case "--python":
         options.python = takeValue(args, index, arg);
         index += 1;
         break;
       default:
         fail(`unknown install option: ${arg}`);
+    }
+  }
+
+  return options;
+}
+
+function parseDoctorArgs(args) {
+  const options = {
+    installRoot: null,
+    home: null,
+    codexHome: null,
+    format: "markdown",
+    python: null,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    switch (arg) {
+      case "-h":
+      case "--help":
+        options.help = true;
+        break;
+      case "--install-root":
+        options.installRoot = takeValue(args, index, arg);
+        index += 1;
+        break;
+      case "--home":
+        options.home = takeValue(args, index, arg);
+        index += 1;
+        break;
+      case "--codex-home":
+        options.codexHome = takeValue(args, index, arg);
+        index += 1;
+        break;
+      case "--format":
+        options.format = takeValue(args, index, arg);
+        index += 1;
+        if (!["json", "markdown"].includes(options.format)) {
+          fail("--format must be json or markdown");
+        }
+        break;
+      case "--python":
+        options.python = takeValue(args, index, arg);
+        index += 1;
+        break;
+      default:
+        fail(`unknown doctor option: ${arg}`);
     }
   }
 
@@ -130,6 +200,37 @@ function resolvePowerShell() {
   return null;
 }
 
+function resolvePython(explicit) {
+  if (explicit) {
+    return [explicit];
+  }
+
+  const bundled = path.join(
+    os.homedir(),
+    ".cache",
+    "codex-runtimes",
+    "codex-primary-runtime",
+    "dependencies",
+    "python",
+    process.platform === "win32" ? "python.exe" : "python"
+  );
+  if (fs.existsSync(bundled)) {
+    return [bundled];
+  }
+
+  const candidates = process.platform === "win32" ? ["python.exe", "python", "py.exe", "py"] : ["python3", "python"];
+  for (const candidate of candidates) {
+    if (commandExists(candidate)) {
+      return candidate.startsWith("py") ? [candidate, "-3"] : [candidate];
+    }
+  }
+  return null;
+}
+
+function defaultInstallRoot() {
+  return path.join(os.homedir(), "selfdex");
+}
+
 function buildPowerShellArgs(options) {
   const args = ["-NoProfile"];
   if (process.platform === "win32") {
@@ -154,6 +255,9 @@ function buildPowerShellArgs(options) {
   }
   if (options.skipPluginInstall) {
     args.push("-SkipPluginInstall");
+  }
+  if (options.skipDoctor) {
+    args.push("-SkipDoctor");
   }
 
   return args;
@@ -186,6 +290,46 @@ function runInstall(args) {
   return result.status === null ? 1 : result.status;
 }
 
+function runDoctor(args) {
+  const options = parseDoctorArgs(args);
+  if (options.help) {
+    printDoctorHelp();
+    return 0;
+  }
+
+  const installRoot = path.resolve(options.installRoot || defaultInstallRoot());
+  const doctorPath = path.join(installRoot, "scripts", "check_selfdex_setup.py");
+  if (!fs.existsSync(doctorPath)) {
+    fail(`setup doctor not found: ${doctorPath}. Run \`selfdex install\` first.`);
+  }
+
+  const python = resolvePython(options.python);
+  if (!python) {
+    fail("Python was not found. Install Python 3 or pass --python <path>.");
+  }
+
+  const doctorArgs = [
+    ...python.slice(1),
+    doctorPath,
+    "--root",
+    installRoot,
+    "--format",
+    options.format,
+  ];
+  if (options.home) {
+    doctorArgs.push("--home", options.home);
+  }
+  if (options.codexHome) {
+    doctorArgs.push("--codex-home", options.codexHome);
+  }
+
+  const result = spawnSync(python[0], doctorArgs, { stdio: "inherit" });
+  if (result.error) {
+    fail(result.error.message);
+  }
+  return result.status === null ? 1 : result.status;
+}
+
 function main(argv) {
   const [command, ...args] = argv;
 
@@ -201,6 +345,10 @@ function main(argv) {
 
   if (command === "install") {
     return runInstall(args);
+  }
+
+  if (command === "doctor") {
+    return runDoctor(args);
   }
 
   fail(`unknown command: ${command}`);

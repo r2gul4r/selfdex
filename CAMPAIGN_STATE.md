@@ -112,10 +112,11 @@ none
 - Add an npm-compatible CLI so the post-publish command can be `npx selfdex install`.
 - Reposition Selfdex runtime policy around GPT-5.5 prompt guidance, lightweight default execution, and optional Codex native Subagents.
 - Fix GitHub Actions bootstrap installer test portability and add a GitHub-only post-push status check routine.
+- Add one-command setup doctor to the installer and CLI.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260501-195550-github-actions-ci-fix-and-status-routine.md`
-- summary: `GitHub Actions failure root cause was fixed locally and a GitHub-only post-push status checker was added; new remote check is pending until the fix commit is pushed.`
+- artifact_path: `runs/selfdex/20260501-203542-one-command-setup-doctor.md`
+- summary: `npx selfdex install now installs the local plugin and runs setup doctor by default; account-bound Codex/GitHub/ChatGPT integrations are reported as user actions.`

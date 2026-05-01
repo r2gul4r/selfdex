@@ -349,3 +349,11 @@ Append-only log for execution, tool, and verification errors.
 - summary: `Parallel external-project verification timed out at 120 seconds, and a Unicode run-record path exposed a quoted git path parsing bug.`
 - details: `The external project checks passed when rerun sequentially with longer timeouts except build_external_validation_package.py, which returned status needs_review as designed because external value remains review-gated. check_campaign_budget.py initially treated a Korean run-record filename from git output as out of contract; fixed git_changed_paths to call git with core.quotePath=false and added a Unicode path regression test.`
 - status: `resolved`
+
+## 2026-05-01T20:40:00+09:00 - one-command setup doctor verification
+
+- time: `2026-05-01T20:40:00+09:00`
+- location: `python -m unittest discover -s tests`
+- summary: `Sandboxed full unittest failed because Windows Temp writes and PowerShell parser tests were restricted.`
+- details: `The same full suite passed after approved sandbox escalation: 211 tests OK. No implementation change was needed.`
+- status: `resolved`

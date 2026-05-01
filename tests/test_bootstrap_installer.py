@@ -33,6 +33,7 @@ class BootstrapInstallerTests(unittest.TestCase):
         self.assertIn("scripts\\install_selfdex_plugin.py", text)
         self.assertIn("--yes", text)
         self.assertIn("--force", text)
+        self.assertIn("check_selfdex_setup.py", text)
         self.assertIn("DryRun", text)
         self.assertNotIn("run_target_codex.py", text)
         self.assertNotIn("Remove-Item", text)
@@ -85,6 +86,7 @@ class BootstrapInstallerTests(unittest.TestCase):
         self.assertIn("dry run", output.lower())
         self.assertIn("would clone Selfdex", output)
         self.assertIn("install_selfdex_plugin.py", output)
+        self.assertIn("check_selfdex_setup.py", output)
 
 
 if __name__ == "__main__":

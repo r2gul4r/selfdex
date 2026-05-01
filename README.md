@@ -28,6 +28,12 @@ The intended published install command is:
 npx selfdex install
 ```
 
+The install path clones or updates Selfdex, installs the home-local `@selfdex`
+Codex plugin, then runs `selfdex doctor` automatically. Core Selfdex setup is
+completed by the installer; account-bound integrations such as GitHub or
+ChatGPT Apps are reported as recommended user actions when they are not already
+available.
+
 Preview the install without cloning or writing plugin files:
 
 ```bash
@@ -57,6 +63,12 @@ Preview the plugin install:
 
 ```bash
 python scripts/install_selfdex_plugin.py --root . --dry-run --format markdown
+```
+
+Re-check setup after installation:
+
+```bash
+selfdex doctor
 ```
 
 Requirements for the bootstrap path:
@@ -169,6 +181,8 @@ Installed and tested surfaces:
 - `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
 - `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
+- `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
+  recommended Codex integrations after install.
 - `scripts/plan_external_project.py` reads a target project and emits a frozen
   task contract without editing the target.
 - `scripts/run_target_codex.py` can run the approved target-project execution
@@ -295,8 +309,9 @@ baseline or registry proof target.
 Installer and plugin files:
 
 - `package.json` defines the npm package metadata and executable.
-- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1`.
-- `install.ps1` clones or updates Selfdex and invokes the plugin installer.
+- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1` and setup doctor.
+- `install.ps1` clones or updates Selfdex, invokes the plugin installer, then
+  runs the setup doctor unless explicitly skipped.
 - `plugins/selfdex/` contains the repo-local Codex plugin package.
 - `.agents/plugins/marketplace.json` advertises the plugin for Codex.
 
@@ -315,6 +330,7 @@ Use full checks after code, installer, plugin, or workflow changes:
 ```bash
 node bin/selfdex.js --help
 node bin/selfdex.js install --dry-run --install-root C:/tmp/selfdex-npx-dry-run
+node bin/selfdex.js doctor --help
 npm pack --dry-run
 python -m compileall -q scripts tests
 python -m unittest discover -s tests

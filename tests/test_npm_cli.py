@@ -68,6 +68,7 @@ class NpmCliTests(unittest.TestCase):
         )
         self.assertEqual(help_result.returncode, 0, help_result.stdout + help_result.stderr)
         self.assertIn("selfdex install", help_result.stdout)
+        self.assertIn("selfdex doctor", help_result.stdout)
         self.assertIn("--dry-run", help_result.stdout)
 
         version_result = subprocess.run(
@@ -96,7 +97,6 @@ class NpmCliTests(unittest.TestCase):
                 "https://example.invalid/selfdex.git",
                 "--branch",
                 "test-branch",
-                "--skip-plugin-install",
             ],
             cwd=ROOT,
             capture_output=True,
@@ -109,7 +109,22 @@ class NpmCliTests(unittest.TestCase):
         self.assertIn("dry run", output.lower())
         self.assertIn("test-branch", output)
         self.assertIn(install_root.name, output)
+        self.assertIn("check_selfdex_setup.py", output)
         self.assertFalse(install_root.exists())
+
+    @unittest.skipIf(NODE is None, "node is not available")
+    def test_doctor_help_command(self) -> None:
+        result = subprocess.run(
+            [NODE, str(CLI), "doctor", "--help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("selfdex doctor", result.stdout)
+        self.assertIn("--codex-home", result.stdout)
 
     @unittest.skipIf(NPM is None, "npm is not available")
     def test_npm_pack_dry_run_includes_bootstrap_files(self) -> None:

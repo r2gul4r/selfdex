@@ -50,6 +50,9 @@ worker, or reviewer lanes.
 - Selfdex has a repo-local plugin path for future `@selfdex` invocation.
 - The intended public installer remains `npx selfdex install` after npm
   publication.
+- The installer should complete core Selfdex setup and then run the setup
+  doctor. External account-bound integrations such as GitHub remain user
+  connection steps when not already available.
 - npm publication is blocked until the runtime-positioning refactor is verified
   and recorded.
 - Active external validation targets are recorded in `PROJECT_REGISTRY.md`.
@@ -66,6 +69,7 @@ python -m unittest discover -s tests
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format json
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\plan_next_task.py --root . --format markdown
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\check_doc_drift.py --root . --format json
+$env:PYTHONIOENCODING='utf-8'; python .\scripts\check_selfdex_setup.py --root . --format json
 $env:PYTHONIOENCODING='utf-8'; python .\scripts\check_github_actions_status.py --root . --format json
 git diff --check
 ```
