@@ -18,10 +18,14 @@ def write_plugin_fixture(root: Path) -> None:
     plugin_dir = root / "plugins" / "selfdex"
     manifest = plugin_dir / ".codex-plugin"
     skill_dir = plugin_dir / "skills" / "selfdex"
+    commit_gate_dir = plugin_dir / "skills" / "selfdex-commit-gate"
     marketplace = root / ".agents" / "plugins"
+    codex_agents = root / ".codex" / "agents"
     manifest.mkdir(parents=True)
     skill_dir.mkdir(parents=True)
+    commit_gate_dir.mkdir(parents=True)
     marketplace.mkdir(parents=True)
+    codex_agents.mkdir(parents=True)
     (manifest / "plugin.json").write_text(
         json.dumps(
             {
@@ -31,7 +35,8 @@ def write_plugin_fixture(root: Path) -> None:
                 "skills": "./skills/",
                 "interface": {
                     "defaultPrompt": [
-                        "@selfdex read this project and choose the next safe task"
+                        "@selfdex read this project and choose the next safe task",
+                        "@selfdex close the verified task with the commit gate",
                     ]
                 },
             },
@@ -49,12 +54,33 @@ description: Use when the user invokes @selfdex.
 
 Use this skill from a target project session. Treat the current working directory as the target.
 
+Calling @selfdex is explicit permission to use Codex native Subagents/MultiAgentV2.
+Keep the main agent focused on approvals and records.
+Use explorer, docs_researcher, worker, and reviewer roles when useful.
 Find `SELFDEX_ROOT`, then run `scripts/plan_external_project.py`.
 After explicit approval, run `scripts/run_target_codex.py`.
 Install with `scripts/install_selfdex_plugin.py --yes`.
+After review, run `scripts/check_commit_gate.py`.
 
 External projects are read-only by default.
 Do not install this plugin without approval.
+""",
+        encoding="utf-8",
+    )
+    (commit_gate_dir / "SKILL.md").write_text(
+        """---
+name: selfdex-commit-gate
+description: Use when a verified Selfdex task should be closed with commit gate.
+---
+
+# Selfdex Commit Gate
+
+Use `scripts/check_commit_gate.py` before commit.
+Use `scripts/check_github_actions_status.py` after push.
+Require Conventional Commits.
+Check GitHub Actions.
+Do not select the next candidate until GitHub status is closed.
+Run only when the user explicitly asks for it.
 """,
         encoding="utf-8",
     )
@@ -80,6 +106,14 @@ Do not install this plugin without approval.
     (scripts / "plan_external_project.py").write_text("# fixture\n", encoding="utf-8")
     (scripts / "run_target_codex.py").write_text("# fixture\n", encoding="utf-8")
     (scripts / "install_selfdex_plugin.py").write_text("# fixture\n", encoding="utf-8")
+    (scripts / "check_commit_gate.py").write_text("# fixture\n", encoding="utf-8")
+    (scripts / "check_github_actions_status.py").write_text("# fixture\n", encoding="utf-8")
+    (root / ".codex" / "config.toml").write_text("[features]\nmulti_agent = true\n", encoding="utf-8")
+    for name in ("explorer", "worker", "reviewer", "docs-researcher"):
+        (codex_agents / f"{name}.toml").write_text(
+            f'name = "{name.replace("-", "_")}"\ndescription = "fixture"\ndeveloper_instructions = "fixture"\n',
+            encoding="utf-8",
+        )
 
 
 class SelfdexPluginTests(unittest.TestCase):
@@ -93,6 +127,8 @@ class SelfdexPluginTests(unittest.TestCase):
         self.assertEqual(payload["status"], "pass")
         self.assertEqual(payload["finding_count"], 0)
         self.assertEqual(payload["plugin_name"], "selfdex")
+        self.assertEqual(payload["commit_gate_phrase_count"], 7)
+        self.assertEqual(payload["codex_agent_file_count"], 5)
 
     def test_rejects_missing_explicit_approval_phrase(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

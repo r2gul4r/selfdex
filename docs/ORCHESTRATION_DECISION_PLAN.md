@@ -1,74 +1,54 @@
-# Orchestration Decision Plan
+# Native Subagent Decision Plan
 
-Selfdex should not treat `priority_score` or `score_total` as an automatic
-subagent trigger. Scores rank urgency and risk. Orchestration needs a separate
-fit check that asks whether delegation is actually faster and safer.
+Selfdex no longer uses its old local topology scorecard as the active runtime
+model. Planning now asks one direct question:
 
-## Problem
+```text
+Would official Codex native subagents make this task safer, cleaner, or faster?
+```
 
-The first autonomous loop can execute several tasks sequentially, but parallel
-work is blocked when every worker would touch the same shared files:
+## Official Roles
 
-- `STATE.md`
-- `CAMPAIGN_STATE.md`
-- `runs/`
-
-Those files should stay main-owned. Workers need disjoint write sets and, for
-true concurrent mode, their own slice-local state files.
+| Role | Purpose |
+| :-- | :-- |
+| `main` | Own requirements, task choice, approval boundaries, integration, final report, and run records. |
+| `explorer` | Read-only codebase scouting, evidence collection, and write-boundary recommendation. |
+| `docs_researcher` | Read-only official docs or API behavior checks. |
+| `worker` | Implementation inside one frozen and disjoint write boundary. |
+| `reviewer` | Read-only correctness, regression, security, and missing-test review. |
 
 ## Decision Model
 
-`scripts/plan_next_task.py` now reports an `orchestration_fit` block:
+`scripts/plan_next_task.py` now reports a `recommended_agents` block with a
+`subagent_fit` payload:
 
 | Field | Meaning |
 | :-- | :-- |
-| `task_size_class` | `tiny`, `small`, `medium`, or `large` task estimate |
-| `estimated_write_set_count` | likely number of independently owned write sets |
-| `shared_file_collision_risk` | risk that agents fight over the same files |
-| `handoff_cost` | cost of explaining, waiting, merging, and reviewing |
-| `parallel_gain` | expected speedup from independent work |
-| `verification_independence` | whether slices can be checked separately |
-| `orchestration_value` | final delegation value: `low`, `medium`, or `high` |
+| `agent_runtime` | Always `codex_native_subagents` for the active Selfdex runtime. |
+| `subagent_use` | Whether the task stays main-owned or uses official subagents. |
+| `selected_agents` | Official Codex agent roles recommended for the task. |
+| `estimated_write_boundary_count` | Likely number of independently owned write boundaries. |
+| `write_collision_risk` | Risk that multiple workers would touch the same files. |
+| `coordination_cost` | Cost of explaining, waiting, merging, and reviewing. |
+| `parallel_or_specialist_gain` | Expected value from parallel or specialized agent work. |
+| `verification_independence` | Whether slices can be checked separately. |
+| `subagent_value` | Final recommendation: `main_only`, `use_readonly_subagents_first`, or `use_subagents`. |
 
 ## Execution Rules
 
 | Fit | Default Action |
 | :-- | :-- |
-| tiny/small + high handoff cost | `autopilot-single` |
-| large + high collision risk | `autopilot-mixed` with explorer/reviewer sidecars |
-| large + disjoint write sets + independent checks | `autopilot-parallel` |
-| unclear contract | `autopilot-serial` until frozen |
-
-## Concurrent State Pattern
-
-Use concurrent state only after the contract proves independent write sets:
-
-```text
-STATE.md
-  state_mode: concurrent_registry
-  active_threads:
-    - id: metrics-summary
-      state_file: states/STATE.metrics-summary.md
-      write_set:
-        - scripts/metrics_summary_utils.py
-        - tests/test_metrics_summary_utils.py
-  workspace_locks:
-    - STATE.md: main
-    - CAMPAIGN_STATE.md: main
-    - runs/: main
-```
-
-Workers update only their slice state and slice write set. Main owns the root
-state, campaign state, run records, integration, verification, and commits.
+| Small or tightly coupled work | Main agent owns the task. |
+| Broad read-only discovery | Use `explorer`; add `docs_researcher` when official docs matter. |
+| Large work with write collision risk | Use read-only `explorer` and `reviewer` first; delay workers until boundaries are clear. |
+| Large work with disjoint write boundaries | Use `explorer`, one or more bounded `worker` subagents, and `reviewer`. |
+| Unclear contract | Main agent freezes the contract before assigning write-capable workers. |
 
 ## Safety Rule
 
-The useful gate is:
+`@selfdex` gives explicit permission to use official Codex native subagents when
+useful. It does not grant permission for hard approval zones.
 
-```text
-priority/risk says what matters
-orchestration_fit says how to execute it
-```
-
-High priority alone does not spawn agents. Subagents are worth using only when
-parallel gain beats handoff cost and collision risk is controlled.
+Worker subagents need frozen write boundaries. Commit, push, publish, deploy,
+secret access, database or production writes, destructive Git, and destructive
+filesystem operations still require separate approval.

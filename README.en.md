@@ -6,21 +6,22 @@ Selfdex is a supervised command center for Codex work on a project you choose.
 
 It reads the selected project first, decides one useful next improvement,
 evolution, or feature task, asks for approval, sends only the approved bounded
-work to Codex, verifies the result, and records evidence.
+work to Codex, reviews and verifies the result, optionally closes it through a
+commit gate with commit, push, CI status, and records evidence.
 
 ```text
 select project -> read direction -> choose next task -> ask approval
--> freeze contract -> delegate to Codex -> verify -> record
+-> freeze contract -> delegate to Codex -> review -> verify -> commit gate -> record
 ```
 
 Selfdex is not a background daemon, not a blind refactor bot, and not a tool
 that silently rewrites your repositories. It is meant to sit between you and
 Codex as the control layer that keeps the work useful, bounded, and auditable.
 
-Selfdex is not a multi-agent kit. Its default runtime model is a GPT-5.5
-prompt-guided command center: clear roles, bounded tool use, explicit stop
-conditions, local verification, and compact run evidence. Codex native
-Subagents are an optional backend only when work splits cleanly.
+Selfdex is not a legacy multi-agent kit or a local topology scorecard. Its
+default runtime model is a GPT-5.5 prompt-guided command center, and its agent
+runtime is official Codex native Subagents/MultiAgentV2. Calling `@selfdex`
+means Selfdex may use official subagents when useful.
 
 ## Install
 
@@ -73,6 +74,9 @@ Re-check setup after installation:
 selfdex doctor
 ```
 
+`selfdex doctor` also checks the project-scoped Codex subagent policy files:
+`.codex/config.toml` and `.codex/agents/*.toml`.
+
 Requirements for the bootstrap path:
 
 - Node.js and npm for the `npx` entrypoint
@@ -97,6 +101,19 @@ session and call:
 Selfdex treats the current session directory as the selected project unless you
 name another path.
 
+Calling `@selfdex` also means:
+
+- Selfdex should run command-center mode for the current project.
+- Selfdex may use official Codex native Subagents/MultiAgentV2 when useful.
+- The main agent owns requirements, approval boundaries, integration, and
+  records.
+- Read-only subagents such as `explorer`, `docs_researcher`, and `reviewer` may
+  handle exploration, docs/API checks, logs, and review.
+- A `worker` subagent may edit files only after the contract is frozen and the
+  write boundary is disjoint.
+- Commit, push, publish, deploy, secrets, databases, production writes, and
+  destructive operations still require separate approval.
+
 The first response should be a read-only plan:
 
 - selected task
@@ -116,11 +133,14 @@ path. If you do not approve it, the loop stops at the plan.
 Selfdex separates direction, coordination, and implementation:
 
 - GPT / Pro extended mode is used only when the user asks for high-level
-  product, milestone, roadmap, or priority direction.
+  product, milestone, roadmap, priority, improvement, or feature direction.
+  When `@chatgpt-apps` is available in the session, Selfdex treats it as this
+  direction-review path.
 - Selfdex reads, ranks, freezes, asks approval, records, and prevents
   uncontrolled autonomy.
 - Codex implements, verifies, debugs, reviews diffs, and repairs inside the
-  approved contract.
+  approved contract. Code review belongs to the Codex native `reviewer`
+  subagent.
 
 Selfdex looks for several kinds of next work:
 
@@ -140,17 +160,26 @@ and this is the smallest safe first step.
 
 ## Runtime Model
 
-Selfdex uses the lightest safe execution lane:
+Selfdex uses official Codex native Subagents/MultiAgentV2 concepts:
 
-- lightweight `single-session` for small documentation, tests, local policy, or
-  narrow implementation changes
-- frozen-contract `single-session` for non-trivial but tightly coupled work
-- Codex native Subagents/MultiAgentV2 only when explorer, worker, or reviewer
-  lanes are independently useful and independently verifiable
+- `main agent`: requirements, task choice, approval boundaries, integration,
+  final reporting, and run records
+- `explorer`: read-only codebase exploration and evidence gathering
+- `docs_researcher`: read-only official docs and API behavior checks
+- `worker`: implementation inside one frozen write boundary
+- `reviewer`: read-only correctness, regression, security, and missing-test
+  review
+
+Small tightly coupled work can stay in the main agent. Exploration, docs
+checks, log analysis, review, and disjoint implementation slices should use
+official subagents when they can run independently. The old local control
+logic is no longer the active runtime.
 
 GPT-5.5 prompt guidance is an operating principle, not an automatic GPT call.
-Product, milestone, roadmap, or priority review still requires the user to ask
-for GPT / Pro extended mode or explicitly approve it.
+Product, milestone, roadmap, priority, improvement, or feature review still
+requires the user to ask for GPT / Pro extended mode or explicitly approve it.
+Use `@chatgpt-apps` for that product/app direction review when available; use
+the Codex native `reviewer` subagent for ordinary code diff review.
 
 ## Safety Model
 
@@ -181,10 +210,14 @@ Installed and tested surfaces:
 - `package.json` and `bin/selfdex.js` define the npm-style `selfdex` CLI.
 - `install.ps1` bootstraps Selfdex and installs the home-local plugin.
 - `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
+- `.codex/config.toml` and `.codex/agents/*.toml` define the official Codex
+  native Subagents/MultiAgentV2 roles.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
 - `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
 - `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
   recommended Codex integrations after install.
+- `scripts/check_commit_gate.py` checks whether reviewed and verified work is
+  ready to commit.
 - `scripts/plan_external_project.py` reads a target project and emits a frozen
   task contract without editing the target.
 - `scripts/run_target_codex.py` can run the approved target-project execution
@@ -206,8 +239,10 @@ Still intentionally bounded:
 - no unapproved target-project writes
 - no automatic GPT direction review
 - no legacy `codex_multiagent` baseline
+- no old Selfdex topology scorecard as the active runtime
 - no npm publish step
 - no claim that read-only validation replaces implementation evidence
+- no automatic commit or push before review and verification
 
 ## Quick Start
 
@@ -348,6 +383,7 @@ python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-
 After an approved commit and push, use GitHub as the CI feedback source:
 
 ```bash
+python scripts/check_commit_gate.py --root . --commit-message "docs: verify commit gate" --format json
 python scripts/check_github_actions_status.py --root . --format json
 ```
 
@@ -365,10 +401,11 @@ Selfdex is currently ready as a supervised local command center foundation:
 - install is prepared for `npx selfdex install` after npm publication
 - read-only planning exists for selected external projects
 - target execution remains approval-gated
+- commit gate runs only after review and verification
 - run evidence and state contracts are recorded
 - verification protects the current safety model
 
 The next product step is not broader autonomy. It is making the approved
 project-session flow smoother while keeping read-only planning, explicit
-approval, local verification, lightweight default execution, optional native
-Subagents, and run records intact.
+approval, local verification, official Codex native Subagents/MultiAgentV2, and
+run records intact.

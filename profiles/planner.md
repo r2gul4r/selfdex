@@ -9,8 +9,8 @@
 ## Output
 
 - selected candidate
-- topology recommendation
-- agent budget
+- official Codex agent roles
+- subagent permission boundary
 - write sets
 - verification target
 - stop conditions

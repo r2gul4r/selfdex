@@ -8,11 +8,17 @@ description: Use when the user invokes @selfdex or asks Selfdex to read the curr
 Use this skill from a target project session. Treat the current working directory
 as the user-selected target project unless the user names another path.
 
-Selfdex is a GPT-5.5 prompt-guided command center, not a legacy multi-agent kit.
-Use clear task contracts, write boundaries, stop conditions, and verification
-commands as the default control surface. Codex native Subagents/MultiAgentV2 are
-optional only when read-only exploration, implementation, or review can be split
-cleanly and verified independently.
+Selfdex is a GPT-5.5 prompt-guided command center that uses official Codex
+native Subagents/MultiAgentV2 as its agent runtime. Runtime phrase:
+`Codex native Subagents/MultiAgentV2`. It is not based on the old
+Selfdex local topology labels or scoring/budget control logic.
+
+Calling `@selfdex` is explicit permission for Selfdex to recommend and use
+Codex native subagents when they are useful. Keep the main agent focused on
+requirements, task selection, approvals, integration, final reporting, and run
+records. Use subagents for noisy or specialized work such as read-only
+exploration, CI/log analysis, documentation/API checks, review, summarization,
+or bounded implementation.
 
 ## Locate Selfdex
 
@@ -42,10 +48,24 @@ this skill can find the right Selfdex root on another machine.
 4. If approval is missing, stop after the plan.
 5. If approval is explicit, keep execution inside the frozen target boundary
    and preserve hard approval gates.
+6. Choose official Codex agent roles directly:
+   - `explorer`: read-only codebase and evidence mapping.
+   - `docs_researcher`: read-only official docs or API behavior checks.
+   - `worker`: bounded implementation inside one declared write boundary.
+   - `reviewer`: read-only correctness, regression, security, and test review.
+7. Read-only subagents may run after `@selfdex` when they reduce noise, shorten
+   wall-clock time, or keep main-thread context clean.
+8. Write-capable worker subagents require a frozen contract and disjoint write
+   boundary. If write boundaries overlap, keep integration in the main agent.
+9. After implementation, run review and verification before any commit stage.
+10. Use the Selfdex commit gate only when the user explicitly asks for it or the
+    active project policy enables it.
+11. Do not select the next candidate until commit/push/GitHub-check evidence is
+    recorded, or the run is explicitly blocked.
 
-Use lightweight `single-session` by default. Recommend Subagents only when a
-specific explorer, worker, or reviewer lane would reduce risk or wall-clock time
-more than the handoff cost.
+Do not route through legacy Selfdex topology terms. Decide whether the main
+agent can handle the task or whether official Codex subagents should own
+explorer, docs, worker, or reviewer lanes.
 
 Use this read-only planning command shape:
 
@@ -63,6 +83,21 @@ python <SELFDEX_ROOT>\scripts\run_target_codex.py --root <SELFDEX_ROOT> --projec
 This is the same command path as `scripts/run_target_codex.py`; never run it
 with `--execute` until the user explicitly approves target-project writes.
 
+After review and local verification, use this pre-commit gate before committing:
+
+```powershell
+python <SELFDEX_ROOT>\scripts\check_commit_gate.py --root <SELFDEX_ROOT> --commit-message "<type>: <summary>" --format json
+```
+
+If commit and push are approved, check GitHub Actions after the push:
+
+```powershell
+python <SELFDEX_ROOT>\scripts\check_github_actions_status.py --repo <owner>/<repo> --sha <sha> --format json
+```
+
+GitHub failure or pending status keeps the current loop open for repair or
+blocked recording. It must not advance to the next task automatically.
+
 ## Safety Rules
 
 - External projects are read-only by default.
@@ -73,10 +108,20 @@ with `--execute` until the user explicitly approves target-project writes.
   installers, or global config.
 - Do not install this plugin, edit Codex home, or change global config unless
   the user explicitly approves that setup step.
+- Do not commit or push unless the user explicitly asks for the commit gate or
+  the active project policy enables it for this task.
+- Do not continue to the next candidate while GitHub Actions is pending or
+  failing.
 - If the task becomes product direction or milestone strategy, recommend GPT
-  Pro extended direction review and wait for the user's approval.
+  Pro extended direction review and wait for the user's approval. If
+  `@chatgpt-apps` is available, treat it as the product/app direction-review
+  surface for project purpose, improvement ideas, and additional feature
+  opportunities.
 - Do not call GPT Pro extended mode automatically. GPT-5.5 prompt guidance is an
   operating principle for clear instructions, not a standing model invocation.
+- Do not use GPT Pro / ChatGPT Apps direction review as routine code review.
+  Use the Codex native `reviewer` subagent for non-trivial implementation
+  review.
 
 ## Output
 
@@ -88,3 +133,4 @@ Keep the response short:
 - verification commands
 - approval needed or not
 - exact next command or Codex handoff prompt
+- commit/push/GitHub status when the commit gate was used

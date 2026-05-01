@@ -1,7 +1,7 @@
 {
   "name": "selfdex",
   "version": "0.1.0",
-  "description": "Invoke Selfdex from a target project session for read-only planning and approval-gated Codex handoff.",
+  "description": "Invoke Selfdex from a target project session for read-only planning, approval-gated Codex native subagent work, and optional commit-gate closeout.",
   "author": {
     "name": "Selfdex",
     "url": "https://github.com/r2gul4r/selfdex"
@@ -19,17 +19,20 @@
   "interface": {
     "displayName": "Selfdex",
     "shortDescription": "Call Selfdex from the current project session.",
-    "longDescription": "Selfdex reads the current project read-only, selects one bounded next task, freezes a contract, asks for approval before target writes, and records outcomes in the Selfdex command-center repository.",
+    "longDescription": "Selfdex reads the current project read-only, selects one bounded next task, freezes a contract, asks for approval before target writes, and records outcomes in the Selfdex command-center repository. Calling @selfdex is explicit permission for Selfdex to use official Codex native Subagents/MultiAgentV2 when useful; risky operations still require separate approval. When explicitly requested or policy-enabled, its commit gate can close reviewed and verified work with commit, push, GitHub Actions status, and run evidence before the next candidate is selected.",
     "developerName": "Selfdex",
     "category": "Productivity",
     "capabilities": [
       "Read-only planning",
-      "Approval-gated orchestration"
+      "Approval-gated orchestration",
+      "Codex native Subagents/MultiAgentV2",
+      "Commit-gate closeout"
     ],
     "defaultPrompt": [
       "@selfdex read this project and choose the next safe task",
       "@selfdex make a read-only plan for this repo",
-      "@selfdex show the current approval-gated handoff"
+      "@selfdex show the current approval-gated handoff",
+      "@selfdex close the verified task with the commit gate"
     ],
     "brandColor": "#2563EB"
   }

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
-import tempfile
 import unittest
+import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -12,6 +15,21 @@ from script_loader_utils import load_script
 
 
 check_selfdex_setup = load_script("check_selfdex_setup.py")
+TEST_TEMP_ROOT = Path(__file__).resolve().parents[1] / "tmp" / "test-selfdex-setup"
+
+
+@contextmanager
+def temporary_pair() -> Iterator[tuple[Path, Path]]:
+    TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+    root = TEST_TEMP_ROOT / f"root-{uuid.uuid4().hex}"
+    home = TEST_TEMP_ROOT / f"home-{uuid.uuid4().hex}"
+    root.mkdir()
+    home.mkdir()
+    try:
+        yield root, home
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+        shutil.rmtree(home, ignore_errors=True)
 
 
 def write_root(root: Path) -> None:
@@ -23,6 +41,45 @@ def write_root(root: Path) -> None:
         "check_github_actions_status.py",
     ):
         (scripts / name).write_text("# fixture\n", encoding="utf-8")
+
+
+def write_codex_policy(root: Path) -> None:
+    agents = root / ".codex" / "agents"
+    agents.mkdir(parents=True)
+    (root / ".codex" / "config.toml").write_text(
+        "\n".join(
+            [
+                "[features]",
+                "multi_agent = true",
+                "[agents.explorer]",
+                "[agents.worker]",
+                "[agents.reviewer]",
+                "[agents.docs_researcher]",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (agents / "explorer.toml").write_text('name = "explorer"\nsandbox_mode = "read-only"\n', encoding="utf-8")
+    (agents / "worker.toml").write_text(
+        "\n".join(
+            [
+                'name = "worker"',
+                'model = "gpt-5.5"',
+                'developer_instructions = """',
+                "Implement only the frozen task slice assigned by the main agent.",
+                "Stay inside the declared write boundary.",
+                '"""',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (agents / "reviewer.toml").write_text('name = "reviewer"\nsandbox_mode = "read-only"\n', encoding="utf-8")
+    (agents / "docs-researcher.toml").write_text(
+        'name = "docs_researcher"\nsandbox_mode = "read-only"\n',
+        encoding="utf-8",
+    )
 
 
 def write_installed_plugin(home: Path, root: Path) -> None:
@@ -56,11 +113,10 @@ def write_installed_plugin(home: Path, root: Path) -> None:
 
 class SelfdexSetupTests(unittest.TestCase):
     def test_ready_with_manual_actions_when_core_is_installed(self) -> None:
-        with tempfile.TemporaryDirectory() as root_dir, tempfile.TemporaryDirectory() as home_dir:
-            root = Path(root_dir)
-            home = Path(home_dir)
+        with temporary_pair() as (root, home):
             codex_home = home / ".codex"
             write_root(root)
+            write_codex_policy(root)
             write_installed_plugin(home, root)
 
             payload = check_selfdex_setup.build_payload(root, home, codex_home=codex_home)
@@ -74,12 +130,11 @@ class SelfdexSetupTests(unittest.TestCase):
             self.assertEqual(check_ids["github-plugin"]["status"], "manual_action")
 
     def test_detects_codex_github_plugin_cache_when_present(self) -> None:
-        with tempfile.TemporaryDirectory() as root_dir, tempfile.TemporaryDirectory() as home_dir:
-            root = Path(root_dir)
-            home = Path(home_dir)
+        with temporary_pair() as (root, home):
             codex_home = home / ".codex"
             (codex_home / "plugins" / "cache" / "openai-curated" / "github").mkdir(parents=True)
             write_root(root)
+            write_codex_policy(root)
             write_installed_plugin(home, root)
 
             payload = check_selfdex_setup.build_payload(root, home, codex_home=codex_home)
@@ -88,16 +143,41 @@ class SelfdexSetupTests(unittest.TestCase):
             self.assertEqual(check_ids["github-plugin"]["status"], "pass")
 
     def test_blocks_when_selfdex_plugin_is_missing(self) -> None:
-        with tempfile.TemporaryDirectory() as root_dir, tempfile.TemporaryDirectory() as home_dir:
-            root = Path(root_dir)
-            home = Path(home_dir)
+        with temporary_pair() as (root, home):
             write_root(root)
+            write_codex_policy(root)
 
             payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
 
             self.assertEqual(payload["status"], "fail")
             self.assertEqual(payload["readiness"], "blocked")
             self.assertGreater(payload["high_failure_count"], 0)
+
+    def test_blocks_when_codex_policy_surface_is_missing(self) -> None:
+        with temporary_pair() as (root, home):
+            write_root(root)
+            write_installed_plugin(home, root)
+
+            payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
+
+            self.assertEqual(payload["status"], "fail")
+            check_ids = {check["check_id"]: check for check in payload["checks"]}
+            self.assertEqual(check_ids["codex-config"]["status"], "fail")
+            self.assertEqual(check_ids["codex-config"]["severity"], "high")
+
+    def test_blocks_when_worker_policy_is_stale(self) -> None:
+        with temporary_pair() as (root, home):
+            write_root(root)
+            write_codex_policy(root)
+            write_installed_plugin(home, root)
+            (root / ".codex" / "agents" / "worker.toml").write_text('name = "worker"\n', encoding="utf-8")
+
+            payload = check_selfdex_setup.build_payload(root, home, codex_home=home / ".codex")
+
+            self.assertEqual(payload["status"], "fail")
+            check_ids = {check["check_id"]: check for check in payload["checks"]}
+            self.assertEqual(check_ids["codex-agent-worker"]["status"], "fail")
+            self.assertIn("stale", check_ids["codex-agent-worker"]["summary"])
 
 
 if __name__ == "__main__":

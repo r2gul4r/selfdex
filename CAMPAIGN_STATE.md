@@ -3,39 +3,52 @@
 ## Campaign
 
 - name: `selfdex-bootstrap`
-- goal: `Make Selfdex the command center that reads a user-selected project, chooses the next improvement, evolution, or feature task, asks for approval, then safely delegates execution to Codex and records the result.`
+- goal: `Make Selfdex the command center that reads a user-selected project, chooses the next improvement, evolution, or feature task, asks for approval, then safely delegates approved execution to Codex native agents and records the result.`
 - risk_appetite: `medium-high`
-- default_agent_budget: `2`
-- max_agent_budget: `4`
+- subagent_runtime: `official_codex_native_subagents`
+- max_subagent_threads: `6`
+- subagent_depth: `1`
 - repair_attempts: `2`
 - review_default: `non_trivial_implementation_only`
 - reviewer_model: `gpt-5.5`
 - reviewer_mode: `xhigh`
 - direction_review_default: `recommend_and_wait_for_user_approval`
 - direction_review_mode: `GPT Pro extended mode`
-- explorer_default: `on`
-- parallel_default: `on_when_disjoint`
+- explorer_default: `on_after_selfdex_invocation`
+- parallel_default: `on_when_subtasks_are_independent`
 
 ## Model Usage Policy
 
 - gpt_direction_review_role: `high-level product, milestone, roadmap, and priority direction only`
+- gpt_direction_review_surface: `@chatgpt-apps or another user-approved GPT Pro extended review path when available`
+- gpt_direction_review_scope: `project direction, product fit, improvement ideas, roadmap priorities, and additional feature opportunities`
 - gpt_direction_review_approval: `user-approved-or-user-called-only`
 - gpt_direction_review_auto_call: `False`
 - gpt_direction_review_triggers: `project goals conflict or are unclear; candidate tasks are all strategically ambiguous; feature priority cannot be decided from code evidence alone; milestone or product direction needs to be reset; major surface such as ChatGPT Apps, MCP, public UI, or automation loop is being considered; user asks for product or strategy review`
 - gpt_direction_review_non_triggers: `routine coding; tests; refactors; bug fixes; documentation drift; diff review`
 - selfdex_role: `coordinate the loop, freeze contracts, manage approval, record evidence, and prevent uncontrolled autonomy`
 - codex_role: `implement safely, verify, debug failures, review diffs, and stop when work becomes a product-direction question`
-- fast_exploration_model: `mini-or-medium`
-- candidate_contract_model: `gpt-5.5-high`
-- complex_or_risky_model: `gpt-5.5-xhigh`
-- routine_implementation_model: `medium-or-high`
-- final_code_review_model: `gpt-5.5-xhigh`
+- code_review_surface: `Codex native reviewer subagent`
+- fast_exploration_model: `gpt-5.4-mini-or-equivalent`
+- demanding_agent_model: `gpt-5.5`
+- reviewer_agent_model: `gpt-5.5`
+- reviewer_reasoning_effort: `high-or-xhigh-for-risky-changes`
 - product_direction_model: `GPT-Pro-extended-user-approved-only`
 - prompt_guidance_role: `operating principle for roles, tool boundaries, success criteria, stop conditions, verification, and compact evidence`
 - prompt_guidance_auto_call: `False`
-- lightweight_default_lane: `single-session`
-- subagent_backend: `Codex native Subagents/MultiAgentV2 optional when explorer, worker, or reviewer lanes split cleanly`
+- subagent_backend: `Codex native Subagents/MultiAgentV2`
+- subagent_permission_trigger: `@selfdex invocation`
+- legacy_topology_controls_active: `False`
 - legacy_multiagent_baseline: `False`
+
+## Subagent Permission Policy
+
+- trigger: `@selfdex`
+- meaning: `The user is asking Selfdex to run command-center mode and is also giving explicit permission to use Codex native Subagents/MultiAgentV2 when useful.`
+- main_agent_role: `requirements, task selection, approval boundaries, integration, final reporting, and run records`
+- automatic_read_only_lanes: `explorer; reviewer; docs_researcher; ci_or_log_analysis; summarization`
+- write_capable_worker_rule: `Worker subagents require a frozen contract and disjoint write boundary.`
+- legacy_runtime_terms_active: `False`
 
 ## First App Surface
 
@@ -51,6 +64,8 @@
 - public deployment
 - database migration or production write
 - cross-workspace edits
+- npm publish
+- git commit or git push unless the user explicitly asks or project policy enables the commit gate
 
 ## Current Locks
 
@@ -114,10 +129,13 @@ none
 - Fix GitHub Actions bootstrap installer test portability and add a GitHub-only post-push status check routine.
 - Add one-command setup doctor to the installer and CLI.
 - Make README Korean-first with an English mirror.
+- Add commit gate after review and verification.
+- Replace legacy local orchestration logic with official Codex native Subagents/MultiAgentV2 policy.
+- Separate GPT Pro / ChatGPT Apps product direction review from Codex reviewer subagent code review and harden subagent readiness checks.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260501-204846-readme-bilingual-default-korean.md`
-- summary: `README.md is now the Korean default, README.en.md preserves English, and both link between 한국어 and English while documenting install doctor behavior.`
+- artifact_path: `runs/selfdex/20260501-231320-review-routing-and-subagent-readiness.md`
+- summary: `Selfdex now separates GPT Pro / ChatGPT Apps product direction review from Codex reviewer subagent code review, wires docs_researcher into planner recommendations, and validates .codex subagent policy files in the setup doctor.`

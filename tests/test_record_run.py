@@ -33,8 +33,8 @@ class RecordRunTests(unittest.TestCase):
                     slug="Run Recorder!",
                     goal="Build recursive improvement.",
                     selected_candidate="Add a run recorder.",
-                    topology="autopilot-single",
-                    agent_budget="0",
+                    agents_used=["main", "reviewer"],
+                    subagent_permission="@selfdex invocation",
                     write_sets=["scripts/record_run.py", "tests/test_record_run.py"],
                     verification=["python -m unittest discover -s tests"],
                     repair_attempts="0",
@@ -50,6 +50,8 @@ class RecordRunTests(unittest.TestCase):
         self.assertIn("- project_key: selfdex-core", content)
         self.assertIn("- goal: Build recursive improvement.", content)
         self.assertIn("- selected_candidate: Add a run recorder.", content)
+        self.assertIn("- agents_used: main, reviewer", content)
+        self.assertIn("- subagent_permission: @selfdex invocation", content)
         self.assertIn("- scripts/record_run.py", content)
         self.assertIn("- python -m unittest discover -s tests", content)
 
@@ -62,8 +64,8 @@ class RecordRunTests(unittest.TestCase):
                 slug="same",
                 goal="Goal",
                 selected_candidate="Candidate",
-                topology="autopilot-single",
-                agent_budget="0",
+                agents_used=["main"],
+                subagent_permission="@selfdex invocation",
                 write_sets=[],
                 verification=[],
                 repair_attempts="0",

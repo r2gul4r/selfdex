@@ -198,34 +198,36 @@ class PlanNextTaskTests(unittest.TestCase):
         self.assertIn("## Socratic Evaluation", markdown)
         self.assertIn("What kind of work is this?", markdown)
 
-    def test_recommended_topology_records_spawn_decision_and_write_sets(self) -> None:
+    def test_recommended_agents_records_subagent_use_and_write_boundaries(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             write_campaign(
                 root,
-                "Build a harness that can orchestrate and record work.",
-                ["Add an orchestration planner that records spawn decisions."],
+                "Build a harness that can use native agents and record work.",
+                ["Add a native subagent planner that records selected agents."],
             )
             write_extractors(root)
 
             payload = plan_next_task.choose_candidate(root)
             markdown = plan_next_task.render_markdown(payload)
 
-        topology = payload["recommended_topology"]
-        fit = topology["orchestration_fit"]
+        agents = payload["recommended_agents"]
+        fit = agents["subagent_fit"]
         self.assertEqual(
-            topology["spawn_decision"],
-            "concurrent_state_recommended_when_contract_frozen",
+            agents["subagent_use"],
+            "use_subagents_after_contract_freeze",
         )
         self.assertEqual(fit["task_size_class"], "large")
-        self.assertEqual(fit["orchestration_value"], "high")
-        self.assertIn("main: own root STATE.md", topology["write_sets"][0])
-        self.assertIn("- spawn_decision: `concurrent_state_recommended_when_contract_frozen`", markdown)
-        self.assertIn("## Orchestration Fit", markdown)
-        self.assertIn("- orchestration_value: `high`", markdown)
-        self.assertIn("## Write Sets", markdown)
+        self.assertEqual(fit["subagent_value"], "use_subagents")
+        self.assertIn("main", agents["selected_agents"])
+        self.assertIn("worker", agents["selected_agents"])
+        self.assertIn("main: own state", agents["write_boundaries"][0])
+        self.assertIn("- subagent_use: `use_subagents_after_contract_freeze`", markdown)
+        self.assertIn("## Subagent Fit", markdown)
+        self.assertIn("- subagent_value: `use_subagents`", markdown)
+        self.assertIn("## Write Boundaries", markdown)
 
-    def test_small_refactor_candidate_stays_single_session(self) -> None:
+    def test_small_refactor_candidate_stays_main_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             write_campaign(root, "Build a harness that can improve safely.", [])
@@ -251,14 +253,13 @@ class PlanNextTaskTests(unittest.TestCase):
 
             payload = plan_next_task.choose_candidate(root)
 
-        topology = payload["recommended_topology"]
-        fit = topology["orchestration_fit"]
+        agents = payload["recommended_agents"]
+        fit = agents["subagent_fit"]
         self.assertEqual(fit["task_size_class"], "small")
-        self.assertEqual(fit["handoff_cost"], "high")
-        self.assertEqual(fit["orchestration_value"], "low")
-        self.assertEqual(topology["execution_topology"], "autopilot-single")
-        self.assertEqual(topology["agent_budget"], 0)
-        self.assertEqual(topology["spawn_decision"], "no_spawn_handoff_cost_exceeds_gain")
+        self.assertEqual(fit["coordination_cost"], "high")
+        self.assertEqual(fit["subagent_value"], "main_only")
+        self.assertEqual(agents["subagent_use"], "main_only")
+        self.assertEqual(agents["selected_agents"], ["main"])
 
     def test_large_single_file_hotspot_uses_sidecars_not_parallel_workers(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -286,14 +287,33 @@ class PlanNextTaskTests(unittest.TestCase):
 
             payload = plan_next_task.choose_candidate(root)
 
-        topology = payload["recommended_topology"]
-        fit = topology["orchestration_fit"]
+        agents = payload["recommended_agents"]
+        fit = agents["subagent_fit"]
         self.assertEqual(fit["task_size_class"], "large")
-        self.assertEqual(fit["shared_file_collision_risk"], "high")
-        self.assertEqual(fit["orchestration_value"], "medium")
-        self.assertEqual(topology["execution_topology"], "autopilot-mixed")
-        self.assertEqual(topology["agent_budget"], 2)
-        self.assertEqual(topology["spawn_decision"], "sidecar_recommended_freeze_write_sets_first")
+        self.assertEqual(fit["write_collision_risk"], "high")
+        self.assertEqual(fit["subagent_value"], "use_readonly_subagents_first")
+        self.assertEqual(agents["subagent_use"], "use_readonly_subagents_first")
+        self.assertEqual(agents["selected_agents"], ["main", "explorer", "reviewer"])
+
+    def test_guarded_docs_candidate_keeps_docs_researcher_and_reviewer(self) -> None:
+        candidate = plan_next_task.Candidate(
+            source="feature_gap",
+            work_type="capability",
+            title="Clarify ChatGPT Apps MCP API behavior",
+            decision="needs_approval",
+            priority_score=30,
+            risk="guarded",
+            rationale=["official docs needed"],
+            suggested_checks=["python scripts/plan_next_task.py --root . --format json"],
+            source_signals={"api_behavior_uncertain": True, "surface": "ChatGPT Apps"},
+        )
+
+        agents = plan_next_task.recommend_agents(candidate)
+
+        self.assertEqual(agents["subagent_use"], "main_plus_readonly_if_needed")
+        self.assertIn("docs_researcher", agents["selected_agents"])
+        self.assertIn("reviewer", agents["selected_agents"])
+        self.assertNotIn("worker", agents["selected_agents"])
 
     def test_large_disjoint_duplicate_can_recommend_concurrent_state(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -325,13 +345,13 @@ class PlanNextTaskTests(unittest.TestCase):
 
             payload = plan_next_task.choose_candidate(root)
 
-        topology = payload["recommended_topology"]
-        fit = topology["orchestration_fit"]
+        agents = payload["recommended_agents"]
+        fit = agents["subagent_fit"]
         self.assertEqual(fit["task_size_class"], "large")
-        self.assertEqual(fit["estimated_write_set_count"], 3)
-        self.assertEqual(fit["shared_file_collision_risk"], "low")
-        self.assertEqual(fit["orchestration_value"], "high")
-        self.assertEqual(topology["execution_topology"], "autopilot-parallel")
+        self.assertEqual(fit["estimated_write_boundary_count"], 3)
+        self.assertEqual(fit["write_collision_risk"], "low")
+        self.assertEqual(fit["subagent_value"], "use_subagents")
+        self.assertEqual(agents["subagent_use"], "use_subagents_after_contract_freeze")
 
     def test_campaign_titles_are_classified_by_work_type(self) -> None:
         cases = {

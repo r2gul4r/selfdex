@@ -365,3 +365,51 @@ Append-only log for execution, tool, and verification errors.
 - summary: `Sandboxed npm pack dry-run could not create the requested npm cache directory.`
 - details: `The same package dry-run passed after approved sandbox escalation and included README.md plus README.en.md in the tarball.`
 - status: `resolved`
+
+## 2026-05-01T21:11:00+09:00 - commit gate skill initialization and validation
+
+- time: `2026-05-01T21:11:00+09:00`
+- location: `skill-creator init_skill.py and quick_validate.py`
+- summary: `Repo-local skill initialization and optional skill validation hit environment limits.`
+- details: `.agents/skills creation was blocked by sandbox permissions and passed after approved escalation. Plugin skill initialization stopped after SKILL.md because short_description was one character over the generator limit; the skill was completed manually. quick_validate.py could not run because bundled Python lacks yaml, so plugin checker and TODO/frontmatter checks were used instead.`
+- status: `resolved`
+
+## 2026-05-01T21:12:00+09:00 - commit gate focused tests
+
+- time: `2026-05-01T21:12:00+09:00`
+- location: `tests/test_commit_gate.py and tests/test_selfdex_plugin.py`
+- summary: `Initial commit gate verification found one review text false positive and one sandbox Temp limitation.`
+- details: `check_commit_gate.py treated 'No P0/P1 findings' as blocking P1 evidence; normalized that phrase and reran focused tests successfully. test_selfdex_plugin.py hit the known Windows Temp sandbox write denial and passed after approved sandbox escalation.`
+- status: `resolved`
+
+## 2026-05-01T21:15:10+09:00 - final verification Python launcher
+
+- time: `2026-05-01T21:15:10+09:00`
+- location: `final JSON and commit-gate verification commands`
+- summary: `The default shell could not resolve a working Python interpreter through python or py.`
+- details: `PowerShell profile loading was blocked by execution policy, python.exe was not on PATH, and py.exe existed but had no installed target interpreter. Final checks passed after switching to the bundled Codex Python executable at C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe.`
+- status: `resolved`
+
+## 2026-05-01T22:36:18+09:00 - native subagents verification closeout
+
+- time: `2026-05-01T22:36:18+09:00`
+- location: `tests/test_plan_next_task.py npm.cmd pack scripts/record_run.py`
+- summary: `Verification closeout hit environment and CLI-usage issues, not implementation regressions.`
+- details: `Sandboxed unittest Temp writes were denied and passed after approved escalation. npm.cmd pack first failed because the sandbox blocked AppData npm cache writes, then passed after approved escalation. The first record_run invocation included an unsupported --format flag; reran without that flag and wrote runs/selfdex/20260501-223618-native-subagents-invocation-policy.md.`
+- status: `resolved`
+
+## 2026-05-01T22:42:00+09:00 - codex config tracking and dotfile contract check
+
+- time: `2026-05-01T22:42:00+09:00`
+- location: `.gitignore scripts/check_campaign_budget.py tests/test_campaign_budget.py`
+- summary: `Official subagent config files were initially still ignored, and the contract checker did not count .gitignore as a path.`
+- details: `Changed .gitignore to track .codex/config.toml and .codex/agents/*.toml while keeping other .codex scratch ignored. check_campaign_budget.py now treats declared dotfiles as paths and has a regression test for .gitignore. A direct unittest module invocation also failed because test_commit_gate expects discover-style helper imports; full discover passed.`
+- status: `resolved`
+
+## 2026-05-01T23:05:00+09:00 - review routing focused verification
+
+- time: `2026-05-01T23:05:00+09:00`
+- location: `tests/test_selfdex_setup.py focused unittest command`
+- summary: `Focused verification first failed on environment setup rather than implementation behavior.`
+- details: `The shell PATH had no python/py interpreter. The bundled Codex Python worked, but tempfile-created directories were not writable under this sandbox, even when TMP/TEMP pointed at repo tmp. Updated test_selfdex_setup.py to use a deterministic repo-local temporary workspace like the existing commit-gate tests, then reran the focused suite successfully.`
+- status: `resolved`

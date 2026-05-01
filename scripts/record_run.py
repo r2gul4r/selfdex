@@ -30,8 +30,8 @@ class RunRecord:
     slug: str
     goal: str
     selected_candidate: str
-    topology: str
-    agent_budget: str
+    agents_used: list[str]
+    subagent_permission: str
     write_sets: list[str]
     verification: list[str]
     repair_attempts: str
@@ -51,8 +51,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--goal", required=True, help="Run goal.")
     parser.add_argument("--selected-candidate", required=True, help="Selected candidate.")
-    parser.add_argument("--topology", required=True, help="Execution topology.")
-    parser.add_argument("--agent-budget", required=True, help="Agent budget used.")
+    parser.add_argument(
+        "--agent-used",
+        action="append",
+        default=[],
+        help="Official Codex agent role used. May be provided more than once.",
+    )
+    parser.add_argument(
+        "--subagent-permission",
+        default="@selfdex invocation or explicit user request",
+        help="Subagent permission boundary for this run.",
+    )
     parser.add_argument(
         "--write-set",
         action="append",
@@ -102,8 +111,8 @@ def render_record(record: RunRecord) -> str:
         f"- project_key: {record.project_key}",
         f"- goal: {record.goal}",
         f"- selected_candidate: {record.selected_candidate}",
-        f"- topology: {record.topology}",
-        f"- agent_budget: {record.agent_budget}",
+        f"- agents_used: {', '.join(record.agents_used) if record.agents_used else 'main'}",
+        f"- subagent_permission: {record.subagent_permission}",
         f"- repair_attempts: {record.repair_attempts}",
         f"- result: {record.result}",
         f"- next_candidate: {record.next_candidate}",
@@ -136,8 +145,8 @@ def write_run_record(root: Path, record: RunRecord) -> Path:
         slug=slug,
         goal=record.goal,
         selected_candidate=record.selected_candidate,
-        topology=record.topology,
-        agent_budget=record.agent_budget,
+        agents_used=record.agents_used or ["main"],
+        subagent_permission=record.subagent_permission,
         write_sets=record.write_sets,
         verification=record.verification,
         repair_attempts=record.repair_attempts,
@@ -156,8 +165,8 @@ def record_from_args(args: argparse.Namespace) -> RunRecord:
         slug=args.slug,
         goal=args.goal,
         selected_candidate=args.selected_candidate,
-        topology=args.topology,
-        agent_budget=str(args.agent_budget),
+        agents_used=list(args.agent_used) or ["main"],
+        subagent_permission=str(args.subagent_permission),
         write_sets=list(args.write_set),
         verification=list(args.verification),
         repair_attempts=str(args.repair_attempts),

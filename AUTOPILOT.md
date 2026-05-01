@@ -9,28 +9,31 @@ Codex work.
 a user-invoked command center for supervised Codex work on a selected project:
 
 ```text
-select project -> understand direction -> choose next work -> ask approval -> freeze -> delegate to Codex -> verify -> record -> repeat
+select project -> understand direction -> choose next work -> ask approval -> freeze -> delegate to Codex -> review -> verify -> commit gate -> record -> repeat
 ```
 
 The loop may analyze explicitly registered projects read-only, but
 cross-project writes stay approval-gated. External read-only validation is
 required before treating Selfdex as generally useful beyond this repository.
 
-Selfdex is not based on the old `codex_multiagent` kit. Historical
-`codex_multiagent` validation records remain useful as legacy evidence, but the
-active runtime model is GPT-5.5 prompt-guided coordination with Codex native
-Subagents available only as an optional execution backend.
+Selfdex is not based on the old `codex_multiagent` kit or the earlier local
+topology scoring layer. Historical `codex_multiagent` validation records remain
+useful as legacy evidence, but the active runtime model is GPT-5.5
+prompt-guided coordination with official Codex native Subagents/MultiAgentV2.
 
 ## Role Split And Model Use
 
 - GPT / Pro extended mode decides what is worth doing only at the product,
   milestone, roadmap, and priority level. Selfdex may recommend this review,
-  but the user must explicitly approve or call it.
+  but the user must explicitly approve or call it. When `@chatgpt-apps` is
+  available, Selfdex treats it as the product/app direction-review surface for
+  project purpose, improvement ideas, and additional feature opportunities.
 - Selfdex coordinates the loop: read-only discovery, candidate extraction,
   one-task selection, contract freeze, approval management, run records, and
   autonomy limits.
 - Codex decides how to implement safely: file edits, tests, debugging, diff
-  review, and bounded repairs.
+  review, and bounded repairs. Code review is handled by the Codex native
+  `reviewer` subagent, not by the product-direction review path.
 
 Use GPT direction review only when goals conflict, candidates are strategically
 ambiguous, code evidence cannot decide feature priority, product direction must
@@ -55,21 +58,25 @@ GPT-5.5 prompt guidance is an operating principle, not an automatic model call.
 Prefer clear role boundaries, tool guidance, success criteria, stop conditions,
 and verification commands before increasing reasoning effort.
 
-## Runtime Lanes
+## Codex Native Subagents
 
-Use the lightest lane that can finish the approved task safely:
+Calling `@selfdex` is explicit permission for Selfdex to recommend and use
+official Codex native Subagents/MultiAgentV2 when useful.
 
-- `lightweight-single`: small documentation, test, local policy, or narrow code
-  changes. Use one Codex lane, focused checks, and no GPT direction review.
-- `bounded-single`: non-trivial but tightly coupled implementation. Freeze the
-  contract, keep one writer, verify locally, and record evidence.
-- `native-subagents`: use Codex native Subagents only when explorer, worker, or
-  reviewer lanes can run independently with disjoint ownership or read-only
-  scope, and the expected parallel or review gain is higher than handoff cost.
+- The main agent owns requirements, task choice, approval boundaries,
+  integration, final reporting, and run records.
+- `explorer` is read-only and maps code paths, evidence, contracts, risks, and
+  candidate write boundaries.
+- `docs_researcher` is read-only and checks official docs or API behavior.
+- `worker` owns one frozen write boundary and must stop if the boundary expands
+  or overlaps another write owner.
+- `reviewer` is read-only and checks correctness, regressions, security, and
+  missing tests.
 
-Do not use Subagents just because the task score is high. High score means
-evaluate risk and evidence depth; it does not make multi-agent execution the
-default.
+Use subagents when noisy exploration, tests, logs, docs, implementation slices,
+or review can run independently and return concise summaries. Keep tightly
+coupled integration in the main agent. Do not reintroduce local topology labels,
+task scoring totals, or local agent budget knobs as active runtime controls.
 
 ## Loop
 
@@ -85,15 +92,22 @@ default.
 6. Pick the smallest high-leverage task.
 7. Freeze acceptance, non-goals, write sets, and checks in the structured
    state contract.
-8. Recommend or use explorer, worker, and reviewer lanes only when host policy,
-   authorization, budget, disjoint ownership, and verification independence make
-   them useful.
+8. Use official Codex subagents when host policy, `@selfdex` permission,
+   disjoint ownership, and verification independence make them useful.
 9. For approved target projects, run one candidate through a target-project
    Codex session on a new branch.
 10. Integrate outputs.
 11. Verify.
 12. Repair inside the same contract when checks fail.
-13. Record the run under `runs/<project_key>/` and advance the campaign queue.
+13. If commit closeout is requested or project policy enables it, run the
+    commit gate before leaving the task.
+14. Commit only after review, verification, write-boundary, hard-approval, and
+    Conventional Commit checks pass.
+15. Push only when the user requested push or project policy enables it, then
+    check GitHub Actions.
+16. Record the run under `runs/<project_key>/` and advance the campaign queue
+    only after commit/push/CI evidence is closed or the task is explicitly
+    blocked.
 
 ## Campaign State
 
@@ -102,7 +116,7 @@ default.
 
 - campaign goal
 - risk appetite
-- agent budget policy
+- official subagent permission policy
 - hard approval zones
 - current locks
 - latest run summary
@@ -114,14 +128,16 @@ default.
 ## Control Knobs
 
 - `risk_appetite`: `medium-high` by default, bounded by hard approval zones.
-- `default_agent_budget`: `2` as an allowance for separable work, not a default
-  spawn requirement.
-- `max_agent_budget`: `4`.
+- `subagent_runtime`: `official_codex_native_subagents`.
+- `max_subagent_threads`: `6`, matching the project-scoped Codex config unless
+  the user explicitly changes it.
+- `subagent_depth`: `1`, avoiding recursive delegation unless explicitly
+  requested.
 - `repair_attempts`: `2`.
 - `review_default`: `non_trivial_implementation_only`.
 - `direction_review_default`: `recommend_and_wait_for_user_approval`.
-- `explorer_default`: `on` for broad or uncertain work.
-- `parallel_default`: `on` when write sets are disjoint.
+- `explorer_default`: `on_after_selfdex_invocation`.
+- `parallel_default`: `on_when_subtasks_are_independent`.
 
 ## Approval Gates
 
@@ -133,6 +149,8 @@ The autopilot must stop for explicit approval before:
 - public deploys
 - database migrations or production writes
 - cross-workspace changes
+- commit or push closeout unless the user requested it or the active project
+  policy enables it for the current task
 
 Folder-wide approval can allow Selfdex to run Codex inside a registered target
 folder, but it does not bypass the hard approval zones above.
@@ -157,6 +175,8 @@ session with `@selfdex`.
 The plugin entrypoint must:
 
 - treat the current session cwd as the selected target project by default
+- treat `@selfdex` invocation as explicit permission to use official Codex
+  native Subagents/MultiAgentV2 when useful
 - locate the Selfdex command-center repo without editing global config
 - run read-only planning before any target write
 - ask for explicit approval before branch creation, target-project writes, or
@@ -240,13 +260,30 @@ Minimum fields:
 
 - goal
 - selected candidate
-- topology
-- agent budget used
+- official agent roles used
+- subagent permission boundary
 - write sets
 - verification
 - repair attempts
 - result
 - next candidate
+
+## Commit Gate
+
+Commit gate is the closeout stage after review and verification. It is not a
+background loop and it is not unconditional auto-commit.
+
+Before a commit, Selfdex must run:
+
+```bash
+python scripts/check_commit_gate.py --root . --commit-message "<type>: <summary>" --format json
+```
+
+The gate checks the active state contract, write boundary, reviewer result,
+verification evidence, hard approval hints, and Conventional Commit message.
+After push, Selfdex must use GitHub Actions status as the feedback source. A
+pending or failing check keeps the task open for repair or blocked recording;
+the next candidate is not selected until that evidence is closed.
 
 Target-project execution records are grouped by project:
 

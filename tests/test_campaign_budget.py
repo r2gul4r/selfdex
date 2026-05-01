@@ -19,14 +19,14 @@ sys.modules[SPEC.name] = check_campaign_budget
 SPEC.loader.exec_module(check_campaign_budget)
 
 
-def campaign_text(default_budget: int = 2, max_budget: int = 4) -> str:
+def campaign_text(max_threads: int = 4) -> str:
     return f"""# Campaign State
 
 ## Campaign
 
 - name: `test`
-- default_agent_budget: `{default_budget}`
-- max_agent_budget: `{max_budget}`
+- subagent_runtime: `official_codex_native_subagents`
+- max_subagent_threads: `{max_threads}`
 
 ## Model Usage Policy
 
@@ -37,6 +37,15 @@ def campaign_text(default_budget: int = 2, max_budget: int = 4) -> str:
 - gpt_direction_review_non_triggers: `routine coding; tests; refactors; bug fixes; documentation drift; diff review`
 - selfdex_role: `coordinate the loop, freeze contracts, manage approval, record evidence, and prevent uncontrolled autonomy`
 - codex_role: `implement safely, verify, debug failures, review diffs, and stop when work becomes a product-direction question`
+
+## Subagent Permission Policy
+
+- trigger: `@selfdex`
+- meaning: `explicit permission`
+- main_agent_role: `requirements and integration`
+- automatic_read_only_lanes: `explorer; reviewer; docs_researcher`
+- write_capable_worker_rule: `Worker subagents require a frozen contract and disjoint write boundary.`
+- legacy_runtime_terms_active: `False`
 
 ## First App Surface
 
@@ -55,17 +64,21 @@ def campaign_text(default_budget: int = 2, max_budget: int = 4) -> str:
 """
 
 
-def state_text(agent_budget: int = 1) -> str:
+def state_text(selected_agents: list[str] | None = None) -> str:
+    selected = selected_agents or ["main", "explorer"]
+    agent_lines = "\n".join(f"  - `{agent}`" for agent in selected)
     return f"""# STATE
 
 ## Current Task
 
-- task: `Add a campaign budget checker.`
+- task: `Add a campaign subagent checker.`
 - phase: `implementation`
 
 ## Orchestration Profile
 
-- agent_budget: `{agent_budget}`
+- selected_agents:
+{agent_lines}
+- subagent_permission: `@selfdex invocation is explicit permission.`
 
 ## Writer Slot
 
@@ -93,14 +106,14 @@ def write_fixture(root: Path, *, campaign: str | None = None, state: str | None 
     )
 
 
-def campaign_json(default_budget: int = 2, max_budget: int = 4) -> dict[str, object]:
+def campaign_json(max_threads: int = 4) -> dict[str, object]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "analysis_kind": "selfdex_campaign_contract",
         "campaign": {
             "name": "test",
-            "default_agent_budget": default_budget,
-            "max_agent_budget": max_budget,
+            "subagent_runtime": "official_codex_native_subagents",
+            "max_subagent_threads": max_threads,
         },
         "hard_approval_zones": [
             "destructive Git or filesystem operations",
@@ -129,6 +142,14 @@ def campaign_json(default_budget: int = 2, max_budget: int = 4) -> dict[str, obj
             "selfdex_role": "coordinate the loop, freeze contracts, manage approval, record evidence, and prevent uncontrolled autonomy",
             "codex_role": "implement safely, verify, debug failures, review diffs, and stop when work becomes a product-direction question",
         },
+        "subagent_permission_policy": {
+            "trigger": "@selfdex",
+            "meaning": "explicit permission",
+            "main_agent_role": "requirements and integration",
+            "automatic_read_only_lanes": ["explorer", "reviewer", "docs_researcher"],
+            "write_capable_worker_rule": "Worker subagents require a frozen contract and disjoint write boundary.",
+            "legacy_runtime_terms_active": False,
+        },
         "first_app_surface": {
             "surface_kind": "read_only",
             "write_capable_target_execution_exposed": False,
@@ -142,16 +163,17 @@ def campaign_json(default_budget: int = 2, max_budget: int = 4) -> dict[str, obj
     }
 
 
-def state_json(agent_budget: int = 1) -> dict[str, object]:
+def state_json(selected_agents: list[str] | None = None) -> dict[str, object]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "analysis_kind": "selfdex_state_contract",
         "current_task": {
-            "task": "Add a campaign budget checker.",
+            "task": "Add a campaign subagent checker.",
             "phase": "implementation",
         },
         "orchestration_profile": {
-            "agent_budget": agent_budget,
+            "selected_agents": selected_agents or ["main", "explorer"],
+            "subagent_permission": "@selfdex invocation is explicit permission.",
         },
         "writer_slot": {
             "write_sets": {
@@ -209,7 +231,7 @@ class CampaignBudgetTests(unittest.TestCase):
 
         self.assertEqual(payload["status"], "pass")
         self.assertEqual(payload["violation_count"], 0)
-        self.assertEqual(payload["state_contract"]["agent_budget"], 1)
+        self.assertEqual(payload["state_contract"]["selected_agents"], ["main", "explorer"])
 
     def test_rejects_missing_structured_json_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -228,11 +250,11 @@ class CampaignBudgetTests(unittest.TestCase):
             root = Path(temp_dir)
             write_fixture(
                 root,
-                campaign=campaign_text(max_budget=1).replace(
+                campaign=campaign_text(max_threads=1).replace(
                     "user-approved-or-user-called-only",
                     "automatic",
                 ),
-                state=state_text(agent_budget=9),
+                state=state_text(["main", "explorer", "reviewer"]),
             )
             write_json_fixture(root)
 
@@ -241,18 +263,18 @@ class CampaignBudgetTests(unittest.TestCase):
         self.assertEqual(payload["status"], "pass")
         self.assertEqual(payload["contract_sources"]["campaign"], "CAMPAIGN_STATE.json")
         self.assertEqual(payload["contract_sources"]["state"], "STATE.json")
-        self.assertEqual(payload["state_contract"]["agent_budget"], 1)
+        self.assertEqual(payload["state_contract"]["selected_agents"], ["main", "explorer"])
 
     def test_reports_markdown_mirror_warning_when_json_differs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             write_fixture(
                 root,
-                campaign=campaign_text(max_budget=1).replace(
+                campaign=campaign_text(max_threads=1).replace(
                     "user-approved-or-user-called-only",
                     "automatic",
                 ),
-                state=state_text(agent_budget=9),
+                state=state_text(["main", "explorer", "reviewer"]),
             )
             write_json_fixture(root)
 
@@ -262,9 +284,9 @@ class CampaignBudgetTests(unittest.TestCase):
         warning_fields = {
             (item["source"], item["field"]) for item in payload["mirror_warnings"]
         }
-        self.assertIn(("CAMPAIGN_STATE.md", "max_agent_budget"), warning_fields)
+        self.assertIn(("CAMPAIGN_STATE.md", "max_subagent_threads"), warning_fields)
         self.assertIn(("CAMPAIGN_STATE.md", "model_usage_policy"), warning_fields)
-        self.assertIn(("STATE.md", "agent_budget"), warning_fields)
+        self.assertIn(("STATE.md", "selected_agents"), warning_fields)
 
     def test_reports_model_usage_mirror_warning_when_json_differs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -300,27 +322,33 @@ class CampaignBudgetTests(unittest.TestCase):
         }
         self.assertIn(("CAMPAIGN_STATE.md", "first_app_surface"), warning_fields)
 
-    def test_structured_json_rejects_budget_above_campaign_max(self) -> None:
+    def test_rejects_selected_agents_above_campaign_max(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            write_json_fixture(root, state=state_json(agent_budget=5))
+            write_json_fixture(
+                root,
+                campaign=campaign_json(max_threads=2),
+                state=state_json(["main", "explorer", "worker"]),
+            )
 
             payload = check_campaign_budget.build_payload(root, [])
 
         self.assertEqual(payload["status"], "fail")
         violation_ids = {item["violation_id"] for item in payload["violations"]}
-        self.assertIn("state-agent-budget-exceeds-campaign-max", violation_ids)
+        self.assertIn("state-subagent-count-exceeds-campaign-max", violation_ids)
 
-    def test_rejects_state_agent_budget_above_campaign_max(self) -> None:
+    def test_rejects_missing_state_subagent_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            write_json_fixture(root, state=state_json(agent_budget=5))
+            state = state_json()
+            state["orchestration_profile"] = {}
+            write_json_fixture(root, state=state)
 
             payload = check_campaign_budget.build_payload(root, [])
 
         self.assertEqual(payload["status"], "fail")
         violation_ids = {item["violation_id"] for item in payload["violations"]}
-        self.assertIn("state-agent-budget-exceeds-campaign-max", violation_ids)
+        self.assertIn("missing-state-subagent-policy", violation_ids)
 
     def test_rejects_out_of_contract_changed_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -332,6 +360,19 @@ class CampaignBudgetTests(unittest.TestCase):
         self.assertEqual(payload["status"], "fail")
         violation_ids = {item["violation_id"] for item in payload["violations"]}
         self.assertIn("out-of-contract-path", violation_ids)
+
+    def test_accepts_declared_dotfile_changed_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            custom_state = state_json()
+            custom_state["writer_slot"]["write_sets"]["main"].append(".gitignore")  # type: ignore[index]
+            write_json_fixture(root, state=custom_state)
+
+            payload = check_campaign_budget.build_payload(root, [".gitignore"])
+
+        self.assertEqual(payload["status"], "pass")
+        reported = {item["normalized"]: item["in_contract"] for item in payload["changed_paths"]}
+        self.assertTrue(reported[".gitignore"])
 
     def test_rejects_hard_approval_path_hint(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -374,6 +415,7 @@ class CampaignBudgetTests(unittest.TestCase):
         self.assertIn("# Campaign Budget Check", markdown)
         self.assertIn("- status: `pass`", markdown)
         self.assertIn("README.md", markdown)
+        self.assertIn("- max_subagent_threads: `4`", markdown)
 
     def test_include_git_diff_reports_untracked_paths(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -393,17 +435,15 @@ class CampaignBudgetTests(unittest.TestCase):
             root = Path(temp_dir)
             subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True, text=True)
             custom_state = state_json()
-            custom_state["writer_slot"]["write_sets"]["main"].append("runs/")  # type: ignore[index]
+            custom_state["writer_slot"]["write_sets"]["main"].append("docs/한글.md")  # type: ignore[index]
             write_json_fixture(root, state=custom_state)
-            run_dir = root / "runs" / "daboyeo"
-            run_dir.mkdir(parents=True)
-            (run_dir / "중복-정리.md").write_text("# fixture\n", encoding="utf-8")
+            (root / "docs").mkdir()
+            (root / "docs" / "한글.md").write_text("# fixture\n", encoding="utf-8")
 
             payload = check_campaign_budget.build_payload(root, include_git_diff=True)
 
         reported = {item["normalized"] for item in payload["changed_paths"]}
-        self.assertIn("runs/daboyeo/중복-정리.md", reported)
-        self.assertEqual(payload["status"], "pass")
+        self.assertIn("docs/한글.md", reported)
 
 
 if __name__ == "__main__":

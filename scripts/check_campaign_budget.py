@@ -54,11 +54,12 @@ HARD_APPROVAL_HINTS = {
 
 @dataclass(frozen=True)
 class CampaignBudget:
-    default_agent_budget: int | None
-    max_agent_budget: int | None
+    max_subagent_threads: int | None
+    subagent_runtime: str
     hard_approval_zones: list[str]
     model_usage_policy: dict[str, str]
     first_app_surface: dict[str, str]
+    subagent_permission_policy: dict[str, str]
     source: str
 
 
@@ -66,7 +67,8 @@ class CampaignBudget:
 class StateContract:
     task: str
     phase: str
-    agent_budget: int | None
+    selected_agents: list[str]
+    subagent_permission: str
     write_paths: list[str]
     source: str
 
@@ -165,6 +167,24 @@ def parse_list_section(text: str, heading: str) -> list[str]:
     return items
 
 
+def parse_list_field(lines: list[str], field_name: str) -> list[str]:
+    values: list[str] = []
+    in_field = False
+    field_pattern = re.compile(rf"^\s*-\s*{re.escape(field_name)}:\s*$")
+    item_pattern = re.compile(r"^\s+-\s*`?(.+?)`?\s*$")
+    for line in lines:
+        if field_pattern.match(line):
+            in_field = True
+            continue
+        if in_field:
+            if re.match(r"^\s*-\s*[A-Za-z0-9_.-]+:", line):
+                break
+            match = item_pattern.match(line)
+            if match:
+                values.append(clean_markdown_value(match.group(1)))
+    return values
+
+
 def parse_key_value_section(text: str, heading: str) -> dict[str, str]:
     values: dict[str, str] = {}
     pattern = re.compile(r"^\s*-\s*([A-Za-z0-9_.-]+):\s*(.+?)\s*$")
@@ -192,11 +212,12 @@ def parse_json_string_map(payload: Any) -> dict[str, str]:
 def parse_campaign_budget(text: str, *, source: str = "CAMPAIGN_STATE.md") -> CampaignBudget:
     campaign_lines = extract_markdown_section(text, "Campaign")
     return CampaignBudget(
-        default_agent_budget=parse_int_field(campaign_lines, "default_agent_budget"),
-        max_agent_budget=parse_int_field(campaign_lines, "max_agent_budget"),
+        max_subagent_threads=parse_int_field(campaign_lines, "max_subagent_threads"),
+        subagent_runtime=parse_text_field(campaign_lines, "subagent_runtime"),
         hard_approval_zones=parse_list_section(text, "Hard Approval Zones"),
         model_usage_policy=parse_key_value_section(text, "Model Usage Policy"),
         first_app_surface=parse_key_value_section(text, "First App Surface"),
+        subagent_permission_policy=parse_key_value_section(text, "Subagent Permission Policy"),
         source=source,
     )
 
@@ -209,15 +230,14 @@ def parse_campaign_budget_json(payload: dict[str, Any], *, source: str = "CAMPAI
     if not isinstance(zones, list):
         zones = []
     return CampaignBudget(
-        default_agent_budget=int(campaign["default_agent_budget"])
-        if isinstance(campaign.get("default_agent_budget"), int)
+        max_subagent_threads=int(campaign["max_subagent_threads"])
+        if isinstance(campaign.get("max_subagent_threads"), int)
         else None,
-        max_agent_budget=int(campaign["max_agent_budget"])
-        if isinstance(campaign.get("max_agent_budget"), int)
-        else None,
+        subagent_runtime=str(campaign.get("subagent_runtime") or ""),
         hard_approval_zones=[str(zone) for zone in zones],
         model_usage_policy=parse_json_string_map(payload.get("model_usage_policy")),
         first_app_surface=parse_json_string_map(payload.get("first_app_surface")),
+        subagent_permission_policy=parse_json_string_map(payload.get("subagent_permission_policy")),
         source=source,
     )
 
@@ -227,6 +247,8 @@ def looks_like_path(value: str) -> bool:
         return False
     normalized = value.replace("\\", "/")
     if "/" in normalized:
+        return True
+    if normalized.startswith(".") and len(normalized) > 1:
         return True
     return bool(re.search(r"\.[A-Za-z0-9]{1,8}$", normalized))
 
@@ -249,7 +271,8 @@ def parse_state_contract(text: str, *, source: str = "STATE.md") -> StateContrac
     return StateContract(
         task=parse_text_field(current_task_lines, "task"),
         phase=parse_text_field(current_task_lines, "phase"),
-        agent_budget=parse_int_field(profile_lines, "agent_budget"),
+        selected_agents=parse_list_field(profile_lines, "selected_agents"),
+        subagent_permission=parse_text_field(profile_lines, "subagent_permission"),
         write_paths=extract_write_paths(text),
         source=source,
     )
@@ -277,11 +300,12 @@ def parse_state_contract_json(payload: dict[str, Any], *, source: str = "STATE.j
                 if looks_like_path(cleaned) and cleaned not in seen:
                     seen.add(cleaned)
                     paths.append(cleaned)
-    agent_budget = profile.get("agent_budget")
+    selected_agents = profile.get("selected_agents")
     return StateContract(
         task=str(task.get("task") or ""),
         phase=str(task.get("phase") or ""),
-        agent_budget=agent_budget if isinstance(agent_budget, int) else None,
+        selected_agents=[str(agent) for agent in selected_agents] if isinstance(selected_agents, list) else [],
+        subagent_permission=str(profile.get("subagent_permission") or ""),
         write_paths=paths,
         source=source,
     )
@@ -343,16 +367,16 @@ def find_mirror_warnings(root: Path, campaign: CampaignBudget, contract: StateCo
         compare_optional_values(
             warnings=warnings,
             source="CAMPAIGN_STATE.md",
-            field="default_agent_budget",
-            canonical=campaign.default_agent_budget,
-            mirror=mirror.default_agent_budget,
+            field="max_subagent_threads",
+            canonical=campaign.max_subagent_threads,
+            mirror=mirror.max_subagent_threads,
         )
         compare_optional_values(
             warnings=warnings,
             source="CAMPAIGN_STATE.md",
-            field="max_agent_budget",
-            canonical=campaign.max_agent_budget,
-            mirror=mirror.max_agent_budget,
+            field="subagent_runtime",
+            canonical=campaign.subagent_runtime,
+            mirror=mirror.subagent_runtime,
         )
         compare_optional_values(
             warnings=warnings,
@@ -374,6 +398,13 @@ def find_mirror_warnings(root: Path, campaign: CampaignBudget, contract: StateCo
             field="first_app_surface",
             canonical=campaign.first_app_surface,
             mirror=mirror.first_app_surface,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="CAMPAIGN_STATE.md",
+            field="subagent_permission_policy",
+            canonical=campaign.subagent_permission_policy,
+            mirror=mirror.subagent_permission_policy,
         )
     if contract.source == "STATE.json" and (root / "STATE.md").exists():
         mirror = parse_state_contract(
@@ -397,9 +428,16 @@ def find_mirror_warnings(root: Path, campaign: CampaignBudget, contract: StateCo
         compare_optional_values(
             warnings=warnings,
             source="STATE.md",
-            field="agent_budget",
-            canonical=contract.agent_budget,
-            mirror=mirror.agent_budget,
+            field="selected_agents",
+            canonical=contract.selected_agents,
+            mirror=mirror.selected_agents,
+        )
+        compare_optional_values(
+            warnings=warnings,
+            source="STATE.md",
+            field="subagent_permission",
+            canonical=contract.subagent_permission,
+            mirror=mirror.subagent_permission,
         )
         compare_optional_values(
             warnings=warnings,
@@ -527,55 +565,33 @@ def check_budget(
                 evidence=contract.source,
             )
         )
-    if campaign.max_agent_budget is None:
+    if campaign.max_subagent_threads is None:
         violations.append(
             Violation(
-                violation_id="missing-campaign-max-budget",
+                violation_id="missing-campaign-subagent-limit",
                 severity="high",
-                message="Campaign contract does not define max_agent_budget.",
+                message="Campaign contract does not define max_subagent_threads.",
                 evidence=campaign.source,
             )
         )
-    if campaign.default_agent_budget is not None and campaign.max_agent_budget is not None:
-        if campaign.default_agent_budget > campaign.max_agent_budget:
-            violations.append(
-                Violation(
-                    violation_id="campaign-default-budget-exceeds-max",
-                    severity="high",
-                    message="default_agent_budget exceeds max_agent_budget.",
-                    evidence=(
-                        f"default_agent_budget={campaign.default_agent_budget}, "
-                        f"max_agent_budget={campaign.max_agent_budget}"
-                    ),
-                )
-            )
-    if contract.agent_budget is None:
+    if not contract.subagent_permission or not contract.selected_agents:
         violations.append(
             Violation(
-                violation_id="missing-state-agent-budget",
+                violation_id="missing-state-subagent-policy",
                 severity="high",
-                message="State contract does not define agent_budget.",
+                message="State contract must define native subagent permission and selected_agents.",
                 evidence=contract.source,
             )
         )
-    elif contract.agent_budget < 0:
+    elif campaign.max_subagent_threads is not None and len(contract.selected_agents) > campaign.max_subagent_threads:
         violations.append(
             Violation(
-                violation_id="negative-state-agent-budget",
+                violation_id="state-subagent-count-exceeds-campaign-max",
                 severity="high",
-                message="State contract agent_budget must be non-negative.",
-                evidence=f"agent_budget={contract.agent_budget}",
-            )
-        )
-    elif campaign.max_agent_budget is not None and contract.agent_budget > campaign.max_agent_budget:
-        violations.append(
-            Violation(
-                violation_id="state-agent-budget-exceeds-campaign-max",
-                severity="high",
-                message="State contract agent_budget exceeds campaign max_agent_budget.",
+                message="State contract selected_agents exceeds campaign max_subagent_threads.",
                 evidence=(
-                    f"agent_budget={contract.agent_budget}, "
-                    f"max_agent_budget={campaign.max_agent_budget}"
+                    f"selected_agents={len(contract.selected_agents)}, "
+                    f"max_subagent_threads={campaign.max_subagent_threads}"
                 ),
             )
         )
@@ -657,16 +673,18 @@ def build_payload(
         "mirror_warning_count": len(mirror_warnings),
         "mirror_warnings": [warning.to_dict() for warning in mirror_warnings],
         "campaign_budget": {
-            "default_agent_budget": campaign.default_agent_budget,
-            "max_agent_budget": campaign.max_agent_budget,
+            "max_subagent_threads": campaign.max_subagent_threads,
+            "subagent_runtime": campaign.subagent_runtime,
             "hard_approval_zones": campaign.hard_approval_zones,
             "model_usage_policy": campaign.model_usage_policy,
             "first_app_surface": campaign.first_app_surface,
+            "subagent_permission_policy": campaign.subagent_permission_policy,
         },
         "state_contract": {
             "task": contract.task,
             "phase": contract.phase,
-            "agent_budget": contract.agent_budget,
+            "selected_agents": contract.selected_agents,
+            "subagent_permission": contract.subagent_permission,
             "write_paths": allowed_paths,
         },
         "changed_paths": changed_path_reports,
@@ -688,8 +706,10 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- state_source: `{payload['contract_sources']['state']}`",
         f"- task: `{contract['task']}`",
         f"- phase: `{contract['phase']}`",
-        f"- agent_budget: `{contract['agent_budget']}`",
-        f"- max_agent_budget: `{budget['max_agent_budget']}`",
+        f"- max_subagent_threads: `{budget['max_subagent_threads']}`",
+        f"- subagent_runtime: `{budget['subagent_runtime']}`",
+        f"- selected_agents: `{'; '.join(contract['selected_agents']) or 'none'}`",
+        f"- subagent_permission: `{contract['subagent_permission'] or 'none'}`",
         "",
         "## Write Contract",
         "",

@@ -20,9 +20,17 @@ except ModuleNotFoundError:
 PLUGIN_PATH = Path("plugins/selfdex")
 PLUGIN_JSON = PLUGIN_PATH / ".codex-plugin" / "plugin.json"
 SKILL_PATH = PLUGIN_PATH / "skills" / "selfdex" / "SKILL.md"
+COMMIT_GATE_SKILL_PATH = PLUGIN_PATH / "skills" / "selfdex-commit-gate" / "SKILL.md"
 MARKETPLACE_PATH = Path(".agents/plugins/marketplace.json")
 REQUIRED_SKILL_PHRASES = (
     "@selfdex",
+    "explicit permission",
+    "Codex native Subagents/MultiAgentV2",
+    "main agent",
+    "explorer",
+    "docs_researcher",
+    "worker",
+    "reviewer",
     "current working directory",
     "SELFDEX_ROOT",
     "scripts/plan_external_project.py",
@@ -31,11 +39,39 @@ REQUIRED_SKILL_PHRASES = (
     "explicit approval",
     "External projects are read-only by default",
     "Do not install this plugin",
+    "check_commit_gate.py",
+)
+REQUIRED_COMMIT_GATE_PHRASES = (
+    "selfdex-commit-gate",
+    "scripts/check_commit_gate.py",
+    "scripts/check_github_actions_status.py",
+    "Conventional Commits",
+    "GitHub Actions",
+    "Do not select the next candidate",
+    "explicitly asks for it",
 )
 REQUIRED_TOOL_PATHS = (
     "scripts/plan_external_project.py",
     "scripts/run_target_codex.py",
     "scripts/install_selfdex_plugin.py",
+    "scripts/check_commit_gate.py",
+    "scripts/check_github_actions_status.py",
+)
+REQUIRED_CODEX_AGENT_FILES = (
+    ".codex/config.toml",
+    ".codex/agents/explorer.toml",
+    ".codex/agents/worker.toml",
+    ".codex/agents/reviewer.toml",
+    ".codex/agents/docs-researcher.toml",
+)
+LEGACY_ACTIVE_RUNTIME_PATTERNS = (
+    "Use lightweight `single-session` by default",
+    "lightweight `single-session`",
+    "frozen-contract `single-session`",
+    "default_agent_budget",
+    "max_agent_budget",
+    "score_total",
+    "agent_budget",
 )
 
 
@@ -114,7 +150,13 @@ def validate(root: Path) -> tuple[list[Finding], dict[str, Any]]:
     skill_path = root / SKILL_PATH
     marketplace_path = root / MARKETPLACE_PATH
 
-    for required_path in (plugin_path, skill_path, marketplace_path):
+    for required_path in (
+        plugin_path,
+        skill_path,
+        root / COMMIT_GATE_SKILL_PATH,
+        marketplace_path,
+        *(root / path for path in REQUIRED_CODEX_AGENT_FILES),
+    ):
         if not required_path.exists():
             findings.append(
                 Finding(
@@ -159,6 +201,41 @@ def validate(root: Path) -> tuple[list[Finding], dict[str, Any]]:
                 findings.append(
                     Finding("skill-missing-safety-phrase", "high", SKILL_PATH.as_posix(), f"Skill is missing required phrase: {phrase}")
                 )
+        for phrase in LEGACY_ACTIVE_RUNTIME_PATTERNS:
+            if phrase in skill_text:
+                findings.append(
+                    Finding(
+                        "skill-legacy-runtime-phrase",
+                        "high",
+                        SKILL_PATH.as_posix(),
+                        f"Skill still contains legacy active runtime wording: {phrase}",
+                    )
+                )
+
+    commit_gate_text = ""
+    commit_gate_path = root / COMMIT_GATE_SKILL_PATH
+    if commit_gate_path.exists():
+        commit_gate_text = commit_gate_path.read_text(encoding="utf-8")
+        metadata = frontmatter(commit_gate_text)
+        if metadata.get("name") != "selfdex-commit-gate":
+            findings.append(
+                Finding(
+                    "commit-gate-skill-name-mismatch",
+                    "high",
+                    COMMIT_GATE_SKILL_PATH.as_posix(),
+                    "Commit gate skill frontmatter name must be selfdex-commit-gate.",
+                )
+            )
+        for phrase in REQUIRED_COMMIT_GATE_PHRASES:
+            if phrase not in commit_gate_text:
+                findings.append(
+                    Finding(
+                        "commit-gate-missing-safety-phrase",
+                        "high",
+                        COMMIT_GATE_SKILL_PATH.as_posix(),
+                        f"Commit gate skill is missing required phrase: {phrase}",
+                    )
+                )
 
     marketplace: dict[str, Any] = {}
     if marketplace_path.exists():
@@ -189,14 +266,22 @@ def validate(root: Path) -> tuple[list[Finding], dict[str, Any]]:
             findings.append(
                 Finding("missing-selfdex-command", "high", path, "Selfdex plugin references a missing command.")
             )
+    for path in REQUIRED_CODEX_AGENT_FILES:
+        if not (root / path).exists():
+            findings.append(
+                Finding("missing-codex-agent-config", "high", path, "Selfdex native subagent configuration is missing.")
+            )
 
     metadata = {
         "plugin_path": PLUGIN_JSON.as_posix(),
         "skill_path": SKILL_PATH.as_posix(),
+        "commit_gate_skill_path": COMMIT_GATE_SKILL_PATH.as_posix(),
         "marketplace_path": MARKETPLACE_PATH.as_posix(),
         "plugin_name": plugin.get("name"),
         "default_prompt_count": len(plugin.get("interface", {}).get("defaultPrompt", [])) if plugin else 0,
         "skill_phrase_count": sum(1 for phrase in REQUIRED_SKILL_PHRASES if phrase in skill_text),
+        "commit_gate_phrase_count": sum(1 for phrase in REQUIRED_COMMIT_GATE_PHRASES if phrase in commit_gate_text),
+        "codex_agent_file_count": sum(1 for path in REQUIRED_CODEX_AGENT_FILES if (root / path).exists()),
     }
     return findings, metadata
 
@@ -223,6 +308,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         f"- finding_count: `{payload['finding_count']}`",
         f"- plugin_path: `{payload['plugin_path']}`",
         f"- skill_path: `{payload['skill_path']}`",
+        f"- commit_gate_skill_path: `{payload['commit_gate_skill_path']}`",
         f"- marketplace_path: `{payload['marketplace_path']}`",
         "",
         "## Findings",

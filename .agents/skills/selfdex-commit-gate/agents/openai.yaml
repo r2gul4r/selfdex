@@ -1,0 +1,4 @@
+interface:
+  display_name: "Selfdex Commit Gate"
+  short_description: "Close work with commit push CI evidence."
+  default_prompt: "Use the Selfdex commit gate to close the current verified task."

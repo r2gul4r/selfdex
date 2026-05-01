@@ -21,6 +21,39 @@ PLUGIN_NAME = "selfdex"
 ROOT_CONFIG_NAME = "selfdex-root.json"
 GITHUB_PLUGIN_REL = Path("plugins") / "cache" / "openai-curated" / "github"
 CHATGPT_APPS_PLUGIN_REL = Path("plugins") / "cache" / "openai-curated" / "chatgpt-apps"
+CODEX_POLICY_FILES = (
+    (
+        "codex-config",
+        Path(".codex") / "config.toml",
+        (
+            "multi_agent = true",
+            "[agents.explorer]",
+            "[agents.worker]",
+            "[agents.reviewer]",
+            "[agents.docs_researcher]",
+        ),
+    ),
+    (
+        "codex-agent-explorer",
+        Path(".codex") / "agents" / "explorer.toml",
+        ('name = "explorer"', 'sandbox_mode = "read-only"'),
+    ),
+    (
+        "codex-agent-worker",
+        Path(".codex") / "agents" / "worker.toml",
+        ('name = "worker"', 'model = "gpt-5.5"', "frozen task slice", "declared write boundary"),
+    ),
+    (
+        "codex-agent-reviewer",
+        Path(".codex") / "agents" / "reviewer.toml",
+        ('name = "reviewer"', 'sandbox_mode = "read-only"'),
+    ),
+    (
+        "codex-agent-docs-researcher",
+        Path(".codex") / "agents" / "docs-researcher.toml",
+        ('name = "docs_researcher"', 'sandbox_mode = "read-only"'),
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -114,6 +147,48 @@ def plugin_cache_result(codex_home: Path, rel_path: Path, *, check_id: str, labe
     )
 
 
+def codex_policy_result(root: Path, check_id: str, rel_path: Path, required_snippets: tuple[str, ...]) -> CheckResult:
+    path = root / rel_path
+    if not path.exists():
+        return CheckResult(
+            check_id,
+            "subagent_policy",
+            "fail",
+            "high",
+            f"Project-scoped Codex subagent policy file is missing: {rel_path.as_posix()}",
+            str(path),
+        )
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return CheckResult(
+            check_id,
+            "subagent_policy",
+            "fail",
+            "high",
+            f"Project-scoped Codex subagent policy file could not be read: {exc}",
+            str(path),
+        )
+    missing = [snippet for snippet in required_snippets if snippet not in text]
+    if missing:
+        return CheckResult(
+            check_id,
+            "subagent_policy",
+            "fail",
+            "high",
+            f"Project-scoped Codex subagent policy file is stale; missing: {', '.join(missing)}",
+            str(path),
+        )
+    return CheckResult(
+        check_id,
+        "subagent_policy",
+        "pass",
+        "info",
+        f"Project-scoped Codex subagent policy file is present: {rel_path.as_posix()}",
+        str(path),
+    )
+
+
 def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> dict[str, Any]:
     root = root.resolve()
     home = home.expanduser().resolve()
@@ -143,6 +218,9 @@ def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> 
                 str(path),
             )
         )
+
+    for check_id, rel_path, required_snippets in CODEX_POLICY_FILES:
+        checks.append(codex_policy_result(root, check_id, rel_path, required_snippets))
 
     checks.append(
         CheckResult(
@@ -267,6 +345,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     ]
     categories = [
         ("core", "Core"),
+        ("subagent_policy", "Subagent Policy"),
         ("runtime", "Runtime"),
         ("recommended_integration", "Recommended Integrations"),
         ("fallback", "Fallbacks"),

@@ -4,7 +4,10 @@ __pycache__/
 .pytest_cache/
 
 # Local scratch/output
-.codex/
+.codex/*
+!.codex/config.toml
+!.codex/agents/
+!.codex/agents/*.toml
 .codex-backups/
 /.tmp-tests/
 /tmp*/

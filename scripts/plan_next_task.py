@@ -14,12 +14,12 @@ from typing import Any
 
 try:
     from argparse_utils import add_format_argument, add_root_argument
-    from plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    from plan_subagent_fit import build_subagent_fit, recommended_agents_for_fit, subagent_fit_to_dict
     from run_history_penalty import apply_run_history_penalty
     import planner_text_utils as planner_text
 except ModuleNotFoundError:
     from scripts.argparse_utils import add_format_argument, add_root_argument
-    from scripts.plan_orchestration_fit import build_orchestration_fit, orchestration_fit_to_dict
+    from scripts.plan_subagent_fit import build_subagent_fit, recommended_agents_for_fit, subagent_fit_to_dict
     from scripts.run_history_penalty import apply_run_history_penalty
     from scripts import planner_text_utils as planner_text
 
@@ -98,8 +98,8 @@ def build_socratic_evaluation(candidate: Candidate, campaign_goal: str) -> list[
             "answer": primary_check,
         },
         {
-            "question": "Should orchestration be considered?",
-            "answer": "Consider subagents only if discovery, implementation, or review can be split into independently verified write sets.",
+            "question": "Should Codex native subagents be used?",
+            "answer": "Use official subagents when exploration, docs, implementation, or review can be split into independent agent threads.",
         },
     ]
 
@@ -330,7 +330,7 @@ def choose_candidate(root: Path) -> dict[str, Any]:
         "errors": errors,
         "selected": candidate_to_dict(selected, campaign_goal, cluster_counts) if selected else None,
         "top_candidates": [candidate_to_dict(item, campaign_goal, cluster_counts) for item in ranked[:5]],
-        "recommended_topology": recommend_topology(selected),
+        "recommended_agents": recommend_agents(selected),
     }
 
 
@@ -364,80 +364,86 @@ def candidate_to_dict(
     return payload
 
 
-def recommend_topology(candidate: Candidate | None) -> dict[str, Any]:
-    fit = build_orchestration_fit(candidate)
-    fit_payload = orchestration_fit_to_dict(fit)
+def recommend_agents(candidate: Candidate | None) -> dict[str, Any]:
+    fit = build_subagent_fit(candidate)
+    fit_payload = subagent_fit_to_dict(fit)
+    selected_agents = recommended_agents_for_fit(fit, candidate)
     if candidate is None:
         return {
-            "execution_topology": "autopilot-single",
-            "agent_budget": 0,
+            "agent_runtime": "codex_native_subagents",
+            "subagent_use": "main_only",
+            "selected_agents": selected_agents,
             "reason": "No candidate was produced.",
-            "spawn_decision": "no_spawn",
-            "write_sets": ["main: no candidate to implement"],
-            "orchestration_fit": fit_payload,
+            "write_boundaries": ["main: no candidate to implement"],
+            "subagent_fit": fit_payload,
         }
 
     if candidate.decision != "pick":
+        guarded_agents = [agent for agent in selected_agents if agent != "worker"]
+        for role in ("explorer", "reviewer"):
+            if role not in guarded_agents:
+                guarded_agents.append(role)
         return {
-            "execution_topology": "autopilot-serial",
-            "agent_budget": 1,
+            "agent_runtime": "codex_native_subagents",
+            "subagent_use": "main_plus_readonly_if_needed",
+            "selected_agents": guarded_agents,
             "reason": "Candidate needs clarification or guarded handling before implementation.",
-            "spawn_decision": "no_spawn_until_contract_is_clear",
-            "write_sets": ["main: clarify contract before delegation"],
-            "orchestration_fit": fit_payload,
+            "write_boundaries": ["main: clarify contract before assigning worker subagents"],
+            "subagent_fit": fit_payload,
         }
 
-    if fit.orchestration_value == "low":
+    if fit.subagent_value == "main_only":
         return {
-            "execution_topology": "autopilot-single",
-            "agent_budget": 0,
+            "agent_runtime": "codex_native_subagents",
+            "subagent_use": "main_only",
+            "selected_agents": selected_agents,
             "reason": (
-                f"{fit.task_size_class} task with {fit.handoff_cost} handoff cost and "
-                f"{fit.parallel_gain} parallel gain; delegation overhead exceeds expected speedup."
+                f"{fit.task_size_class} task with {fit.coordination_cost} coordination cost and "
+                f"{fit.parallel_or_specialist_gain} subagent gain; main agent is the simpler owner."
             ),
-            "spawn_decision": "no_spawn_handoff_cost_exceeds_gain",
-            "write_sets": ["main: implement and verify the selected bounded change"],
-            "orchestration_fit": fit_payload,
+            "write_boundaries": ["main: implement and verify the selected bounded change"],
+            "subagent_fit": fit_payload,
         }
 
-    if fit.orchestration_value == "high":
+    if fit.subagent_value == "use_subagents":
         return {
-            "execution_topology": "autopilot-parallel",
-            "agent_budget": 3,
+            "agent_runtime": "codex_native_subagents",
+            "subagent_use": "use_subagents_after_contract_freeze",
+            "selected_agents": selected_agents,
             "reason": (
-                "Large or separable candidate with enough independent write sets and verification paths "
-                "to justify concurrent-state workers after the contract is frozen."
+                "Large or separable candidate with independent write boundaries and verification paths "
+                "for official Codex explorer, worker, and reviewer agent threads after the contract is frozen."
             ),
-            "spawn_decision": "concurrent_state_recommended_when_contract_frozen",
-            "write_sets": [
-                "main: own root STATE.md, CAMPAIGN_STATE.md, runs/, integration, and commit",
-                "worker: own one disjoint slice state file and write set",
+            "write_boundaries": [
+                "main: own state, campaign state, runs/, integration, and commit gate",
+                "explorer: read-only evidence and boundary mapping",
+                "worker: own one disjoint write boundary",
                 "reviewer: read-only contract and regression review",
             ],
-            "orchestration_fit": fit_payload,
+            "subagent_fit": fit_payload,
         }
 
     return {
-        "execution_topology": "autopilot-mixed",
-        "agent_budget": 2,
+        "agent_runtime": "codex_native_subagents",
+        "subagent_use": "use_readonly_subagents_first",
+        "selected_agents": selected_agents,
         "reason": (
-            "Candidate is large or verification-sensitive, but collision risk or handoff cost means "
-            "parallel workers should wait until write sets are proven disjoint."
+            "Candidate is large or verification-sensitive, but write collision risk means worker subagents "
+            "should wait until boundaries are proven disjoint."
         ),
-        "spawn_decision": "sidecar_recommended_freeze_write_sets_first",
-        "write_sets": [
+        "write_boundaries": [
             "main: freeze contract, own shared state, and integrate",
-            "explorer: read-only slice and write-set discovery",
+            "explorer: read-only slice and write-boundary discovery",
             "reviewer: read-only verification and regression review",
         ],
-        "orchestration_fit": fit_payload,
+        "subagent_fit": fit_payload,
     }
 
 
 def render_markdown(payload: dict[str, Any]) -> str:
     selected = payload.get("selected")
-    topology = payload.get("recommended_topology") or {}
-    orchestration_fit = topology.get("orchestration_fit") or {}
+    agents = payload.get("recommended_agents") or {}
+    subagent_fit = agents.get("subagent_fit") or {}
     lines = ["# Next Selfdex Task", ""]
     if selected:
         lines.extend(
@@ -448,20 +454,20 @@ def render_markdown(payload: dict[str, Any]) -> str:
                 f"- decision: `{selected['decision']}`",
                 f"- priority_score: `{selected['priority_score']}`",
                 f"- risk: `{selected['risk']}`",
-                f"- execution_topology: `{topology.get('execution_topology')}`",
-                f"- agent_budget: `{topology.get('agent_budget')}`",
-                f"- spawn_decision: `{topology.get('spawn_decision')}`",
-                f"- reason: {topology.get('reason')}",
+                f"- agent_runtime: `{agents.get('agent_runtime')}`",
+                f"- subagent_use: `{agents.get('subagent_use')}`",
+                f"- selected_agents: `{'; '.join(agents.get('selected_agents') or [])}`",
+                f"- reason: {agents.get('reason')}",
                 "",
-                "## Orchestration Fit",
+                "## Subagent Fit",
                 "",
-                f"- task_size_class: `{orchestration_fit.get('task_size_class')}`",
-                f"- estimated_write_set_count: `{orchestration_fit.get('estimated_write_set_count')}`",
-                f"- shared_file_collision_risk: `{orchestration_fit.get('shared_file_collision_risk')}`",
-                f"- handoff_cost: `{orchestration_fit.get('handoff_cost')}`",
-                f"- parallel_gain: `{orchestration_fit.get('parallel_gain')}`",
-                f"- verification_independence: `{orchestration_fit.get('verification_independence')}`",
-                f"- orchestration_value: `{orchestration_fit.get('orchestration_value')}`",
+                f"- task_size_class: `{subagent_fit.get('task_size_class')}`",
+                f"- estimated_write_boundary_count: `{subagent_fit.get('estimated_write_boundary_count')}`",
+                f"- write_collision_risk: `{subagent_fit.get('write_collision_risk')}`",
+                f"- coordination_cost: `{subagent_fit.get('coordination_cost')}`",
+                f"- parallel_or_specialist_gain: `{subagent_fit.get('parallel_or_specialist_gain')}`",
+                f"- verification_independence: `{subagent_fit.get('verification_independence')}`",
+                f"- subagent_value: `{subagent_fit.get('subagent_value')}`",
                 "",
                 "## Rationale",
                 "",
@@ -476,8 +482,8 @@ def render_markdown(payload: dict[str, Any]) -> str:
         for item in selected.get("suggested_checks", []):
             lines.append(f"- `{item}`")
 
-        lines.extend(["", "## Write Sets", ""])
-        for item in topology.get("write_sets", []):
+        lines.extend(["", "## Write Boundaries", ""])
+        for item in agents.get("write_boundaries", []):
             lines.append(f"- {item}")
     else:
         lines.append("- selected: `none`")

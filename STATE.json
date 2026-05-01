@@ -1,53 +1,93 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "analysis_kind": "selfdex_state_contract",
   "current_task": {
-    "task": "readme-bilingual-default-korean",
+    "task": "review-routing-and-subagent-readiness",
     "phase": "local_verified",
-    "scope": "Make README.md the Korean default, add an English README mirror, and document the setup doctor / one-command install behavior with language links.",
-    "verification_target": "doc drift, campaign budget, markdown link sanity, package dry-run surface"
+    "scope": "Make GPT Pro / ChatGPT Apps direction review a product-strategy review path, keep code review on Codex native reviewer subagents, wire docs_researcher into subagent planning, and make selfdex doctor validate the .codex subagent policy surface.",
+    "verification_target": "focused subagent planner and setup doctor tests, full unittest discovery, plugin validation, doc drift, campaign boundary check, commit gate check, CLI/npm smoke, reviewer subagent, GitHub post-push check"
   },
   "orchestration_profile": {
-    "score_total": 4,
-    "score_breakdown": {
-      "public_readme_language_change": 2,
-      "npm_package_doc_surface": 1,
-      "state_and_record_update": 1
-    },
-    "hard_triggers": [
-      "public_documentation_surface"
-    ],
+    "runtime_basis": "official_codex_native_subagents",
+    "trigger_basis": "The user approved applying the split where GPT Pro / ChatGPT Apps direction review is for project direction and Codex native reviewer subagents handle code review, then explicitly requested commit and push.",
     "selected_rules": [
       "state_before_writes",
       "contract_freeze_before_implementation",
-      "single_session_for_documentation_surface_change",
-      "no_unapproved_external_plugin_install",
-      "no_gmail_dependency_for_ci_status",
-      "preserve_existing_git_history",
+      "use_official_codex_subagents_terms",
+      "remove_active_single_session_score_budget_language",
+      "preserve_hard_approval_zones",
+      "separate_product_direction_review_from_code_review",
+      "validate_codex_policy_surface_in_doctor",
+      "commit_and_push_explicitly_requested",
       "run_record_required"
     ],
     "selected_skills": [
-      "selfdex-autopilot"
+      "selfdex-autopilot",
+      "selfdex-commit-gate"
     ],
-    "execution_topology": "single-session",
-    "orchestration_value": "low",
-    "agent_budget": 0,
-    "efficiency_basis": "The work is a tightly coupled README language split and package doc surface update; delegation would add translation drift.",
-    "spawn_decision": "no_spawn",
-    "selection_reason": "The user wants Korean as the default README language with English/Korean navigation and current install-doctor behavior documented."
+    "selected_agents": [
+      "main",
+      "explorer",
+      "worker",
+      "reviewer",
+      "docs_researcher"
+    ],
+    "subagent_permission": "@selfdex invocation is explicit standing permission for Selfdex to recommend and use Codex native subagents when useful.",
+    "subagent_limits": [
+      "Read-only explorer, reviewer, docs_researcher, CI/log analysis, and summarization lanes may be used automatically after @selfdex is invoked.",
+      "Write-capable worker lanes require a frozen contract and disjoint write boundary.",
+      "Commit, push, publish, deploy, production writes, secret access, destructive filesystem operations, and destructive Git operations still require separate explicit approval."
+    ],
+    "selection_reason": "The previous policy made the GPT Pro / ChatGPT Apps direction-review path ambiguous and reviewer feedback found two valid readiness gaps: docs_researcher was not reachable from planner output, and selfdex doctor did not validate .codex subagent setup."
   },
   "writer_slot": {
     "writer_slot": "main",
-    "write_set": "readme_bilingual_default_korean",
+    "write_set": "review_routing_and_subagent_readiness",
     "write_sets": {
       "main": [
         "STATE.md",
         "STATE.json",
         "CAMPAIGN_STATE.md",
         "CAMPAIGN_STATE.json",
+        ".gitignore",
+        "AGENTS.md",
+        "AUTOPILOT.md",
         "README.md",
         "README.en.md",
-        "package.json",
+        "docs/SELFDEX_FINAL_GOAL.md",
+        "docs/SELFDEX_HANDOFF.md",
+        ".agents/skills/selfdex-autopilot/SKILL.md",
+        ".codex/config.toml",
+        ".codex/agents/explorer.toml",
+        ".codex/agents/worker.toml",
+        ".codex/agents/reviewer.toml",
+        ".codex/agents/docs-researcher.toml",
+        "plugins/selfdex/.codex-plugin/plugin.json",
+        "plugins/selfdex/skills/selfdex/SKILL.md",
+        "plugins/selfdex/skills/selfdex-commit-gate/SKILL.md",
+        "plugins/selfdex/skills/selfdex-commit-gate/agents/openai.yaml",
+        ".agents/skills/selfdex-commit-gate/SKILL.md",
+        ".agents/skills/selfdex-commit-gate/agents/openai.yaml",
+        "scripts/check_selfdex_plugin.py",
+        "scripts/check_selfdex_setup.py",
+        "scripts/check_campaign_budget.py",
+        "scripts/check_commit_gate.py",
+        "scripts/plan_next_task.py",
+        "scripts/plan_subagent_fit.py",
+        "scripts/plan_orchestration_fit.py",
+        "scripts/record_run.py",
+        "tests/test_selfdex_plugin.py",
+        "tests/test_selfdex_setup.py",
+        "tests/test_campaign_budget.py",
+        "tests/test_commit_gate.py",
+        "tests/test_plan_next_task.py",
+        "tests/test_plan_subagent_fit.py",
+        "tests/test_plan_orchestration_fit.py",
+        "tests/test_record_run.py",
+        "docs/ORCHESTRATION_DECISION_PLAN.md",
+        "docs/GOAL_COMPARISON_AREAS.md",
+        "docs/AREA_EVALUATION_METRICS.md",
+        "profiles/planner.md",
         "runs/selfdex/",
         "ERROR_LOG.md"
       ]
@@ -55,44 +95,49 @@
     "shared_assets_owner": "main"
   },
   "contract_freeze": [
-    "README.md should become the Korean default entrypoint.",
-    "README.en.md should preserve the English public README content.",
-    "Both files should expose language navigation links near the top.",
-    "The changed install behavior must be visible: npx selfdex install installs the local plugin and runs selfdex doctor; account-bound integrations are reported, not silently installed.",
-    "No runtime, installer, or package version behavior should change."
+    "@selfdex is the user-facing invocation for Selfdex command-center mode.",
+    "Calling @selfdex means the user explicitly permits Selfdex to use official Codex native Subagents/MultiAgentV2 when useful.",
+    "Selfdex must use official Codex terms in active policy: main agent, subagent, agent thread, explorer, worker, reviewer, docs_researcher.",
+    "Selfdex must stop presenting single-session, delegated-*, score_total, and agent_budget as active runtime controls.",
+    "Read-only subagents can run after @selfdex when useful; write-capable workers still need frozen write boundaries.",
+    "GPT Pro / ChatGPT Apps direction review is for product direction, product fit, improvement ideas, and additional features.",
+    "Code diff review stays with Codex native reviewer subagents.",
+    "docs_researcher must be reachable from planner recommendations when official docs, API, SDK, MCP, ChatGPT Apps, OpenAI, model, or GPT behavior matters.",
+    "selfdex doctor must fail or warn clearly when the project-scoped .codex subagent policy files are missing or stale.",
+    "Hard approval zones remain unchanged."
   ],
   "reviewer": {
-    "reviewer": "not_required",
-    "reviewer_mode": "none",
-    "reviewer_target": "setup doctor diff after local verification if risk remains",
-    "reviewer_focus": "installer safety, external plugin boundary, public CLI UX",
-    "reviewer_result": "No separate reviewer lane needed for a focused documentation language split."
+    "reviewer": "required_by_policy_surface_change",
+    "reviewer_mode": "local_verification_plus_diff_review",
+    "reviewer_target": "official subagent permission boundary, removed legacy topology vocabulary, plugin validator coverage",
+    "reviewer_focus": "Do active docs imply uncontrolled autonomy? Do they keep explicit approvals for risky actions?",
+    "reviewer_result": "Codex native reviewer subagent found no P0/P1 findings. Two P2 findings were repaired inside scope: planner recommendations now preserve docs_researcher/reviewer for guarded docs-heavy candidates, and selfdex doctor now checks worker policy content beyond the role name."
   },
   "last_update": {
-    "timestamp": "2026-05-01T20:48:46+09:00",
+    "timestamp": "2026-05-01T23:13:20+09:00",
     "phase": "local_verified",
-    "status": "Bilingual README update verified and recorded.",
+    "status": "Review-routing and subagent-readiness follow-up implemented, reviewer findings repaired, verified, and recorded.",
     "verification_result": [
-      "python scripts/check_doc_drift.py --root . --format json: pass",
+      "python -m unittest discover -s tests: pass, 223 tests",
+      "python -m unittest tests.test_plan_subagent_fit tests.test_plan_next_task tests.test_selfdex_setup tests.test_commit_gate: pass, 30 tests",
+      "python scripts/check_selfdex_plugin.py --root . --format json: pass",
       "python scripts/check_campaign_budget.py --root . --include-git-diff --format json: pass",
-      "git diff --check: pass with line-ending warnings only",
-      "rg language/install/doctor links in README.md README.en.md: pass",
+      "python scripts/check_doc_drift.py --root . --format json: pass",
+      "python scripts/plan_next_task.py --root . --format json: pass",
       "node bin/selfdex.js --help: pass",
-      "npm.cmd --cache C:/tmp/npm-cache-selfdex pack --dry-run --json: pass after sandbox escalation, README.en.md included"
+      "node bin/selfdex.js --version: pass",
+      "node bin/selfdex.js install --dry-run: pass",
+      "npm.cmd pack --dry-run --json: pass after sandbox escalation",
+      "git diff --check: pass with CRLF warnings only"
     ],
-    "run_artifact": "runs/selfdex/20260501-204846-readme-bilingual-default-korean.md"
+    "run_artifact": "runs/selfdex/20260501-231320-review-routing-and-subagent-readiness.md"
   },
   "retrospective": {
-    "task": "readme-bilingual-default-korean",
-    "score_total": 4,
+    "task": "review-routing-and-subagent-readiness",
     "evaluation_fit": "matched",
-    "orchestration_fit": "single-session selected because README.md and README.en.md must stay wording-aligned.",
-    "predicted_topology": "single-session",
-    "actual_topology": "single-session",
-    "spawn_count": 0,
-    "rework_or_reclassification": "new user request after setup doctor completion",
-    "reviewer_findings": "none",
+    "runtime_fit": "official_codex_native_subagents",
+    "actual_agent_usage": "main implementation plus Codex native reviewer subagent.",
     "verification_outcome": "pass",
-    "next_gate_adjustment": "Default public documentation should remain Korean while preserving English access."
+    "next_gate_adjustment": "Future @selfdex sessions should route product/app direction review through GPT Pro / ChatGPT Apps when user-approved, keep code diff review on reviewer subagents, and keep .codex policy files under setup doctor checks."
   }
 }

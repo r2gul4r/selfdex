@@ -1,0 +1,22 @@
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.explorer]
+description = "Read-only codebase explorer for Selfdex planning and evidence gathering."
+config_file = "agents/explorer.toml"
+
+[agents.worker]
+description = "Bounded implementation agent for one frozen Selfdex write boundary."
+config_file = "agents/worker.toml"
+
+[agents.reviewer]
+description = "Read-only reviewer for correctness, regressions, security, and missing tests."
+config_file = "agents/reviewer.toml"
+
+[agents.docs_researcher]
+description = "Read-only documentation and API behavior researcher."
+config_file = "agents/docs-researcher.toml"

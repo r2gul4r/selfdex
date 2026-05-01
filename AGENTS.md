@@ -17,13 +17,14 @@ current user request says otherwise.
 - Default execution posture is `autopilot-active`, not passive review.
 - If acceptance is clear enough, start implementation after recording the
   contract instead of asking for another confirmation.
-- Treat read-heavy discovery as parallelizable by default.
-- Treat reviewer checks as a normal close-out lane, not a rare exception.
-- Prefer `delegated-parallel` when there are two or more disjoint write sets and
-  independent checks.
-- Use `single-session` only when the task is tiny, tightly coupled, or blocked
-  by host policy.
-- Spend the configured `agent_budget` before shrinking back to local-only work.
+- Treat read-heavy discovery, CI/log analysis, documentation checks, and review
+  as natural Codex native subagent work after `@selfdex` or an equivalent user
+  request grants subagent permission.
+- Treat reviewer checks as a normal close-out agent lane, not a rare exception.
+- Use official Codex terms and runtime controls: main agent, subagent, agent
+  thread, explorer, worker, reviewer, and docs_researcher.
+- Do not use the old Selfdex topology labels, scoring totals, or budget knobs as
+  active runtime controls.
 - Use bounded repair loops when verification fails inside the pinned scope.
 
 ## Command Autonomy
@@ -70,15 +71,15 @@ current user request says otherwise.
 Every non-trivial task uses this loop:
 
 ```text
-classify -> freeze -> fan-out -> integrate -> verify -> repair -> record
+classify -> freeze -> delegate when useful -> integrate -> verify -> repair -> record
 ```
 
 Before implementation writes:
 
-- Update `STATE.md` with the current task, selected topology, write sets, and
-  verification target.
-- Update `CAMPAIGN_STATE.md` when the campaign goal, budget, locks, or guardrail
-  scope changes.
+- Update `STATE.md` with the current task, official agent roles selected for the
+  task, write sets, and verification target.
+- Update `CAMPAIGN_STATE.md` when the campaign goal, subagent permission policy,
+  locks, or guardrail scope changes.
 - Assign one owner per write set.
 - Put run evidence under `runs/` for non-trivial autonomous loops.
 
@@ -93,6 +94,9 @@ Before implementation writes:
 - Treat `reasoning_effort` as a tuning knob, not a rescue plan. Prefer clearer
   contracts, tool boundaries, and verification loops before asking for higher
   effort.
+- Treat GPT Pro / ChatGPT Apps review as product/app direction review only:
+  project purpose, improvement ideas, roadmap priority, and additional feature
+  opportunities. Keep code diff review on the Codex native `reviewer` subagent.
 - Use short preambles before major tool phases: say what is being checked or
   changed and why it matters, then continue working from the result.
 - Skill routing is explicit and auditable: load a skill when the user names it
@@ -106,37 +110,35 @@ Before implementation writes:
 - Repository skills augment `AGENTS.md`; they do not bypass state, approval,
   security, or verification gates.
 
-## Topology Selection
+## Codex Native Subagents
 
-- `autopilot-single`: one local write lane for tiny or tightly coupled work.
-- `autopilot-serial`: discovery or contract freeze must happen before workers.
-- `autopilot-parallel`: disjoint slices can run at the same time.
-- `autopilot-mixed`: serial freeze first, then parallel implementation/review.
+- `@selfdex` invocation is explicit permission to use official Codex native
+  Subagents/MultiAgentV2 when useful.
+- The main agent owns requirements, task choice, approvals, integration, final
+  response, and run records.
+- `explorer` is read-only and maps code paths, evidence, contracts, risks, and
+  candidate write boundaries.
+- `docs_researcher` is read-only and checks official docs or API behavior.
+- `worker` owns one frozen write boundary and must stop if the boundary expands
+  or overlaps another write owner.
+- `reviewer` is read-only and checks correctness, regressions, security, and
+  missing tests.
+- Prefer subagents when noisy exploration, tests, logs, docs, implementation
+  slices, or review can run independently and return concise summaries.
+- Be careful with parallel write-heavy work. Use worker subagents only when write
+  boundaries are disjoint and verification can be scoped.
+- If subagent cost or coordination overhead exceeds the value, keep the work in
+  the main agent without introducing local topology labels.
 
-Default scoring bias:
+## Agent Limits
 
-- `score_total 0-2`: local unless a reviewer sidecar is nearly free.
-- `score_total 3-5`: at least evaluate explorer or reviewer support.
-- `score_total 6+`: prefer multi-agent topology when host policy permits.
-- Hard triggers such as shared contracts, broad codebase scouting, data
-  fidelity, external dependencies, or weak verification push toward
-  explorer-first or mixed topology.
-
-## Agent Budget
-
-- Budget `0`: only for tiny local tasks or host-policy blocks.
-- Budget `1`: one explorer, worker, or reviewer.
-- Budget `2`: discovery plus implementation, or implementation plus review.
-- Budget `3+`: planner/explorer/worker/reviewer lanes for broad work.
-
-Budget is task-scoped. Do not spawn unrelated work outside the frozen contract.
-
-## Role Lanes
-
-- `planner`: chooses the next candidate and freezes acceptance.
-- `explorer`: read-only scouting and write-set recommendation.
-- `worker`: bounded implementation inside one write set.
-- `reviewer`: read-only correctness, regression, and verification review.
+- Project-scoped Codex settings live in `.codex/config.toml`.
+- Keep `agents.max_depth = 1` unless the user explicitly asks for recursive
+  delegation.
+- Keep `agents.max_threads = 6` unless the user explicitly changes the project
+  cap.
+- Do not spawn unrelated work outside the frozen contract.
+- Close completed agent threads promptly.
 
 ## Done Means
 

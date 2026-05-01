@@ -161,7 +161,7 @@ area=proposal_prioritization | coverage=pass | clarity=pass | operability=pass |
 ### 측정 항목
 
 - `contract_freeze_fields_present`
-  - `STATE.md` 에 `contract_freeze`, `write_sets`, `writer_slot`, `execution_topology` 가 남는지
+  - `STATE.md` 에 `contract_freeze`, `write_sets`, `writer_slot`, `selected_agents` 가 남는지
 - `spec_first_path_defined`
   - `clarify -> freeze -> implement -> verify` 같은 native STATE.md contract flow가 문서화돼 있는지
 - `reclassification_on_scope_shift`

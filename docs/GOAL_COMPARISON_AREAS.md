@@ -198,7 +198,7 @@ area=proposal_prioritization | expected=candidates ranked by goal-aligned evalua
 #### 범위 포함
 
 - `clarify -> freeze -> implement -> verify` 같은 spec-first 흐름
-- `STATE.md`, `contract_freeze`, `write_sets`, `execution_topology`를 통한 실행 통제
+- `STATE.md`, `contract_freeze`, `write_sets`, `selected_agents`를 통한 실행 통제
 - 작은 기능 추가와 리팩터링의 안전한 수행
 
 #### 범위 제외
@@ -219,7 +219,7 @@ area=proposal_prioritization | expected=candidates ranked by goal-aligned evalua
 
 #### 현재 구현에서 확인할 증거
 
-- `STATE.md`에 `contract_freeze`, `write_sets`, `execution_topology`, `writer_slot`이 남는지 본다
+- `STATE.md`에 `contract_freeze`, `write_sets`, `selected_agents`, `writer_slot`이 남는지 본다
 - `clarify -> freeze -> implement -> verify` 같은 흐름이 문서화돼 있는지 본다
 - 구조 변경 금지와 예외 승인 규칙이 실행 단계 문서와 충돌 없이 이어지는지 본다
 
