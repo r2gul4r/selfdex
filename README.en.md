@@ -104,6 +104,18 @@ session and call:
 Selfdex treats the current session directory as the selected project unless you
 name another path.
 
+### What To Select In The Codex `@` Menu
+
+- `Selfdex`: the global command-center skill installed for use from any target
+  project session. This is the normal entry to select.
+- `Selfdex Autopilot`: a helper skill for work inside the Selfdex repository or
+  from a Selfdex-generated task contract.
+- `Selfdex Commit Gate`: a helper skill for closing verified Selfdex work with
+  commit, push, and CI status checks.
+- `selfdex plugins`, `selfdex runs`, `selfdex.js`, and similar entries: file
+  search results. They are not the command entry. If the `Selfdex` skill is
+  visible, these file entries can be ignored.
+
 Calling `@selfdex` also means:
 
 - Selfdex should run command-center mode for the current project.
@@ -130,6 +142,11 @@ The first response should be a read-only plan:
 
 If you approve the target-project write, Selfdex may run the bounded execution
 path. If you do not approve it, the loop stops at the plan.
+
+After implementation and verification, if you ask Selfdex to commit and push,
+Selfdex closes the loop through the `Selfdex Commit Gate` flow. It checks that
+changed files are inside the frozen contract, commits with a Conventional Commit
+message, pushes the branch, and checks GitHub Actions status.
 
 ## What It Does
 
