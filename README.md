@@ -1,222 +1,200 @@
 # Selfdex
 
-Selfdex is a supervised command center for Codex work on a project you choose.
+언어: [한국어](README.md) | [English](README.en.md)
 
-It reads the selected project first, decides one useful next improvement,
-evolution, or feature task, asks for approval, sends only the approved bounded
-work to Codex, verifies the result, and records evidence.
+Selfdex는 사용자가 고른 프로젝트를 Codex로 안전하게 작업하기 위한 감독형 지휘소다.
+
+먼저 프로젝트를 읽고, 지금 가장 쓸모 있는 개선/발전/기능 작업 하나를 고른다. 그다음 승인받은 범위만 Codex에 넘기고, 결과를 검증하고, 증거를 기록한다.
 
 ```text
-select project -> read direction -> choose next task -> ask approval
--> freeze contract -> delegate to Codex -> verify -> record
+프로젝트 선택 -> 방향 읽기 -> 다음 작업 선택 -> 승인 요청
+-> 계약 고정 -> Codex 실행 -> 검증 -> 기록
 ```
 
-Selfdex is not a background daemon, not a blind refactor bot, and not a tool
-that silently rewrites your repositories. It is meant to sit between you and
-Codex as the control layer that keeps the work useful, bounded, and auditable.
+Selfdex는 백그라운드 데몬도 아니고, 무작정 리팩터링하는 봇도 아니고, 저장소를 몰래 고치는 도구도 아니다. 사용자와 Codex 사이에서 작업을 작고, 유용하고, 추적 가능하게 묶어주는 제어층이다.
 
-Selfdex is not a multi-agent kit. Its default runtime model is a GPT-5.5
-prompt-guided command center: clear roles, bounded tool use, explicit stop
-conditions, local verification, and compact run evidence. Codex native
-Subagents are an optional backend only when work splits cleanly.
+Selfdex는 multi-agent kit이 아니다. 기본 실행 모델은 GPT-5.5 prompt guidance 방식의 command center다. 역할, 도구 경계, 종료 조건, 로컬 검증, 실행 기록을 명확히 잡고 움직인다. Codex native Subagents/MultiAgentV2는 작업이 독립적으로 쪼개질 때만 쓰는 선택형 백엔드다.
 
-## Install
+## 설치
 
-The intended published install command is:
+공개 설치 명령은 이거다:
 
 ```bash
 npx selfdex install
 ```
 
-The install path clones or updates Selfdex, installs the home-local `@selfdex`
-Codex plugin, then runs `selfdex doctor` automatically. Core Selfdex setup is
-completed by the installer; account-bound integrations such as GitHub or
-ChatGPT Apps are reported as recommended user actions when they are not already
-available.
+이 명령은 Selfdex를 clone/update하고, home-local `@selfdex` Codex 플러그인을 설치한 뒤, `selfdex doctor`를 자동 실행한다. 즉 core Selfdex 세팅은 설치 명령 하나로 끝나야 한다.
 
-Preview the install without cloning or writing plugin files:
+단, GitHub 플러그인, ChatGPT Apps 플러그인, GPT Pro/GPT-5.5 권한 같은 계정 연결형 기능은 조용히 설치하거나 연결하지 않는다. `selfdex doctor`가 현재 상태를 보고 필요한 사용자 조치를 알려준다.
+
+설치를 미리보기만 하려면:
 
 ```bash
 npx selfdex install --dry-run
 ```
 
-This npm command works after the `selfdex` package is published. Until then,
-use a cloned checkout and run the bootstrap locally:
+이 npm 명령은 `selfdex` 패키지가 npm에 publish된 뒤부터 바로 쓸 수 있다. publish 전에는 clone된 checkout에서 로컬 bootstrap을 실행한다:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-Preview the local bootstrap:
+로컬 bootstrap 미리보기:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 ```
 
-Install only the `@selfdex` Codex plugin from an existing checkout:
+이미 checkout이 있고 `@selfdex` Codex 플러그인만 설치하려면:
 
 ```bash
 python scripts/install_selfdex_plugin.py --root . --yes --format markdown
 ```
 
-Preview the plugin install:
+플러그인 설치 미리보기:
 
 ```bash
 python scripts/install_selfdex_plugin.py --root . --dry-run --format markdown
 ```
 
-Re-check setup after installation:
+설치 후 상태를 다시 확인하려면:
 
 ```bash
 selfdex doctor
 ```
 
-Requirements for the bootstrap path:
+`selfdex doctor`가 확인하는 것:
 
-- Node.js and npm for the `npx` entrypoint
-- PowerShell for `install.ps1`
-- Git for clone or update
-- Python 3 for the plugin installer
-- Codex with plugin discovery enabled
+- `@selfdex` 플러그인 설치 여부
+- Codex marketplace 등록 여부
+- Selfdex root 경로 연결 상태
+- 필요한 로컬 스크립트 존재 여부
+- GitHub Actions 확인용 fallback 존재 여부
+- GitHub / ChatGPT Apps 플러그인 사용 가능 여부
+- Gmail 없이 CI 피드백을 받을 수 있는지
 
-Publishing to npm, npm credentials, and registry ownership are separate
-approval-gated setup steps. They are not performed by this repository's tests
-or bootstrap verification.
+bootstrap 요구사항:
 
-## Use
+- `npx` 진입점을 위한 Node.js와 npm
+- `install.ps1` 실행을 위한 PowerShell
+- clone/update를 위한 Git
+- 플러그인 설치 스크립트를 위한 Python 3
+- 플러그인 discovery가 켜진 Codex
 
-After the plugin is installed or enabled, open Codex in the target project
-session and call:
+npm publish, npm credentials, registry ownership는 별도 승인과 계정 작업이 필요한 단계다. 이 저장소의 테스트나 bootstrap 검증은 publish를 수행하지 않는다.
+
+## 사용
+
+플러그인을 설치하거나 활성화한 뒤, 대상 프로젝트 Codex 세션에서 이렇게 호출한다:
 
 ```text
 @selfdex read this project and choose the next safe task
 ```
 
-Selfdex treats the current session directory as the selected project unless you
-name another path.
+별도 경로를 말하지 않으면 Selfdex는 현재 세션 디렉터리를 선택된 프로젝트로 본다.
 
-The first response should be a read-only plan:
+첫 응답은 read-only 계획이어야 한다:
 
-- selected task
-- why it matters
-- proposed write boundary
+- 선택된 작업
+- 왜 중요한지
+- 제안 write boundary
 - non-goals
-- verification commands
-- risk level
-- approval requirement
+- 검증 명령
+- 위험도
+- 승인 필요 여부
 - Codex handoff prompt
 
-If you approve the target-project write, Selfdex may run the bounded execution
-path. If you do not approve it, the loop stops at the plan.
+사용자가 target-project write를 승인하면 Selfdex는 고정된 범위 안에서 실행 경로로 넘어갈 수 있다. 승인하지 않으면 루프는 계획에서 멈춘다.
 
-## What It Does
+## 하는 일
 
-Selfdex separates direction, coordination, and implementation:
+Selfdex는 방향, 조율, 구현을 분리한다:
 
-- GPT / Pro extended mode is used only when the user asks for high-level
-  product, milestone, roadmap, or priority direction.
-- Selfdex reads, ranks, freezes, asks approval, records, and prevents
-  uncontrolled autonomy.
-- Codex implements, verifies, debugs, reviews diffs, and repairs inside the
-  approved contract.
+- GPT / Pro extended mode는 사용자가 요청하거나 승인한 경우에만 product, milestone, roadmap, priority 같은 고수준 방향 판단에 쓴다.
+- Selfdex는 읽고, 순위를 매기고, 계약을 고정하고, 승인을 받고, 기록하고, uncontrolled autonomy를 막는다.
+- Codex는 승인된 계약 안에서 구현, 검증, 디버깅, diff review, repair를 한다.
 
-Selfdex looks for several kinds of next work:
+Selfdex가 찾는 다음 작업 유형:
 
-- `repair`: restore broken behavior
-- `hardening`: make existing behavior harder to break
-- `improvement`: improve maintainability or clarity
-- `capability`: add a missing system ability
-- `automation`: automate repeated coordination work
-- `direction`: move the project toward a better product or technical path
+- `repair`: 깨진 동작 복구
+- `hardening`: 기존 동작을 덜 깨지게 강화
+- `improvement`: 유지보수성이나 명확성 개선
+- `capability`: 빠진 시스템 능력 추가
+- `automation`: 반복 조율 작업 자동화
+- `direction`: 제품/기술 방향을 더 나은 곳으로 이동
 
-The preferred candidate is not just "something is wrong." It is:
+좋은 후보는 단순히 “문제가 있다”가 아니다. 기준은 이거다:
 
 ```text
-This project would be better if it moved in this direction,
-and this is the smallest safe first step.
+이 프로젝트는 이 방향으로 움직이면 더 좋아지고,
+그 첫 단계로 지금 할 수 있는 가장 작은 안전한 작업이 이것이다.
 ```
 
-## Runtime Model
+## 실행 모델
 
-Selfdex uses the lightest safe execution lane:
+Selfdex는 가장 가벼운 안전 실행 lane을 쓴다:
 
-- lightweight `single-session` for small documentation, tests, local policy, or
-  narrow implementation changes
-- frozen-contract `single-session` for non-trivial but tightly coupled work
-- Codex native Subagents/MultiAgentV2 only when explorer, worker, or reviewer
-  lanes are independently useful and independently verifiable
+- 작은 문서/테스트/로컬 정책/좁은 구현 변경은 lightweight `single-session`
+- 작지는 않지만 결합도가 높은 작업은 frozen-contract `single-session`
+- explorer, worker, reviewer lane이 독립적으로 유용하고 검증 가능할 때만 Codex native Subagents/MultiAgentV2
 
-GPT-5.5 prompt guidance is an operating principle, not an automatic GPT call.
-Product, milestone, roadmap, or priority review still requires the user to ask
-for GPT / Pro extended mode or explicitly approve it.
+GPT-5.5 prompt guidance는 운영 원칙이지 자동 GPT 호출이 아니다. 제품 방향, milestone, roadmap, priority review는 사용자가 GPT / Pro extended mode를 요청하거나 명시적으로 승인해야 한다.
 
-## Safety Model
+## 안전 모델
 
-Selfdex starts read-only for external projects.
+Selfdex는 외부 프로젝트를 항상 read-only로 시작한다.
 
-Target-project writes require explicit approval in the current thread. Even
-folder-wide approval does not bypass hard approval zones.
+대상 프로젝트 write는 현재 thread에서 명시 승인받아야 한다. 폴더 단위 승인이 있어도 hard approval zone은 우회하지 않는다.
 
-Hard approval is always required for:
+항상 hard approval이 필요한 것:
 
-- destructive filesystem or Git history operations
-- secrets, credentials, private keys, or token access
+- 파괴적 filesystem 또는 Git history 작업
+- secrets, credentials, private keys, token 접근
 - paid API calls
-- public deploys
-- database migrations or production writes
-- cross-workspace changes outside the approved boundary
-- global Codex config, installer, plugin, or MCP setup changes
+- public deploy
+- database migration 또는 production write
+- 승인 경계 밖 cross-workspace 변경
+- global Codex config, installer, plugin, MCP setup 변경
 
-ChatGPT Apps and MCP surfaces are read-only first. The initial app surface may
-show registered projects, the next recommended task, recent run records, and
-approval status. It must not expose target-project write execution until that
-surface is explicitly approved.
+ChatGPT Apps와 MCP surface는 read-only가 먼저다. 첫 app surface는 등록 프로젝트, 다음 추천 작업, 최근 실행 기록, 승인 상태만 보여줄 수 있다. 명시 승인 전에는 target-project write 실행을 노출하면 안 된다.
 
-## Current Capabilities
+## 현재 기능
 
-Installed and tested surfaces:
+설치 및 테스트된 표면:
 
-- `package.json` and `bin/selfdex.js` define the npm-style `selfdex` CLI.
-- `install.ps1` bootstraps Selfdex and installs the home-local plugin.
-- `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
-- `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
-- `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
-- `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
-  recommended Codex integrations after install.
-- `scripts/plan_external_project.py` reads a target project and emits a frozen
-  task contract without editing the target.
-- `scripts/run_target_codex.py` can run the approved target-project execution
-  path with branch and run-record metadata.
-- `scripts/build_control_surface_snapshot.py` builds the read-only control
-  surface payload.
-- `scripts/control_surface_mcp_server.py` exposes the read-only payload through
-  a dependency-free local `/mcp` JSON-RPC scaffold.
-- `scripts/check_selfdex_plugin.py`, `scripts/check_campaign_budget.py`, and
-  `scripts/check_doc_drift.py` validate plugin wiring, contract boundaries, and
-  README drift.
-- `scripts/*.py` contains the remaining scanners, planners, recorders,
-  extractors, and checkers.
+- `package.json`과 `bin/selfdex.js`는 npm-style `selfdex` CLI를 정의한다.
+- `install.ps1`은 Selfdex를 bootstrap하고 home-local 플러그인을 설치한다.
+- `plugins/selfdex/`는 `@selfdex` 호출에 쓰는 Codex 플러그인을 담고 있다.
+- `.agents/plugins/marketplace.json`은 repo-local 플러그인 패키지를 알린다.
+- `scripts/install_selfdex_plugin.py`는 선택한 home에 플러그인을 설치한다.
+- `scripts/check_selfdex_setup.py`는 설치 후 core setup, local fallback, 권장 Codex integration 상태를 확인한다.
+- `scripts/plan_external_project.py`는 target project를 읽고 target을 수정하지 않은 채 frozen task contract를 만든다.
+- `scripts/run_target_codex.py`는 승인된 target-project 실행 경로를 branch와 run-record metadata와 함께 실행할 수 있다.
+- `scripts/build_control_surface_snapshot.py`는 read-only control surface payload를 만든다.
+- `scripts/control_surface_mcp_server.py`는 dependency-free local `/mcp` JSON-RPC scaffold로 read-only payload를 노출한다.
+- `scripts/check_selfdex_plugin.py`, `scripts/check_campaign_budget.py`, `scripts/check_doc_drift.py`는 plugin wiring, contract boundary, README drift를 검증한다.
+- `scripts/*.py`에는 나머지 scanner, planner, recorder, extractor, checker가 들어 있다.
 
-Still intentionally bounded:
+의도적으로 막아둔 것:
 
-- no background polling loop
-- no automatic multi-candidate execution
-- no unapproved target-project writes
-- no automatic GPT direction review
-- no legacy `codex_multiagent` baseline
-- no npm publish step
-- no claim that read-only validation replaces implementation evidence
+- background polling loop 없음
+- multi-candidate 자동 실행 없음
+- 승인 없는 target-project write 없음
+- 자동 GPT direction review 없음
+- legacy `codex_multiagent` baseline 없음
+- npm publish step 없음
+- read-only validation이 implementation evidence를 대체한다는 주장 없음
 
 ## Quick Start
 
-Inspect this repository:
+이 저장소를 점검한다:
 
 ```bash
 python scripts/build_project_direction.py --root . --format markdown
 python scripts/plan_next_task.py --root . --format markdown
 ```
 
-Inspect registered external projects read-only:
+등록된 외부 프로젝트를 read-only로 점검한다:
 
 ```bash
 python scripts/check_external_validation_readiness.py --root . --format markdown
@@ -224,32 +202,32 @@ python scripts/build_external_candidate_snapshot.py --root . --format markdown
 python scripts/build_external_candidate_snapshot.py --root . --project-id daboyeo --format markdown
 ```
 
-Create a target-project contract without editing the target:
+대상 프로젝트를 수정하지 않고 작업 계약을 만든다:
 
 ```bash
 python scripts/plan_external_project.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
 ```
 
-Run the target-project orchestrator in dry-run mode:
+target-project orchestrator를 dry-run으로 실행한다:
 
 ```bash
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format markdown
 ```
 
-Run approved target execution only after explicit approval:
+명시 승인 후에만 target 실행을 켠다:
 
 ```bash
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --execute --format markdown
 ```
 
-Build the read-only control surface:
+read-only control surface를 만든다:
 
 ```bash
 python scripts/build_control_surface_snapshot.py --root . --format markdown
 python scripts/control_surface_mcp_server.py --root . --describe-tools
 ```
 
-Maintenance checks:
+유지보수 체크:
 
 ```bash
 python scripts/check_campaign_budget.py --root . --format markdown
@@ -258,66 +236,61 @@ python scripts/collect_repo_metrics.py --root . --pretty
 python scripts/extract_test_gap_candidates.py --root . --format markdown
 ```
 
-## Records
+## 기록
 
-Selfdex records work centrally under `runs/`.
+Selfdex는 작업 기록을 `runs/` 아래에 모은다.
 
-Target-project records use:
+대상 프로젝트 기록 경로:
 
 ```text
 runs/<project_key>/<YYYYMMDD-HHMMSS>-<task-slug>.md
 ```
 
-Each non-trivial run should include:
+non-trivial run에는 최소한 이 내용이 있어야 한다:
 
-- project id and project root
+- project id와 project root
 - selected candidate
 - frozen contract
 - approval status
 - changed files
 - verification commands and results
 - repair attempts
-- final status: `completed`, `failed`, `blocked`, or `stopped`
-- next candidate or stop reason
+- final status: `completed`, `failed`, `blocked`, `stopped`
+- next candidate 또는 stop reason
 
-## Repository Map
+## 저장소 지도
 
-Core control files:
+핵심 control files:
 
-- `AGENTS.md` defines repository execution rules.
-- `AUTOPILOT.md` defines the supervised loop policy.
-- `CAMPAIGN_STATE.json` is the machine-readable campaign contract.
-- `CAMPAIGN_STATE.md` mirrors campaign intent for humans.
-- `STATE.json` is the machine-readable active task contract.
-- `STATE.md` mirrors the active task and write boundary for humans.
-- `project_registry.json` is the tool-readable project registry.
-- `PROJECT_REGISTRY.md` mirrors the registry and read-only boundary.
-- `docs/SELFDEX_FINAL_GOAL.md` is the north-star contract.
-- `docs/CANDIDATE_QUALITY_RUBRIC.md` defines candidate usefulness scoring.
-- `docs/SELFDEX_HANDOFF.md` keeps cross-machine continuity notes.
-- `docs/ORCHESTRATION_DECISION_PLAN.md` describes orchestration decisions.
-- `runs/` stores run evidence.
-- `examples/quality_signal_samples.json`,
-  `examples/external_validation_planner_sample.json`, and
-  `examples/candidate_quality_sample.json` are validation fixtures.
+- `README.en.md`는 영어 README mirror다.
+- `AGENTS.md`는 저장소 실행 규칙을 정의한다.
+- `AUTOPILOT.md`는 supervised loop policy를 정의한다.
+- `CAMPAIGN_STATE.json`은 machine-readable campaign contract다.
+- `CAMPAIGN_STATE.md`는 campaign intent의 human-readable mirror다.
+- `STATE.json`은 machine-readable active task contract다.
+- `STATE.md`는 active task와 write boundary의 human-readable mirror다.
+- `project_registry.json`은 tool-readable project registry다.
+- `PROJECT_REGISTRY.md`는 registry와 read-only boundary를 미러링한다.
+- `docs/SELFDEX_FINAL_GOAL.md`은 north-star contract다.
+- `docs/CANDIDATE_QUALITY_RUBRIC.md`는 candidate usefulness scoring을 정의한다.
+- `docs/SELFDEX_HANDOFF.md`는 cross-machine continuity note다.
+- `docs/ORCHESTRATION_DECISION_PLAN.md`는 orchestration decision을 설명한다.
+- `runs/`는 run evidence를 저장한다.
+- `examples/quality_signal_samples.json`, `examples/external_validation_planner_sample.json`, `examples/candidate_quality_sample.json`은 validation fixture다.
 
-Active external validation targets are listed in `PROJECT_REGISTRY.md`.
-Historical `codex_multiagent` reports remain under `runs/external-validation/`
-as legacy/reference evidence, but that project is no longer the active Selfdex
-baseline or registry proof target.
+Active external validation target은 `PROJECT_REGISTRY.md`에 있다. 과거 `codex_multiagent` report는 `runs/external-validation/` 아래 legacy/reference evidence로 남아 있지만, 더 이상 Selfdex의 active baseline이나 registry proof target이 아니다.
 
-Installer and plugin files:
+Installer와 plugin files:
 
-- `package.json` defines the npm package metadata and executable.
-- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1` and setup doctor.
-- `install.ps1` clones or updates Selfdex, invokes the plugin installer, then
-  runs the setup doctor unless explicitly skipped.
-- `plugins/selfdex/` contains the repo-local Codex plugin package.
-- `.agents/plugins/marketplace.json` advertises the plugin for Codex.
+- `package.json`은 npm package metadata와 executable을 정의한다.
+- `bin/selfdex.js`는 `install.ps1`과 setup doctor를 감싸는 npm CLI wrapper다.
+- `install.ps1`은 Selfdex를 clone/update하고 plugin installer를 실행한 뒤, 명시적으로 skip하지 않으면 setup doctor를 실행한다.
+- `plugins/selfdex/`는 repo-local Codex plugin package다.
+- `.agents/plugins/marketplace.json`은 Codex용 plugin을 알린다.
 
-## Verification
+## 검증
 
-Use narrow checks for documentation and contract edits:
+문서와 계약 변경에는 좁은 체크를 쓴다:
 
 ```bash
 python scripts/check_doc_drift.py --root . --format json
@@ -325,7 +298,7 @@ python scripts/check_campaign_budget.py --root . --include-git-diff --format jso
 git diff --check
 ```
 
-Use full checks after code, installer, plugin, or workflow changes:
+코드, installer, plugin, workflow 변경 후에는 전체 체크를 쓴다:
 
 ```bash
 node bin/selfdex.js --help
@@ -342,30 +315,27 @@ python scripts/plan_external_project.py --root . --project-id daboyeo --format j
 python scripts/run_target_codex.py --root . --project-root ../daboyeo --project-name daboyeo --format json
 ```
 
-After an approved commit and push, use GitHub as the CI feedback source:
+승인된 commit/push 뒤에는 GitHub를 CI feedback source로 쓴다:
 
 ```bash
 python scripts/check_github_actions_status.py --root . --format json
 ```
 
-CI runs the baseline through `.github/workflows/check.yml` with:
+CI는 `.github/workflows/check.yml`에서 baseline을 실행한다:
 
 ```bash
 make check
 ```
 
-## Current Direction
+## 현재 방향
 
-Selfdex is currently ready as a supervised local command center foundation:
+Selfdex는 현재 supervised local command center foundation으로 준비되어 있다:
 
-- project-session invocation exists through `@selfdex`
-- install is prepared for `npx selfdex install` after npm publication
-- read-only planning exists for selected external projects
-- target execution remains approval-gated
-- run evidence and state contracts are recorded
-- verification protects the current safety model
+- project-session invocation은 `@selfdex`로 가능하다.
+- npm publish 뒤 설치 경로는 `npx selfdex install`이다.
+- 선택된 외부 프로젝트에 대한 read-only planning이 있다.
+- target execution은 approval-gated 상태다.
+- run evidence와 state contract가 기록된다.
+- verification이 현재 safety model을 보호한다.
 
-The next product step is not broader autonomy. It is making the approved
-project-session flow smoother while keeping read-only planning, explicit
-approval, local verification, lightweight default execution, optional native
-Subagents, and run records intact.
+다음 제품 단계는 더 큰 autonomy가 아니다. read-only planning, explicit approval, local verification, lightweight default execution, optional native Subagents, run records를 유지하면서 approved project-session flow를 더 매끄럽게 만드는 것이다.

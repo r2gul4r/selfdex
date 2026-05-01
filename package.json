@@ -9,7 +9,8 @@
   "files": [
     "bin/",
     "install.ps1",
-    "README.md"
+    "README.md",
+    "README.en.md"
   ],
   "engines": {
     "node": ">=18"

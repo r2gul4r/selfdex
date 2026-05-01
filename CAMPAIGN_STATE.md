@@ -113,10 +113,11 @@ none
 - Reposition Selfdex runtime policy around GPT-5.5 prompt guidance, lightweight default execution, and optional Codex native Subagents.
 - Fix GitHub Actions bootstrap installer test portability and add a GitHub-only post-push status check routine.
 - Add one-command setup doctor to the installer and CLI.
+- Make README Korean-first with an English mirror.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260501-203542-one-command-setup-doctor.md`
-- summary: `npx selfdex install now installs the local plugin and runs setup doctor by default; account-bound Codex/GitHub/ChatGPT integrations are reported as user actions.`
+- artifact_path: `runs/selfdex/20260501-204846-readme-bilingual-default-korean.md`
+- summary: `README.md is now the Korean default, README.en.md preserves English, and both link between 한국어 and English while documenting install doctor behavior.`

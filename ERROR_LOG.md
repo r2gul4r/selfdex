@@ -357,3 +357,11 @@ Append-only log for execution, tool, and verification errors.
 - summary: `Sandboxed full unittest failed because Windows Temp writes and PowerShell parser tests were restricted.`
 - details: `The same full suite passed after approved sandbox escalation: 211 tests OK. No implementation change was needed.`
 - status: `resolved`
+
+## 2026-05-01T20:48:00+09:00 - bilingual README package verification
+
+- time: `2026-05-01T20:48:00+09:00`
+- location: `npm.cmd --cache C:\tmp\npm-cache-selfdex pack --dry-run --json`
+- summary: `Sandboxed npm pack dry-run could not create the requested npm cache directory.`
+- details: `The same package dry-run passed after approved sandbox escalation and included README.md plus README.en.md in the tarball.`
+- status: `resolved`
