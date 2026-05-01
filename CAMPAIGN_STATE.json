@@ -97,7 +97,7 @@
   "latest_run": {
     "status": "local_verified",
     "project_key": "selfdex",
-    "artifact_path": "runs/selfdex/20260501-233915-subagent-model-effort-alignment.md",
-    "summary": "Selfdex project-scoped Codex subagents now all use gpt-5.5 with role-specific reasoning effort, and setup/plugin validators parse TOML policy values to reject stale model or missing effort drift."
+    "artifact_path": "runs/selfdex/20260502-012900-codex-home-plugin-install-fix.md",
+    "summary": "The installer and doctor now target the Codex discovery home by default, and the local @selfdex plugin was repaired under C:\\Users\\Administrator\\.codex."
   }
 }

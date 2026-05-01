@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Install the Selfdex Codex plugin into a home-local marketplace."""
+"""Install the Selfdex Codex plugin into a Codex-discovered marketplace."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from dataclasses import dataclass
@@ -43,13 +44,13 @@ class Finding:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install the Selfdex plugin into a home-local Codex marketplace."
+        description="Install the Selfdex plugin into a Codex-discovered marketplace."
     )
     parser.add_argument("--root", default=".", help="Selfdex checkout root.")
     parser.add_argument(
         "--home",
-        default=str(Path.home()),
-        help="Home directory that owns plugins/ and .agents/plugins/marketplace.json.",
+        default="",
+        help="Plugin home directory that owns plugins/ and .agents/plugins/marketplace.json. Defaults to CODEX_HOME or ~/.codex.",
     )
     parser.add_argument(
         "--yes",
@@ -85,6 +86,19 @@ def read_json(path: Path) -> dict[str, Any]:
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def default_plugin_home() -> Path:
+    codex_home = os.environ.get("CODEX_HOME", "")
+    if codex_home:
+        return Path(codex_home).expanduser()
+    return Path.home() / ".codex"
+
+
+def plugin_home_from(override: str = "") -> Path:
+    if override:
+        return Path(override).expanduser()
+    return default_plugin_home()
 
 
 def validate_source(root: Path) -> list[Finding]:
@@ -260,7 +274,7 @@ def build_payload(root: Path, home: Path, *, yes: bool = False, dry_run: bool = 
                 "existing-plugin-directory",
                 "high",
                 str(target_plugin),
-                "Home-local selfdex plugin directory already exists; rerun with --force to update it.",
+                    "Selfdex plugin directory already exists; rerun with --force to update it.",
             )
         )
 
@@ -359,7 +373,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         payload = build_payload(
             Path(args.root),
-            Path(args.home),
+            plugin_home_from(args.home),
             yes=args.yes,
             dry_run=args.dry_run,
             force=args.force,

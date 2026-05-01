@@ -2,23 +2,22 @@
   "schema_version": 2,
   "analysis_kind": "selfdex_state_contract",
   "current_task": {
-    "task": "subagent-model-effort-alignment",
+    "task": "codex-home-plugin-install-fix",
     "phase": "local_verified",
-    "scope": "Verify the current official Codex subagent naming/config model, keep official role names, align all project-scoped Selfdex subagents to GPT-5.5, and make setup/plugin checks catch stale model or reasoning-effort drift.",
-    "verification_target": "focused setup/plugin tests, official subagent policy validators, doc drift, campaign boundary check, diff check, reviewer subagent"
+    "scope": "Fix the one-line installer so the @selfdex plugin is installed into the Codex discovery home instead of only the operating-system home.",
+    "verification_target": "installer dry run, setup/plugin tests, doctor against Codex home, npm package dry run, GitHub Actions, npm publish 0.1.1"
   },
   "orchestration_profile": {
     "runtime_basis": "official_codex_native_subagents",
-    "trigger_basis": "The user asked to re-check whether the latest Codex multi-agent/subagent update is applied, called out stale-looking subagent names, and requested all subagents use GPT-5.5 with role-specific reasoning effort.",
+    "trigger_basis": "The published npx installer completed but the user reported the plugin does not appear in Codex, and local evidence shows the installer wrote C:\\Users\\Administrator\\.agents while the app discovery home is C:\\Users\\Administrator\\.codex.",
     "selected_rules": [
       "state_before_writes",
       "contract_freeze_before_implementation",
       "use_official_codex_subagents_terms",
-      "official_subagent_docs_checked",
       "preserve_hard_approval_zones",
-      "validate_codex_policy_surface_in_doctor",
-      "align_project_scoped_agents_to_gpt_5_5",
-      "role_specific_reasoning_effort",
+      "installer_default_must_match_codex_discovery_home",
+      "doctor_must_detect_plugin_home_mismatch",
+      "user_requested_commit_push_and_npm_publish",
       "run_record_required"
     ],
     "selected_skills": [
@@ -26,11 +25,7 @@
       "selfdex-commit-gate"
     ],
     "selected_agents": [
-      "main",
-      "explorer",
-      "worker",
-      "reviewer",
-      "docs_researcher"
+      "main"
     ],
     "subagent_permission": "@selfdex invocation is explicit standing permission for Selfdex to recommend and use Codex native subagents when useful.",
     "subagent_limits": [
@@ -38,39 +33,26 @@
       "Write-capable worker lanes require a frozen contract and disjoint write boundary.",
       "Commit, push, publish, deploy, production writes, secret access, destructive filesystem operations, and destructive Git operations still require separate explicit approval."
     ],
-    "selection_reason": "Official Codex docs confirm built-in/custom subagent roles and project-scoped .codex/agents TOML files; current Selfdex drift is model/effort policy, not role-name replacement."
+    "selection_reason": "This is a focused installer and doctor fix with a known failure mode; no subagent split is needed."
   },
   "writer_slot": {
     "writer_slot": "main",
-    "write_set": "subagent_model_effort_alignment",
+    "write_set": "codex_home_plugin_install_fix",
     "write_sets": {
       "main": [
         "STATE.md",
         "STATE.json",
         "CAMPAIGN_STATE.md",
         "CAMPAIGN_STATE.json",
-        "AGENTS.md",
-        "AUTOPILOT.md",
+        "package.json",
+        "bin/selfdex.js",
+        "install.ps1",
         "README.md",
         "README.en.md",
-        "docs/SELFDEX_FINAL_GOAL.md",
-        ".agents/skills/selfdex-autopilot/SKILL.md",
-        ".codex/config.toml",
-        ".codex/agents/explorer.toml",
-        ".codex/agents/worker.toml",
-        ".codex/agents/reviewer.toml",
-        ".codex/agents/docs-researcher.toml",
-        "plugins/selfdex/skills/selfdex/SKILL.md",
-        "scripts/check_selfdex_plugin.py",
         "scripts/check_selfdex_setup.py",
-        "scripts/check_campaign_budget.py",
-        "scripts/run_target_codex.py",
-        "scripts/record_run.py",
-        "tests/test_selfdex_plugin.py",
+        "scripts/install_selfdex_plugin.py",
         "tests/test_selfdex_setup.py",
-        "tests/test_campaign_budget.py",
-        "tests/test_run_target_codex.py",
-        "docs/ORCHESTRATION_DECISION_PLAN.md",
+        "tests/test_install_selfdex_plugin.py",
         "runs/selfdex/",
         "ERROR_LOG.md"
       ]
@@ -78,18 +60,11 @@
     "shared_assets_owner": "main"
   },
   "contract_freeze": [
-    "@selfdex is the user-facing invocation for Selfdex command-center mode.",
-    "Calling @selfdex means the user explicitly permits Selfdex to use official Codex native Subagents/MultiAgentV2 when useful.",
-    "Selfdex must use official Codex terms in active policy: main agent, subagent, agent thread, explorer, worker, reviewer, docs_researcher.",
-    "Official built-in role names explorer and worker stay unchanged; reviewer and docs_researcher stay as the documented/custom review pattern already used by Codex docs.",
-    "Selfdex must stop presenting single-session, delegated-*, score_total, and agent_budget as active runtime controls.",
-    "All project-scoped .codex/agents/*.toml files must use model = \"gpt-5.5\".",
-    "Role-specific reasoning effort is frozen as explorer=low, docs_researcher=medium, worker=high, and reviewer=xhigh.",
-    "Read-only subagents can run after @selfdex when useful; write-capable workers still need frozen write boundaries.",
-    "GPT Pro / ChatGPT Apps direction review is for product direction, product fit, improvement ideas, and additional features.",
-    "Code diff review stays with Codex native reviewer subagents.",
-    "docs_researcher must be reachable from planner recommendations when official docs, API, SDK, MCP, ChatGPT Apps, OpenAI, model, or GPT behavior matters.",
-    "selfdex doctor must fail or warn clearly when the project-scoped .codex subagent policy files are missing or stale.",
+    "npx selfdex install must install the plugin into the Codex discovery home by default: CODEX_HOME when set, otherwise $HOME/.codex.",
+    "selfdex doctor must check the same plugin home by default and surface the selected home in output.",
+    "Manual --home remains available for explicit alternate plugin roots.",
+    "The old OS-home install path may remain as a compatibility artifact, but it must not be the default success signal.",
+    "User separately requested commit, push, and npm publish after local verification; publish target is selfdex@0.1.1.",
     "Hard approval zones remain unchanged."
   ],
   "reviewer": {
@@ -100,23 +75,18 @@
     "reviewer_result": "Codex native reviewer subagent found no P0/P1 findings. Two P2 findings were fixed inside scope: agent policy validators now parse TOML key/value pairs instead of substring matching, and focused tests cover missing model_reasoning_effort separately from stale model values."
   },
   "last_update": {
-    "timestamp": "2026-05-01T23:39:30+09:00",
+    "timestamp": "2026-05-02T01:29:00+09:00",
     "phase": "local_verified",
-    "status": "Subagent model and reasoning-effort alignment implemented, reviewer P2 findings repaired, verified, and recorded.",
+    "status": "Installer now targets Codex discovery home by default, local Codex-home plugin install was repaired, and focused verification passed.",
     "verification_result": [
-      "OpenAI official docs checked: Codex subagents/custom agents/config and GPT-5.5 reasoning guidance",
-      "python -m unittest tests.test_selfdex_setup tests.test_selfdex_plugin tests.test_run_target_codex: pass, 24 tests after sandbox escalation",
-      "python -m unittest discover -s tests: pass, 227 tests after sandbox escalation",
-      "python scripts/check_selfdex_plugin.py --root . --format json: pass",
-      "python scripts/check_doc_drift.py --root . --format json: pass",
-      "python scripts/check_campaign_budget.py --root . --include-git-diff --format json: pass",
-      "git diff --check: pass with CRLF warnings only",
-      "node bin/selfdex.js --help: pass",
-      "node bin/selfdex.js install --dry-run: pass",
-      "npm.cmd pack --dry-run --json: pass after sandbox escalation",
-      "reviewer subagent: P0/P1 none; two P2 findings fixed"
+      "python -m unittest tests.test_install_selfdex_plugin tests.test_selfdex_setup: pass, 13 tests",
+      "node bin/selfdex.js install --dry-run: pass; plugin home resolves to C:\\Users\\Administrator\\.codex",
+      "python scripts/check_selfdex_setup.py --root . --home C:\\Users\\Administrator\\.codex --codex-home C:\\Users\\Administrator\\.codex --format json: pass",
+      "npm.cmd pack --dry-run --json: pass",
+      "npm.cmd publish --access public --dry-run: pass for selfdex@0.1.1",
+      "git diff --check: pass with CRLF warnings only"
     ],
-    "run_artifact": "runs/selfdex/20260501-233915-subagent-model-effort-alignment.md"
+    "run_artifact": "runs/selfdex/20260502-012900-codex-home-plugin-install-fix.md"
   },
   "retrospective": {
     "task": "subagent-model-effort-alignment",

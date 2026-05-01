@@ -105,7 +105,11 @@ class CheckResult:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Check Selfdex setup readiness.")
     parser.add_argument("--root", default=".", help="Selfdex checkout root.")
-    parser.add_argument("--home", default=str(Path.home()), help="Home directory that owns plugins and marketplace files.")
+    parser.add_argument(
+        "--home",
+        default="",
+        help="Plugin home directory that owns plugins and marketplace files. Defaults to CODEX_HOME or ~/.codex.",
+    )
     parser.add_argument(
         "--codex-home",
         default="",
@@ -133,6 +137,12 @@ def codex_home_from(home: Path, override: str = "") -> Path:
     except OSError:
         env_value = ""
     return Path(env_value).expanduser().resolve() if env_value else (home / ".codex").resolve()
+
+
+def plugin_home_from(override: str, codex_home: Path) -> Path:
+    if override:
+        return Path(override).expanduser().resolve()
+    return codex_home.resolve()
 
 
 def marketplace_has_selfdex(path: Path) -> bool:
@@ -272,7 +282,9 @@ def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> 
             "core",
             "pass" if target_plugin.exists() else "fail",
             "info" if target_plugin.exists() else "high",
-            "Home-local @selfdex plugin directory is installed." if target_plugin.exists() else "Home-local @selfdex plugin directory is missing.",
+            "Codex plugin home @selfdex directory is installed."
+            if target_plugin.exists()
+            else "Codex plugin home @selfdex directory is missing.",
             str(target_plugin),
         )
     )
@@ -282,9 +294,9 @@ def build_payload(root: Path, home: Path, *, codex_home: Path | None = None) -> 
             "core",
             "pass" if marketplace_has_selfdex(marketplace_path) else "fail",
             "info" if marketplace_has_selfdex(marketplace_path) else "high",
-            "Home-local marketplace includes the selfdex plugin entry."
+            "Codex plugin home marketplace includes the selfdex plugin entry."
             if marketplace_has_selfdex(marketplace_path)
-            else "Home-local marketplace is missing the selfdex plugin entry.",
+            else "Codex plugin home marketplace is missing the selfdex plugin entry.",
             str(marketplace_path),
         )
     )
@@ -411,9 +423,10 @@ def render_markdown(payload: dict[str, Any]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    codex_home = Path(args.codex_home) if args.codex_home else None
+    resolved_codex_home = codex_home_from(Path.home(), args.codex_home)
+    home = plugin_home_from(args.home, resolved_codex_home)
     try:
-        payload = build_payload(Path(args.root), Path(args.home), codex_home=codex_home)
+        payload = build_payload(Path(args.root), home, codex_home=resolved_codex_home)
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2

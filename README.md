@@ -23,7 +23,7 @@ Selfdex는 구형 multi-agent kit이나 자체 topology 점수판이 아니다. 
 npx selfdex install
 ```
 
-이 명령은 Selfdex를 clone/update하고, home-local `@selfdex` Codex 플러그인을 설치한 뒤, `selfdex doctor`를 자동 실행한다. 즉 core Selfdex 세팅은 설치 명령 하나로 끝나야 한다.
+이 명령은 Selfdex를 clone/update하고, Codex가 실제로 읽는 plugin home(`CODEX_HOME` 또는 `$HOME/.codex`)에 `@selfdex` 플러그인을 설치한 뒤, `selfdex doctor`를 자동 실행한다. 즉 core Selfdex 세팅은 설치 명령 하나로 끝나야 한다.
 
 단, GitHub 플러그인, ChatGPT Apps 플러그인, GPT Pro/GPT-5.5 권한 같은 계정 연결형 기능은 조용히 설치하거나 연결하지 않는다. `selfdex doctor`가 현재 상태를 보고 필요한 사용자 조치를 알려준다.
 
@@ -67,6 +67,7 @@ selfdex doctor
 
 - `@selfdex` 플러그인 설치 여부
 - Codex marketplace 등록 여부
+- plugin home이 Codex discovery home과 맞는지
 - Selfdex root 경로 연결 상태
 - 필요한 로컬 스크립트 존재 여부
 - GitHub Actions 확인용 fallback 존재 여부
@@ -182,11 +183,11 @@ ChatGPT Apps와 MCP surface는 read-only가 먼저다. 첫 app surface는 등록
 설치 및 테스트된 표면:
 
 - `package.json`과 `bin/selfdex.js`는 npm-style `selfdex` CLI를 정의한다.
-- `install.ps1`은 Selfdex를 bootstrap하고 home-local 플러그인을 설치한다.
+- `install.ps1`은 Selfdex를 bootstrap하고 Codex discovery home에 플러그인을 설치한다.
 - `plugins/selfdex/`는 `@selfdex` 호출에 쓰는 Codex 플러그인을 담고 있다.
 - `.codex/config.toml`과 `.codex/agents/*.toml`은 공식 Codex native Subagents/MultiAgentV2 역할, `gpt-5.5` 모델, 역할별 reasoning effort를 정의한다.
-- `.agents/plugins/marketplace.json`은 repo-local 플러그인 패키지를 알린다.
-- `scripts/install_selfdex_plugin.py`는 선택한 home에 플러그인을 설치한다.
+- `.agents/plugins/marketplace.json`은 repo-local 플러그인 패키지를 알린다. 설치 후에는 같은 구조가 Codex plugin home 아래에도 생성된다.
+- `scripts/install_selfdex_plugin.py`는 선택한 plugin home에 플러그인을 설치한다. 기본값은 `CODEX_HOME` 또는 `$HOME/.codex`다.
 - `scripts/check_selfdex_setup.py`는 설치 후 core setup, local fallback, 권장 Codex integration 상태를 확인한다.
 - `scripts/check_commit_gate.py`는 리뷰/검증이 끝난 작업을 커밋해도 되는지 확인한다.
 - `scripts/plan_external_project.py`는 target project를 읽고 target을 수정하지 않은 채 frozen task contract를 만든다.
@@ -309,7 +310,7 @@ Installer와 plugin files:
 - `bin/selfdex.js`는 `install.ps1`과 setup doctor를 감싸는 npm CLI wrapper다.
 - `install.ps1`은 Selfdex를 clone/update하고 plugin installer를 실행한 뒤, 명시적으로 skip하지 않으면 setup doctor를 실행한다.
 - `plugins/selfdex/`는 repo-local Codex plugin package다.
-- `.agents/plugins/marketplace.json`은 Codex용 plugin을 알린다.
+- `.agents/plugins/marketplace.json`은 Codex용 plugin을 알린다. `npx selfdex install`은 이 구조를 Codex plugin home에 복사한다.
 
 ## 검증
 

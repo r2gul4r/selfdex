@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -66,6 +67,21 @@ Do not install this plugin without approval.
 
 
 class InstallSelfdexPluginTests(unittest.TestCase):
+    def test_default_plugin_home_uses_codex_home_env(self) -> None:
+        with tempfile.TemporaryDirectory() as codex_home:
+            old_value = os.environ.get("CODEX_HOME")
+            os.environ["CODEX_HOME"] = codex_home
+            try:
+                self.assertEqual(
+                    install_selfdex_plugin.plugin_home_from().resolve(),
+                    Path(codex_home).resolve(),
+                )
+            finally:
+                if old_value is None:
+                    os.environ.pop("CODEX_HOME", None)
+                else:
+                    os.environ["CODEX_HOME"] = old_value
+
     def test_dry_run_does_not_write_home_files(self) -> None:
         with tempfile.TemporaryDirectory() as checkout_dir, tempfile.TemporaryDirectory() as home_dir:
             checkout = Path(checkout_dir)

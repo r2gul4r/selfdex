@@ -143,6 +143,14 @@ def write_installed_plugin(home: Path, root: Path) -> None:
 
 
 class SelfdexSetupTests(unittest.TestCase):
+    def test_default_plugin_home_matches_resolved_codex_home(self) -> None:
+        with temporary_pair() as (_root, home):
+            codex_home = home / ".codex"
+            self.assertEqual(
+                check_selfdex_setup.plugin_home_from("", codex_home),
+                codex_home.resolve(),
+            )
+
     def test_ready_with_manual_actions_when_core_is_installed(self) -> None:
         with temporary_pair() as (root, home):
             codex_home = home / ".codex"

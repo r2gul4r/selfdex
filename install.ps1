@@ -3,6 +3,7 @@ param(
     [string]$RepoUrl = "https://github.com/r2gul4r/selfdex.git",
     [string]$Branch = "main",
     [string]$InstallRoot = $(Join-Path $HOME "selfdex"),
+    [string]$PluginHome = "",
     [string]$Python = "",
     [switch]$DryRun,
     [switch]$SkipPluginInstall,
@@ -57,25 +58,37 @@ function Resolve-PythonCommand {
     throw "Missing Python. Install Python 3 or pass -Python <path>."
 }
 
+function Resolve-PluginHome {
+    if ($PluginHome -ne "") {
+        return [System.IO.Path]::GetFullPath($PluginHome)
+    }
+    if ($env:CODEX_HOME -and $env:CODEX_HOME -ne "") {
+        return [System.IO.Path]::GetFullPath($env:CODEX_HOME)
+    }
+    return [System.IO.Path]::GetFullPath((Join-Path $HOME ".codex"))
+}
+
 function Invoke-Git {
     param([string[]]$Arguments)
     & $Git @Arguments
 }
 
 $InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
+$ResolvedPluginHome = Resolve-PluginHome
 
 Write-SelfdexStep "repo: $RepoUrl"
 Write-SelfdexStep "branch: $Branch"
 Write-SelfdexStep "install root: $InstallRoot"
+Write-SelfdexStep "plugin home: $ResolvedPluginHome"
 
 if ($DryRun) {
     Write-SelfdexStep "dry run: no clone, update, or plugin install will run"
     Write-SelfdexStep "would clone Selfdex if missing, or pull --ff-only if already present"
     if (-not $SkipPluginInstall) {
-        Write-SelfdexStep "would run scripts/install_selfdex_plugin.py --root `"$InstallRoot`" --yes --force"
+        Write-SelfdexStep "would run scripts/install_selfdex_plugin.py --root `"$InstallRoot`" --home `"$ResolvedPluginHome`" --yes --force"
     }
     if ((-not $SkipPluginInstall) -and (-not $SkipDoctor)) {
-        Write-SelfdexStep "would run scripts/check_selfdex_setup.py --root `"$InstallRoot`" --format markdown"
+        Write-SelfdexStep "would run scripts/check_selfdex_setup.py --root `"$InstallRoot`" --home `"$ResolvedPluginHome`" --codex-home `"$ResolvedPluginHome`" --format markdown"
     }
     exit 0
 }
@@ -117,7 +130,7 @@ if (-not (Test-Path $Installer)) {
 }
 
 Write-SelfdexStep "installing @selfdex plugin"
-& $PythonExe @PythonArgs $Installer --root $InstallRoot --yes --force --format markdown
+& $PythonExe @PythonArgs $Installer --root $InstallRoot --home $ResolvedPluginHome --yes --force --format markdown
 
 if (-not $SkipDoctor) {
     $Doctor = Join-Path $InstallRoot "scripts\check_selfdex_setup.py"
@@ -125,7 +138,7 @@ if (-not $SkipDoctor) {
         throw "Setup doctor was not found after checkout: $Doctor"
     }
     Write-SelfdexStep "checking setup"
-    & $PythonExe @PythonArgs $Doctor --root $InstallRoot --format markdown
+    & $PythonExe @PythonArgs $Doctor --root $InstallRoot --home $ResolvedPluginHome --codex-home $ResolvedPluginHome --format markdown
 }
 
 Write-SelfdexStep "done. Restart or refresh Codex plugin discovery, then call @selfdex from a target project session."

@@ -31,9 +31,10 @@ The intended published install command is:
 npx selfdex install
 ```
 
-The install path clones or updates Selfdex, installs the home-local `@selfdex`
-Codex plugin, then runs `selfdex doctor` automatically. Core Selfdex setup is
-completed by the installer; account-bound integrations such as GitHub or
+The install path clones or updates Selfdex, installs the `@selfdex` Codex
+plugin into the Codex discovery home (`CODEX_HOME` or `$HOME/.codex`), then
+runs `selfdex doctor` automatically. Core Selfdex setup is completed by the
+installer; account-bound integrations such as GitHub or
 ChatGPT Apps are reported as recommended user actions when they are not already
 available.
 
@@ -74,8 +75,9 @@ Re-check setup after installation:
 selfdex doctor
 ```
 
-`selfdex doctor` also checks the project-scoped Codex subagent policy files:
-`.codex/config.toml` and `.codex/agents/*.toml`.
+`selfdex doctor` checks that the plugin home matches the Codex discovery home,
+then checks the project-scoped Codex subagent policy files: `.codex/config.toml`
+and `.codex/agents/*.toml`.
 
 Requirements for the bootstrap path:
 
@@ -215,13 +217,16 @@ surface is explicitly approved.
 Installed and tested surfaces:
 
 - `package.json` and `bin/selfdex.js` define the npm-style `selfdex` CLI.
-- `install.ps1` bootstraps Selfdex and installs the home-local plugin.
+- `install.ps1` bootstraps Selfdex and installs the plugin into the Codex
+  discovery home.
 - `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
 - `.codex/config.toml` and `.codex/agents/*.toml` define the official Codex
   native Subagents/MultiAgentV2 roles, `gpt-5.5` model selection, and
   role-specific reasoning effort.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
-- `scripts/install_selfdex_plugin.py` installs the plugin into a selected home.
+  After install, the same structure is created under the Codex plugin home.
+- `scripts/install_selfdex_plugin.py` installs the plugin into a selected plugin
+  home. The default is `CODEX_HOME` or `$HOME/.codex`.
 - `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
   recommended Codex integrations after install.
 - `scripts/check_commit_gate.py` checks whether reviewed and verified work is
@@ -359,7 +364,8 @@ Installer and plugin files:
 - `install.ps1` clones or updates Selfdex, invokes the plugin installer, then
   runs the setup doctor unless explicitly skipped.
 - `plugins/selfdex/` contains the repo-local Codex plugin package.
-- `.agents/plugins/marketplace.json` advertises the plugin for Codex.
+- `.agents/plugins/marketplace.json` advertises the plugin for Codex. `npx
+  selfdex install` copies this structure into the Codex plugin home.
 
 ## Verification
 

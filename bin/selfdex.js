@@ -27,6 +27,7 @@ Commands:
 Install options:
   --dry-run                 Show what would happen without cloning or installing.
   --install-root <path>     Selfdex checkout path. Defaults to $HOME/selfdex.
+  --plugin-home <path>      Codex plugin home. Defaults to CODEX_HOME or $HOME/.codex.
   --repo-url <url>          Git repository URL used by the bootstrap installer.
   --branch <name>           Git branch used by the bootstrap installer.
   --skip-plugin-install     Clone or update Selfdex without installing @selfdex.
@@ -43,6 +44,7 @@ function printInstallHelp() {
 Options:
   --dry-run                 Show what would happen without cloning or installing.
   --install-root <path>     Selfdex checkout path. Defaults to $HOME/selfdex.
+  --plugin-home <path>      Codex plugin home. Defaults to CODEX_HOME or $HOME/.codex.
   --repo-url <url>          Git repository URL used by the bootstrap installer.
   --branch <name>           Git branch used by the bootstrap installer.
   --skip-plugin-install     Clone or update Selfdex without installing @selfdex.
@@ -58,7 +60,7 @@ function printDoctorHelp() {
 
 Options:
   --install-root <path>     Selfdex checkout path. Defaults to $HOME/selfdex.
-  --home <path>             Home directory that owns the Codex plugin install.
+  --home <path>             Codex plugin home. Defaults to CODEX_HOME or $HOME/.codex.
   --codex-home <path>       Codex home directory. Defaults to CODEX_HOME or $HOME/.codex.
   --format <json|markdown>  Output format. Defaults to markdown.
   --python <path>           Python executable used by the setup doctor.
@@ -83,6 +85,7 @@ function parseInstallArgs(args) {
   const options = {
     dryRun: false,
     installRoot: null,
+    pluginHome: null,
     repoUrl: null,
     branch: null,
     skipPluginInstall: false,
@@ -102,6 +105,10 @@ function parseInstallArgs(args) {
         break;
       case "--install-root":
         options.installRoot = takeValue(args, index, arg);
+        index += 1;
+        break;
+      case "--plugin-home":
+        options.pluginHome = takeValue(args, index, arg);
         index += 1;
         break;
       case "--repo-url":
@@ -246,6 +253,9 @@ function buildPowerShellArgs(options) {
   }
   if (options.installRoot) {
     args.push("-InstallRoot", options.installRoot);
+  }
+  if (options.pluginHome) {
+    args.push("-PluginHome", options.pluginHome);
   }
   if (options.python) {
     args.push("-Python", options.python);

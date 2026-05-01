@@ -137,10 +137,11 @@ none
 - Replace legacy local orchestration logic with official Codex native Subagents/MultiAgentV2 policy.
 - Separate GPT Pro / ChatGPT Apps product direction review from Codex reviewer subagent code review and harden subagent readiness checks.
 - Align project-scoped Codex subagents to `gpt-5.5` with role-specific reasoning effort and TOML-based validator checks.
+- Fix the installer and doctor so the `@selfdex` plugin installs into the Codex discovery home by default.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260501-233915-subagent-model-effort-alignment.md`
-- summary: `Selfdex project-scoped Codex subagents now all use gpt-5.5 with role-specific reasoning effort, and setup/plugin validators parse TOML policy values to reject stale model or missing effort drift.`
+- artifact_path: `runs/selfdex/20260502-012900-codex-home-plugin-install-fix.md`
+- summary: `The installer and doctor now target the Codex discovery home by default, and the local @selfdex plugin was repaired under C:\Users\Administrator\.codex.`
