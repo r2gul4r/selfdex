@@ -44,20 +44,23 @@ Preview the install without cloning or writing plugin files:
 npx selfdex install --dry-run
 ```
 
-This npm command works after the `selfdex` package is published. Until then,
-use a cloned checkout and run the bootstrap locally:
+From a cloned checkout, run the same Node-native path locally:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```bash
+node bin/selfdex.js install --use-existing-checkout --install-root .
 ```
 
-Preview the local bootstrap:
+Preview the local checkout install:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
+```bash
+node bin/selfdex.js install --use-existing-checkout --install-root . --dry-run
 ```
 
-Install only the `@selfdex` Codex plugin from an existing checkout:
+PowerShell `install.ps1` and the Python installer script remain as
+legacy/fallback paths. The default `npx selfdex install` path does not require
+Python.
+
+Run the Python fallback installer directly from an existing checkout:
 
 ```bash
 python scripts/install_selfdex_plugin.py --root . --yes --format markdown
@@ -84,13 +87,14 @@ The default `selfdex doctor` path is Node-native and does not require Python.
 Use `selfdex doctor --python <path>` only when you intentionally want the legacy
 Python doctor.
 
-Requirements for the bootstrap path:
+Requirements for the default npm install path:
 
 - Node.js and npm for the `npx` entrypoint
-- PowerShell for `install.ps1`
 - Git for clone or update
-- Python 3 for the current installer-stage plugin installer
 - Codex with plugin discovery enabled
+
+Python is only needed when you intentionally run advanced `scripts/*.py`
+planning/verification tools or the legacy installer directly.
 
 Publishing to npm, npm credentials, and registry ownership are separate
 approval-gated setup steps. They are not performed by this repository's tests
@@ -239,19 +243,18 @@ surface is explicitly approved.
 Installed and tested surfaces:
 
 - `package.json` and `bin/selfdex.js` define the npm-style `selfdex` CLI.
-- `install.ps1` bootstraps Selfdex and installs the plugin into the Codex
-  discovery home.
+- `bin/selfdex.js install` handles clone/update, plugin-home copy, global skill
+  installation, and setup doctor through the Node-native path.
+- `install.ps1` is a legacy/fallback bootstrap script.
 - `plugins/selfdex/` contains the Codex plugin used for `@selfdex` invocation.
 - `.codex/config.toml` and `.codex/agents/*.toml` define the official Codex
   native Subagents/MultiAgentV2 roles, `gpt-5.5` model selection, and
   role-specific reasoning effort.
 - `.agents/plugins/marketplace.json` advertises the repo-local plugin package.
   After install, the same structure is created under the Codex plugin home.
-- `scripts/install_selfdex_plugin.py` installs the plugin package and global
-  skill into a selected plugin home. The default is `CODEX_HOME` or
-  `$HOME/.codex`.
-- `scripts/check_selfdex_setup.py` verifies core setup, local fallbacks, and
-  recommended Codex integrations after install.
+- `scripts/install_selfdex_plugin.py` is the legacy Python fallback installer.
+- `scripts/check_selfdex_setup.py` is the legacy Python setup doctor. The
+  default `selfdex doctor` path is Node-native.
 - `scripts/check_commit_gate.py` checks whether reviewed and verified work is
   ready to commit.
 - `scripts/plan_external_project.py` reads a target project and emits a frozen
@@ -383,10 +386,10 @@ baseline or registry proof target.
 Installer and plugin files:
 
 - `package.json` defines the npm package metadata and executable.
-- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1` and the Node-native
-  setup doctor. Passing `--python <path>` delegates to the legacy Python doctor.
-- `install.ps1` clones or updates Selfdex, invokes the plugin installer, then
-  runs the setup doctor unless explicitly skipped.
+- `bin/selfdex.js` is the npm CLI for Node-native install and Node-native setup
+  doctor. The default `selfdex install` path does not require Python.
+- `install.ps1` is a legacy/fallback bootstrap script. The default public
+  install path is `npx selfdex install`.
 - `plugins/selfdex/` contains the repo-local Codex plugin package.
 - `.agents/plugins/marketplace.json` advertises the plugin for Codex. `npx
   selfdex install` copies this structure into the Codex plugin home.

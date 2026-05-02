@@ -147,7 +147,7 @@ class NpmCliTests(unittest.TestCase):
         self.assertIn(json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))["version"], version_result.stdout)
 
     @unittest.skipIf(NODE is None, "node is not available")
-    def test_install_dry_run_delegates_to_bootstrap_without_writes(self) -> None:
+    def test_install_dry_run_uses_node_native_path_without_writes(self) -> None:
         TMP_BASE.mkdir(exist_ok=True)
         install_root = TMP_BASE / f"selfdex-install-root-{uuid.uuid4().hex}"
         result = subprocess.run(
@@ -171,11 +171,51 @@ class NpmCliTests(unittest.TestCase):
 
         output = result.stdout + result.stderr
         self.assertEqual(result.returncode, 0, output)
+        self.assertIn("node-native install", output)
         self.assertIn("dry run", output.lower())
         self.assertIn("test-branch", output)
         self.assertIn(install_root.name, output)
-        self.assertIn("check_selfdex_setup.py", output)
+        self.assertIn("would run Node-native selfdex doctor", output)
+        self.assertNotIn("check_selfdex_setup.py", output)
         self.assertFalse(install_root.exists())
+
+    @unittest.skipIf(NODE is None, "node is not available")
+    def test_install_can_copy_plugin_without_python_when_checkout_exists(self) -> None:
+        TMP_BASE.mkdir(exist_ok=True)
+        home = TMP_BASE / f"selfdex-install-home-{uuid.uuid4().hex}"
+        result = subprocess.run(
+            [
+                NODE,
+                str(CLI),
+                "install",
+                "--use-existing-checkout",
+                "--install-root",
+                str(ROOT),
+                "--plugin-home",
+                str(home),
+                "--skip-doctor",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("node-native install", output)
+        plugin_manifest = home / "plugins" / "selfdex" / ".codex-plugin" / "plugin.json"
+        root_config = home / "plugins" / "selfdex" / "selfdex-root.json"
+        global_skill = home / "skills" / "selfdex" / "SKILL.md"
+        marketplace = home / ".agents" / "plugins" / "marketplace.json"
+        self.assertTrue(plugin_manifest.exists())
+        self.assertTrue(root_config.exists())
+        self.assertTrue(global_skill.exists())
+        self.assertTrue(marketplace.exists())
+        self.assertEqual(json.loads(root_config.read_text(encoding="utf-8"))["selfdex_root"], str(ROOT.resolve()))
+        self.assertIn("Installed Checkout", global_skill.read_text(encoding="utf-8"))
+        marketplace_payload = json.loads(marketplace.read_text(encoding="utf-8"))
+        self.assertTrue(any(entry.get("name") == "selfdex" for entry in marketplace_payload["plugins"]))
 
     @unittest.skipIf(NODE is None, "node is not available")
     def test_doctor_help_command(self) -> None:
@@ -284,7 +324,7 @@ class NpmCliTests(unittest.TestCase):
         text = CLI.read_text(encoding="utf-8")
         installer_text = INSTALLER.read_text(encoding="utf-8")
 
-        self.assertIn("install.ps1", text)
+        self.assertIn("node-native install", text)
         self.assertNotIn("npm publish", text)
         self.assertNotIn("npm publish", installer_text)
         self.assertNotIn("run_target_codex.py --execute", text)

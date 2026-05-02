@@ -34,9 +34,11 @@ The chosen root must contain `scripts/plan_external_project.py` and
 `CAMPAIGN_STATE.json`. If none is found, stop and ask the user to install or
 configure Selfdex; do not edit global Codex config yourself.
 
-Use `scripts/install_selfdex_plugin.py --yes` from a cloned Selfdex checkout to
-create a home-local plugin install. The installer records the checkout path so
-this skill can find the right Selfdex root on another machine.
+Use `npx selfdex install` for the default one-command setup, or
+`node bin/selfdex.js install --use-existing-checkout --install-root .` from a
+cloned checkout. The Node-native installer records the checkout path so this
+skill can find the right Selfdex root on another machine. The Python installer
+script remains a legacy fallback, not the default public install path.
 
 ## Default Flow
 

@@ -33,19 +33,21 @@ npx selfdex install
 npx selfdex install --dry-run
 ```
 
-이 npm 명령은 `selfdex` 패키지가 npm에 publish된 뒤부터 바로 쓸 수 있다. publish 전에는 clone된 checkout에서 로컬 bootstrap을 실행한다:
+clone된 checkout에서 같은 Node-native 경로를 로컬로 실행하려면:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+```bash
+node bin/selfdex.js install --use-existing-checkout --install-root .
 ```
 
-로컬 bootstrap 미리보기:
+로컬 checkout 설치 미리보기:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
+```bash
+node bin/selfdex.js install --use-existing-checkout --install-root . --dry-run
 ```
 
-이미 checkout이 있고 `@selfdex` Codex 플러그인만 설치하려면:
+PowerShell `install.ps1`과 Python installer script는 legacy/fallback 경로로 남겨둔다. 기본 `npx selfdex install` 경로는 Python을 요구하지 않는다.
+
+이미 checkout이 있고 Python fallback installer만 직접 실행하려면:
 
 ```bash
 python scripts/install_selfdex_plugin.py --root . --yes --format markdown
@@ -78,13 +80,13 @@ selfdex doctor
 
 기본 `selfdex doctor`는 Node-native로 실행되며 Python을 요구하지 않는다. 기존 Python doctor가 필요하면 명시적으로 `selfdex doctor --python <path>`를 사용한다.
 
-bootstrap 요구사항:
+기본 npm 설치 요구사항:
 
 - `npx` 진입점을 위한 Node.js와 npm
-- `install.ps1` 실행을 위한 PowerShell
 - clone/update를 위한 Git
-- 현재 installer 단계의 플러그인 설치 스크립트를 위한 Python 3
 - 플러그인 discovery가 켜진 Codex
+
+Python은 `scripts/*.py` 고급 검증/계획 도구나 legacy installer를 직접 실행할 때만 필요하다.
 
 npm publish, npm credentials, registry ownership는 별도 승인과 계정 작업이 필요한 단계다. 이 저장소의 테스트나 bootstrap 검증은 publish를 수행하지 않는다.
 
@@ -195,12 +197,13 @@ ChatGPT Apps와 MCP surface는 read-only가 먼저다. 첫 app surface는 등록
 설치 및 테스트된 표면:
 
 - `package.json`과 `bin/selfdex.js`는 npm-style `selfdex` CLI를 정의한다.
-- `install.ps1`은 Selfdex를 bootstrap하고 Codex discovery home에 플러그인을 설치한다.
+- `bin/selfdex.js install`은 Node-native로 clone/update, plugin home 복사, 전역 스킬 설치, setup doctor를 처리한다.
+- `install.ps1`은 legacy/fallback bootstrap script다.
 - `plugins/selfdex/`는 `@selfdex` 호출에 쓰는 Codex 플러그인을 담고 있다.
 - `.codex/config.toml`과 `.codex/agents/*.toml`은 공식 Codex native Subagents/MultiAgentV2 역할, `gpt-5.5` 모델, 역할별 reasoning effort를 정의한다.
 - `.agents/plugins/marketplace.json`은 repo-local 플러그인 패키지를 알린다. 설치 후에는 같은 구조가 Codex plugin home 아래에도 생성된다.
-- `scripts/install_selfdex_plugin.py`는 선택한 plugin home에 플러그인 패키지와 전역 스킬을 설치한다. 기본값은 `CODEX_HOME` 또는 `$HOME/.codex`다.
-- `scripts/check_selfdex_setup.py`는 설치 후 core setup, local fallback, 권장 Codex integration 상태를 확인한다.
+- `scripts/install_selfdex_plugin.py`는 legacy Python fallback installer다.
+- `scripts/check_selfdex_setup.py`는 legacy Python setup doctor다. 기본 `selfdex doctor`는 Node-native다.
 - `scripts/check_commit_gate.py`는 리뷰/검증이 끝난 작업을 커밋해도 되는지 확인한다.
 - `scripts/plan_external_project.py`는 target project를 읽고 target을 수정하지 않은 채 frozen task contract를 만든다.
 - `scripts/run_target_codex.py`는 승인된 target-project 실행 경로를 branch와 run-record metadata와 함께 실행할 수 있다.
@@ -319,8 +322,8 @@ Active external validation target은 `PROJECT_REGISTRY.md`에 있다. 과거 `co
 Installer와 plugin files:
 
 - `package.json`은 npm package metadata와 executable을 정의한다.
-- `bin/selfdex.js`는 `install.ps1`과 Node-native setup doctor를 감싸는 npm CLI wrapper다. `--python <path>`를 주면 legacy Python doctor로 위임한다.
-- `install.ps1`은 Selfdex를 clone/update하고 plugin installer를 실행한 뒤, 명시적으로 skip하지 않으면 setup doctor를 실행한다.
+- `bin/selfdex.js`는 Node-native install과 Node-native setup doctor를 제공하는 npm CLI다. `selfdex install` 기본 경로는 Python을 요구하지 않는다.
+- `install.ps1`은 legacy/fallback bootstrap script다. 기본 public install path는 `npx selfdex install`이다.
 - `plugins/selfdex/`는 repo-local Codex plugin package다.
 - `.agents/plugins/marketplace.json`은 Codex용 plugin을 알린다. `npx selfdex install`은 이 구조를 Codex plugin home에 복사한다.
 
