@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import unittest
 import uuid
 from pathlib import Path
@@ -44,6 +45,70 @@ def resolve_command(name: str) -> str | None:
 
 NODE = resolve_command("node")
 NPM = resolve_command("npm")
+
+
+def write_node_doctor_fixture(root: Path, home: Path) -> None:
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    for name in ("plan_external_project.py", "run_target_codex.py", "check_github_actions_status.py"):
+        (scripts / name).write_text("# fixture\n", encoding="utf-8")
+
+    codex_agents = root / ".codex" / "agents"
+    codex_agents.mkdir(parents=True, exist_ok=True)
+    (root / ".codex" / "config.toml").write_text(
+        "\n".join(
+            [
+                "[features]",
+                "multi_agent = true",
+                "",
+                "[agents]",
+                "max_threads = 6",
+                "max_depth = 1",
+                "",
+                "[agents.explorer]",
+                'config_file = "agents/explorer.toml"',
+                "[agents.worker]",
+                'config_file = "agents/worker.toml"',
+                "[agents.reviewer]",
+                'config_file = "agents/reviewer.toml"',
+                "[agents.docs_researcher]",
+                'config_file = "agents/docs-researcher.toml"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (codex_agents / "explorer.toml").write_text(
+        'name = "explorer"\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "low"\nsandbox_mode = "read-only"\n',
+        encoding="utf-8",
+    )
+    (codex_agents / "worker.toml").write_text(
+        'name = "worker"\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "high"\n# frozen task slice\n# declared write boundary\n',
+        encoding="utf-8",
+    )
+    (codex_agents / "reviewer.toml").write_text(
+        'name = "reviewer"\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "xhigh"\nsandbox_mode = "read-only"\n',
+        encoding="utf-8",
+    )
+    (codex_agents / "docs-researcher.toml").write_text(
+        'name = "docs_researcher"\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "medium"\nsandbox_mode = "read-only"\n',
+        encoding="utf-8",
+    )
+
+    plugin = home / "plugins" / "selfdex"
+    skill = home / "skills" / "selfdex"
+    marketplace = home / ".agents" / "plugins"
+    plugin.mkdir(parents=True, exist_ok=True)
+    skill.mkdir(parents=True, exist_ok=True)
+    marketplace.mkdir(parents=True, exist_ok=True)
+    (plugin / "selfdex-root.json").write_text(
+        json.dumps({"schema_version": 1, "selfdex_root": str(root.resolve())}),
+        encoding="utf-8",
+    )
+    (skill / "SKILL.md").write_text("---\nname: selfdex\n---\n", encoding="utf-8")
+    (marketplace / "marketplace.json").write_text(
+        json.dumps({"plugins": [{"name": "selfdex", "source": {"path": "./plugins/selfdex"}}]}),
+        encoding="utf-8",
+    )
 
 
 class NpmCliTests(unittest.TestCase):
@@ -125,6 +190,72 @@ class NpmCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("selfdex doctor", result.stdout)
         self.assertIn("--codex-home", result.stdout)
+        self.assertIn("legacy Python", result.stdout)
+
+    @unittest.skipIf(NODE is None, "node is not available")
+    def test_doctor_runs_node_native_by_default(self) -> None:
+        TMP_BASE.mkdir(exist_ok=True)
+        install_root = TMP_BASE / f"selfdex-doctor-root-{uuid.uuid4().hex}"
+        home = TMP_BASE / f"selfdex-doctor-home-{uuid.uuid4().hex}"
+        write_node_doctor_fixture(install_root, home)
+
+        result = subprocess.run(
+            [
+                NODE,
+                str(CLI),
+                "doctor",
+                "--install-root",
+                str(install_root),
+                "--home",
+                str(home),
+                "--codex-home",
+                str(home),
+                "--format",
+                "json",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        payload = json.loads(result.stdout)
+        check_ids = {check["check_id"]: check for check in payload["checks"]}
+        self.assertEqual(payload["runtime"], "node-native")
+        self.assertEqual(check_ids["node-doctor"]["status"], "pass")
+        self.assertEqual(check_ids["selfdex-global-skill"]["status"], "pass")
+        self.assertNotIn("python-command", check_ids)
+
+    @unittest.skipIf(NODE is None, "node is not available")
+    def test_doctor_python_option_uses_legacy_python_doctor(self) -> None:
+        TMP_BASE.mkdir(exist_ok=True)
+        install_root = TMP_BASE / f"selfdex-python-doctor-root-{uuid.uuid4().hex}"
+        scripts = install_root / "scripts"
+        scripts.mkdir(parents=True, exist_ok=True)
+        (scripts / "check_selfdex_setup.py").write_text(
+            "print('legacy python doctor marker')\n",
+            encoding="utf-8",
+        )
+
+        result = subprocess.run(
+            [
+                NODE,
+                str(CLI),
+                "doctor",
+                "--install-root",
+                str(install_root),
+                "--python",
+                sys.executable,
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("legacy python doctor marker", result.stdout)
 
     @unittest.skipIf(NPM is None, "npm is not available")
     def test_npm_pack_dry_run_includes_bootstrap_files(self) -> None:

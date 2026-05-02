@@ -140,10 +140,11 @@ none
 - Fix the installer and doctor so the `@selfdex` plugin installs into the Codex discovery home by default.
 - Install a global Selfdex skill so `@selfdex` appears through the Codex skill mention surface.
 - Document the Codex `@` menu skill entries and commit-gate usage in README.
+- Start the Python-free public path by making default `selfdex doctor` Node-native.
 
 ## Latest Run
 
 - status: `local_verified`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260502-021700-readme-skill-usage-docs.md`
-- summary: `README now explains which Codex @ menu skill to select, what the helper skills mean, and how commit-gate close-out works.`
+- artifact_path: `runs/selfdex/20260502-130700-node-only-doctor.md`
+- summary: `Default selfdex doctor now runs a Node-native setup check without requiring Python, while --python keeps the legacy Python doctor fallback.`

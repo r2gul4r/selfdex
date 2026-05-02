@@ -80,12 +80,16 @@ that the global `selfdex` skill is installed for `@selfdex` mentions, then
 checks the project-scoped Codex subagent policy files: `.codex/config.toml` and
 `.codex/agents/*.toml`.
 
+The default `selfdex doctor` path is Node-native and does not require Python.
+Use `selfdex doctor --python <path>` only when you intentionally want the legacy
+Python doctor.
+
 Requirements for the bootstrap path:
 
 - Node.js and npm for the `npx` entrypoint
 - PowerShell for `install.ps1`
 - Git for clone or update
-- Python 3 for the plugin installer
+- Python 3 for the current installer-stage plugin installer
 - Codex with plugin discovery enabled
 
 Publishing to npm, npm credentials, and registry ownership are separate
@@ -379,7 +383,8 @@ baseline or registry proof target.
 Installer and plugin files:
 
 - `package.json` defines the npm package metadata and executable.
-- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1` and setup doctor.
+- `bin/selfdex.js` is the npm CLI wrapper for `install.ps1` and the Node-native
+  setup doctor. Passing `--python <path>` delegates to the legacy Python doctor.
 - `install.ps1` clones or updates Selfdex, invokes the plugin installer, then
   runs the setup doctor unless explicitly skipped.
 - `plugins/selfdex/` contains the repo-local Codex plugin package.

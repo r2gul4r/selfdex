@@ -63,7 +63,7 @@ Options:
   --home <path>             Codex plugin home. Defaults to CODEX_HOME or $HOME/.codex.
   --codex-home <path>       Codex home directory. Defaults to CODEX_HOME or $HOME/.codex.
   --format <json|markdown>  Output format. Defaults to markdown.
-  --python <path>           Python executable used by the setup doctor.
+  --python <path>           Run the legacy Python setup doctor with this executable.
   -h, --help                Show this help.
 `);
 }
@@ -238,6 +238,352 @@ function defaultInstallRoot() {
   return path.join(os.homedir(), "selfdex");
 }
 
+function defaultCodexHome() {
+  return path.resolve(process.env.CODEX_HOME || path.join(os.homedir(), ".codex"));
+}
+
+function normalizePathForCompare(value) {
+  const resolved = path.resolve(value);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}
+
+function checkResult(checkId, category, status, severity, summary, checkPath = "") {
+  return {
+    check_id: checkId,
+    category,
+    status,
+    severity,
+    summary,
+    path: checkPath,
+  };
+}
+
+function pathExists(filePath) {
+  try {
+    return fs.existsSync(filePath);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function marketplaceHasSelfdex(marketplacePath) {
+  if (!pathExists(marketplacePath)) {
+    return false;
+  }
+  try {
+    const payload = readJsonFile(marketplacePath);
+    return Array.isArray(payload.plugins) && payload.plugins.some((entry) => entry && entry.name === "selfdex");
+  } catch (_error) {
+    return false;
+  }
+}
+
+function pluginCacheResult(codexHome, relPath, checkId, label) {
+  const pluginPath = path.join(codexHome, ...relPath);
+  if (pathExists(pluginPath)) {
+    return checkResult(checkId, "recommended_integration", "pass", "info", `${label} plugin appears available.`, pluginPath);
+  }
+  return checkResult(
+    checkId,
+    "recommended_integration",
+    "manual_action",
+    "medium",
+    `${label} plugin was not found in the local Codex plugin cache; install/connect it in Codex if that workflow is needed.`,
+    pluginPath
+  );
+}
+
+function fileTextIncludes(filePath, snippets) {
+  if (!pathExists(filePath)) {
+    return { exists: false, missing: snippets };
+  }
+  try {
+    const text = fs.readFileSync(filePath, "utf8");
+    return {
+      exists: true,
+      missing: snippets.filter((snippet) => !text.includes(snippet)),
+    };
+  } catch (error) {
+    return { exists: true, error: error.message, missing: snippets };
+  }
+}
+
+function codexPolicyResult(root, checkId, relPath, requiredSnippets) {
+  const policyPath = path.join(root, ...relPath);
+  const check = fileTextIncludes(policyPath, requiredSnippets);
+  const displayPath = relPath.join("/");
+  if (!check.exists) {
+    return checkResult(
+      checkId,
+      "subagent_policy",
+      "fail",
+      "high",
+      `Project-scoped Codex subagent policy file is missing: ${displayPath}`,
+      policyPath
+    );
+  }
+  if (check.error) {
+    return checkResult(
+      checkId,
+      "subagent_policy",
+      "fail",
+      "high",
+      `Project-scoped Codex subagent policy file could not be read: ${check.error}`,
+      policyPath
+    );
+  }
+  if (check.missing.length > 0) {
+    return checkResult(
+      checkId,
+      "subagent_policy",
+      "fail",
+      "high",
+      `Project-scoped Codex subagent policy file is stale; missing: ${check.missing.join(", ")}`,
+      policyPath
+    );
+  }
+  return checkResult(
+    checkId,
+    "subagent_policy",
+    "pass",
+    "info",
+    `Project-scoped Codex subagent policy file is present: ${displayPath}`,
+    policyPath
+  );
+}
+
+function sourceFileResult(root, relPath) {
+  const sourcePath = path.join(root, ...relPath);
+  const displayPath = relPath.join("/");
+  const exists = pathExists(sourcePath);
+  return checkResult(
+    `selfdex-source-${relPath[relPath.length - 1]}`,
+    "core",
+    exists ? "pass" : "fail",
+    exists ? "info" : "high",
+    `Required Selfdex source file ${exists ? "exists" : "is missing"}: ${displayPath}`,
+    sourcePath
+  );
+}
+
+function rootConfigStatus(root, rootConfigPath) {
+  if (!pathExists(rootConfigPath)) {
+    return "missing";
+  }
+  try {
+    const payload = readJsonFile(rootConfigPath);
+    return normalizePathForCompare(String(payload.selfdex_root || "")) === normalizePathForCompare(root) ? "match" : "mismatch";
+  } catch (_error) {
+    return "invalid";
+  }
+}
+
+function buildNodeDoctorPayload(options) {
+  const installRoot = path.resolve(options.installRoot || defaultInstallRoot());
+  const codexHome = path.resolve(options.codexHome || defaultCodexHome());
+  const home = path.resolve(options.home || codexHome);
+  const targetPlugin = path.join(home, "plugins", "selfdex");
+  const targetSkill = path.join(home, "skills", "selfdex", "SKILL.md");
+  const marketplacePath = path.join(home, ".agents", "plugins", "marketplace.json");
+  const rootConfigPath = path.join(targetPlugin, "selfdex-root.json");
+
+  const codexPolicyFiles = [
+    [
+      "codex-config",
+      [".codex", "config.toml"],
+      ["multi_agent = true", "[agents.explorer]", "[agents.worker]", "[agents.reviewer]", "[agents.docs_researcher]"],
+    ],
+    [
+      "codex-agent-explorer",
+      [".codex", "agents", "explorer.toml"],
+      ['name = "explorer"', 'model = "gpt-5.5"', 'model_reasoning_effort = "low"', 'sandbox_mode = "read-only"'],
+    ],
+    [
+      "codex-agent-worker",
+      [".codex", "agents", "worker.toml"],
+      ['name = "worker"', 'model = "gpt-5.5"', 'model_reasoning_effort = "high"', "frozen task slice", "declared write boundary"],
+    ],
+    [
+      "codex-agent-reviewer",
+      [".codex", "agents", "reviewer.toml"],
+      ['name = "reviewer"', 'model = "gpt-5.5"', 'model_reasoning_effort = "xhigh"', 'sandbox_mode = "read-only"'],
+    ],
+    [
+      "codex-agent-docs-researcher",
+      [".codex", "agents", "docs-researcher.toml"],
+      ['name = "docs_researcher"', 'model = "gpt-5.5"', 'model_reasoning_effort = "medium"', 'sandbox_mode = "read-only"'],
+    ],
+  ];
+
+  const checks = [
+    checkResult("node-doctor", "runtime", "pass", "info", "Node-native setup doctor is running; Python is not required for this check.", process.execPath),
+    checkResult(
+      "git-command",
+      "runtime",
+      commandExists("git") ? "pass" : "fail",
+      commandExists("git") ? "info" : "high",
+      commandExists("git") ? "Git is available for checkout updates." : "Missing required command. Tried: git."
+    ),
+    sourceFileResult(installRoot, ["scripts", "plan_external_project.py"]),
+    sourceFileResult(installRoot, ["scripts", "run_target_codex.py"]),
+    sourceFileResult(installRoot, ["scripts", "check_github_actions_status.py"]),
+    ...codexPolicyFiles.map(([checkId, relPath, snippets]) => codexPolicyResult(installRoot, checkId, relPath, snippets)),
+  ];
+
+  const pluginExists = pathExists(targetPlugin);
+  checks.push(
+    checkResult(
+      "selfdex-plugin-directory",
+      "core",
+      pluginExists ? "pass" : "fail",
+      pluginExists ? "info" : "high",
+      pluginExists ? "Codex plugin home @selfdex directory is installed." : "Codex plugin home @selfdex directory is missing.",
+      targetPlugin
+    )
+  );
+
+  const marketplaceOk = marketplaceHasSelfdex(marketplacePath);
+  checks.push(
+    checkResult(
+      "selfdex-marketplace-entry",
+      "core",
+      marketplaceOk ? "pass" : "fail",
+      marketplaceOk ? "info" : "high",
+      marketplaceOk ? "Codex plugin home marketplace includes the selfdex plugin entry." : "Codex plugin home marketplace is missing the selfdex plugin entry.",
+      marketplacePath
+    )
+  );
+
+  const skillExists = pathExists(targetSkill);
+  checks.push(
+    checkResult(
+      "selfdex-global-skill",
+      "core",
+      skillExists ? "pass" : "fail",
+      skillExists ? "info" : "high",
+      skillExists ? "Codex global skill @selfdex entry is installed." : "Codex global skill @selfdex entry is missing; @ mention may fall back to file search.",
+      targetSkill
+    )
+  );
+
+  const configStatus = rootConfigStatus(installRoot, rootConfigPath);
+  checks.push(
+    checkResult(
+      "selfdex-root-config",
+      "core",
+      configStatus === "match" ? "pass" : "fail",
+      configStatus === "match" ? "info" : "high",
+      `Installed plugin root config status: ${configStatus}.`,
+      rootConfigPath
+    )
+  );
+
+  const githubActionsPath = path.join(installRoot, "scripts", "check_github_actions_status.py");
+  const githubActionsExists = pathExists(githubActionsPath);
+  checks.push(
+    checkResult(
+      "github-actions-fallback",
+      "fallback",
+      githubActionsExists ? "pass" : "fail",
+      githubActionsExists ? "info" : "medium",
+      githubActionsExists ? "GitHub Actions API fallback checker is available." : "GitHub Actions API fallback checker is missing.",
+      githubActionsPath
+    )
+  );
+  checks.push(pluginCacheResult(codexHome, ["plugins", "cache", "openai-curated", "github"], "github-plugin", "GitHub"));
+  checks.push(pluginCacheResult(codexHome, ["plugins", "cache", "openai-curated", "chatgpt-apps"], "chatgpt-apps-plugin", "ChatGPT Apps"));
+  checks.push(
+    checkResult(
+      "gpt-pro-direction-review",
+      "account_capability",
+      "manual_action",
+      "medium",
+      "GPT Pro / GPT-5.5 direction review is an account/model entitlement and remains user-approved only."
+    )
+  );
+  checks.push(checkResult("gmail-not-required", "integration_boundary", "pass", "info", "Gmail is not required for setup or GitHub CI feedback."));
+
+  const highFailures = checks.filter((check) => check.status === "fail" && check.severity === "high");
+  const manualActions = checks.filter((check) => check.status === "manual_action");
+  let readiness = highFailures.length > 0 ? "blocked" : "ready";
+  if (readiness === "ready" && manualActions.length > 0) {
+    readiness = "ready_with_recommended_actions";
+  }
+
+  return {
+    schema_version: 1,
+    analysis_kind: "selfdex_setup_check",
+    runtime: "node-native",
+    status: highFailures.length === 0 ? "pass" : "fail",
+    readiness,
+    root: installRoot,
+    home,
+    codex_home: codexHome,
+    check_count: checks.length,
+    manual_action_count: manualActions.length,
+    high_failure_count: highFailures.length,
+    checks,
+    next_step: nextDoctorStep(readiness, manualActions),
+  };
+}
+
+function nextDoctorStep(readiness, manualActions) {
+  if (readiness === "blocked") {
+    return "Fix the failed core checks, then rerun selfdex doctor.";
+  }
+  if (manualActions.length > 0) {
+    return "Core setup is usable. Connect recommended integrations in Codex when those workflows are needed.";
+  }
+  return "Core setup and recommended integrations look ready. Invoke @selfdex from a target project session.";
+}
+
+function renderDoctorMarkdown(payload) {
+  const lines = [
+    "# Selfdex Doctor",
+    "",
+    `- status: \`${payload.status}\``,
+    `- readiness: \`${payload.readiness}\``,
+    `- runtime: \`${payload.runtime}\``,
+    `- root: \`${payload.root}\``,
+    `- codex_home: \`${payload.codex_home}\``,
+    "",
+  ];
+  const categories = [
+    ["core", "Core"],
+    ["subagent_policy", "Subagent Policy"],
+    ["runtime", "Runtime"],
+    ["recommended_integration", "Recommended Integrations"],
+    ["fallback", "Fallbacks"],
+    ["account_capability", "Account Capabilities"],
+    ["integration_boundary", "Integration Boundary"],
+  ];
+  for (const [category, title] of categories) {
+    const categoryChecks = payload.checks.filter((check) => check.category === category);
+    if (categoryChecks.length === 0) {
+      continue;
+    }
+    lines.push(`## ${title}`, "");
+    for (const check of categoryChecks) {
+      lines.push(`- \`${check.status}\` ${check.check_id}: ${check.summary}`);
+    }
+    lines.push("");
+  }
+  lines.push("## Next Step", "", payload.next_step);
+  return `${lines.join("\n")}\n`;
+}
+
+function writeDoctorPayload(payload, format) {
+  if (format === "json") {
+    console.log(JSON.stringify(payload, null, 2));
+  } else {
+    process.stdout.write(renderDoctorMarkdown(payload));
+  }
+}
+
 function buildPowerShellArgs(options) {
   const args = ["-NoProfile"];
   if (process.platform === "win32") {
@@ -300,13 +646,7 @@ function runInstall(args) {
   return result.status === null ? 1 : result.status;
 }
 
-function runDoctor(args) {
-  const options = parseDoctorArgs(args);
-  if (options.help) {
-    printDoctorHelp();
-    return 0;
-  }
-
+function runPythonDoctor(options) {
   const installRoot = path.resolve(options.installRoot || defaultInstallRoot());
   const doctorPath = path.join(installRoot, "scripts", "check_selfdex_setup.py");
   if (!fs.existsSync(doctorPath)) {
@@ -338,6 +678,22 @@ function runDoctor(args) {
     fail(result.error.message);
   }
   return result.status === null ? 1 : result.status;
+}
+
+function runDoctor(args) {
+  const options = parseDoctorArgs(args);
+  if (options.help) {
+    printDoctorHelp();
+    return 0;
+  }
+
+  if (options.python) {
+    return runPythonDoctor(options);
+  }
+
+  const payload = buildNodeDoctorPayload(options);
+  writeDoctorPayload(payload, options.format);
+  return payload.status === "pass" ? 0 : 1;
 }
 
 function main(argv) {

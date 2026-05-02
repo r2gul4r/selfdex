@@ -76,12 +76,14 @@ selfdex doctor
 - 공식 Codex subagent 설정 파일인 `.codex/config.toml`, `.codex/agents/*.toml` 상태
 - Gmail 없이 CI 피드백을 받을 수 있는지
 
+기본 `selfdex doctor`는 Node-native로 실행되며 Python을 요구하지 않는다. 기존 Python doctor가 필요하면 명시적으로 `selfdex doctor --python <path>`를 사용한다.
+
 bootstrap 요구사항:
 
 - `npx` 진입점을 위한 Node.js와 npm
 - `install.ps1` 실행을 위한 PowerShell
 - clone/update를 위한 Git
-- 플러그인 설치 스크립트를 위한 Python 3
+- 현재 installer 단계의 플러그인 설치 스크립트를 위한 Python 3
 - 플러그인 discovery가 켜진 Codex
 
 npm publish, npm credentials, registry ownership는 별도 승인과 계정 작업이 필요한 단계다. 이 저장소의 테스트나 bootstrap 검증은 publish를 수행하지 않는다.
@@ -317,7 +319,7 @@ Active external validation target은 `PROJECT_REGISTRY.md`에 있다. 과거 `co
 Installer와 plugin files:
 
 - `package.json`은 npm package metadata와 executable을 정의한다.
-- `bin/selfdex.js`는 `install.ps1`과 setup doctor를 감싸는 npm CLI wrapper다.
+- `bin/selfdex.js`는 `install.ps1`과 Node-native setup doctor를 감싸는 npm CLI wrapper다. `--python <path>`를 주면 legacy Python doctor로 위임한다.
 - `install.ps1`은 Selfdex를 clone/update하고 plugin installer를 실행한 뒤, 명시적으로 skip하지 않으면 setup doctor를 실행한다.
 - `plugins/selfdex/`는 repo-local Codex plugin package다.
 - `.agents/plugins/marketplace.json`은 Codex용 plugin을 알린다. `npx selfdex install`은 이 구조를 Codex plugin home에 복사한다.
