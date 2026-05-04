@@ -437,3 +437,11 @@ Append-only log for execution, tool, and verification errors.
 - summary: `Verification exposed environment/setup state separate from the subagent config patch.`
 - details: `Focused unittest failed under the sandbox because tests/test_selfdex_plugin.py uses Python TemporaryDirectory under the Windows Temp path; the same focused suite and full unittest discovery passed after approved sandbox escalation. A direct selfdex doctor check against C:\Users\Administrator reported the home-local @selfdex plugin directory and marketplace entry as missing, while the project-scoped .codex subagent policy checks passed. No global plugin install was performed in this task.`
 - status: `resolved_for_tests_deferred_for_home_plugin_install`
+
+## 2026-05-04T13:28:46+09:00 - daboyeo selfdex planning timeout repair
+
+- time: `2026-05-04T13:28:46+09:00`
+- location: `focused unittest verification`
+- summary: `Sandboxed focused tests failed because Python TemporaryDirectory children were not writable in this host sandbox.`
+- details: `The scanner timeout fix itself was verified separately. The focused unittest commands for repo_scan_excludes, repo_metrics_utils, and candidate_extractors failed only under sandbox Temp restrictions, then passed after approved sandbox escalation.`
+- status: `resolved`

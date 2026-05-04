@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Iterable
 
 if __package__:
-    from .repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    from .repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
     from .repo_metrics_utils import (
         MIN_DUPLICATE_TOKEN_COUNT,
         DuplicateGroup,
@@ -30,9 +30,9 @@ else:
         sys.path.insert(0, str(script_dir))
 
     try:
-        from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+        from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
     except ModuleNotFoundError:
-        from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+        from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 
     from repo_metrics_utils import (
         MIN_DUPLICATE_TOKEN_COUNT,
@@ -80,6 +80,16 @@ def parse_args() -> argparse.Namespace:
             f"Defaults to {MIN_DUPLICATE_BLOCK_LINES}."
         ),
     )
+    parser.add_argument(
+        "--skip-git-history",
+        action="store_true",
+        help="Skip per-file git log analysis. Useful for broad external-project planning.",
+    )
+    parser.add_argument(
+        "--skip-duplication",
+        action="store_true",
+        help="Skip duplicate-block analysis. Useful for large generated or mirrored projects.",
+    )
     return parser.parse_args()
 
 
@@ -121,9 +131,7 @@ def iter_files(root: Path, explicit_paths: list[str] | None) -> Iterable[Path]:
                 yield resolved
             continue
 
-        for path in sorted(source.rglob("*")):
-            if path.is_dir():
-                continue
+        for path in iter_pruned_files(source, excluded_dirs=DEFAULT_EXCLUDED_DIRS):
             if path_has_excluded_dir(path, root=root):
                 continue
             if not is_utf8_text_file(path):
@@ -493,9 +501,10 @@ def main() -> int:
 
     try:
         metrics = [analyze_file(root, path) for path in iter_files(root, args.paths)]
-        groups = collect_duplicate_groups(metrics, root, args.min_duplicate_lines)
+        groups = [] if args.skip_duplication else collect_duplicate_groups(metrics, root, args.min_duplicate_lines)
         metrics = apply_duplication_metrics(metrics, groups)
-        metrics = apply_git_history_metrics(root, metrics)
+        if not args.skip_git_history:
+            metrics = apply_git_history_metrics(root, metrics)
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
         return 1

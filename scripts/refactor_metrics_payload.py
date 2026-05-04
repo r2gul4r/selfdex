@@ -84,7 +84,15 @@ def load_metrics(root: Path, metrics_input: str | None) -> dict[str, Any]:
             return json.load(handle)
 
     script_dir = Path(__file__).resolve().parent
-    command = [sys.executable, str(script_dir / "collect_repo_metrics.py"), "--root", str(root), "--pretty"]
+    command = [
+        sys.executable,
+        str(script_dir / "collect_repo_metrics.py"),
+        "--root",
+        str(root),
+        "--pretty",
+        "--skip-git-history",
+        "--skip-duplication",
+    ]
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     completed = subprocess.run(
         command,

@@ -142,10 +142,11 @@ none
 - Document the Codex `@` menu skill entries and commit-gate usage in README.
 - Start the Python-free public path by making default `selfdex doctor` Node-native.
 - Make default `selfdex install` Node-native so the public npx path no longer requires Python.
+- Repair daboyeo project-session planning timeout by pruning scanner traversal and bounding external refactor metrics.
 
 ## Latest Run
 
-- status: `local_verified`
+- status: `completed`
 - project_key: `selfdex`
-- artifact_path: `runs/selfdex/20260502-133742-node-native-selfdex-install.md`
-- summary: `Default selfdex install now uses the Node-native clone/update, plugin copy, marketplace update, global skill install, and Node-native doctor path without requiring Python.`
+- artifact_path: `runs/selfdex/20260504-132846-daboyeo-selfdex-planning-timeout-repair.md`
+- summary: `Daboyeo Selfdex read-only planning went from a reproduced 120s timeout to about 6.04s, and the installed @selfdex pointer now resolves to C:\lsh\git\selfdex.`

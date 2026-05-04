@@ -13,9 +13,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 except ModuleNotFoundError:
-    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 
 try:
     from symbol_definition_utils import SymbolLocation, extract_definitions
@@ -73,9 +73,7 @@ def infer_language(path: Path) -> str:
 
 def iter_repo_files(root: Path, *, exclude_filename: str | None = None) -> list[Path]:
     files: list[Path] = []
-    for path in root.rglob("*"):
-        if path.is_dir():
-            continue
+    for path in iter_pruned_files(root, excluded_dirs=SKIP_DIRS):
         if path_has_excluded_dir(path, root=root, excluded_dirs=SKIP_DIRS):
             continue
         if path.suffix.lower() in SKIP_SUFFIXES:

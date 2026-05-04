@@ -2,107 +2,125 @@
 
 ## Current Task
 
-- task: `npm-0.1.3-publish-prep`
-- phase: `local_verified`
-- scope: `Prepare the already verified Node-native install changes for npm publish by bumping the package version from 0.1.2 to 0.1.3.`
-- verification_target: `package version check, npm pack dry-run, npm publish dry-run, git diff check, commit gate readiness`
+- task: `daboyeo-selfdex-planning-timeout-repair`
+- phase: `completed`
+- scope: `Find and fix why Selfdex project-session planning times out when invoked from C:\lsh\git\daboyeo.`
+- verification_target: `Reproduce the daboyeo planning timeout, repair scanner traversal/performance, then verify the same planning command completes inside a practical local budget.`
 
 ## Orchestration Profile
 
-- runtime_basis: `official_codex_native_subagents`
-- trigger_basis: `npm rejected publishing selfdex@0.1.2 because that version already exists; npm requires a new immutable version for the Node-native install package.`
+- runtime_basis: `official_codex_native_main_agent`
+- trigger_basis: `The daboyeo read-only Selfdex planning command exceeded 120 seconds; focused timing showed collect_repo_metrics/refactor scanning exceeded 45 seconds while other scanners completed.`
 - selected_rules:
   - `state_before_writes`
   - `contract_freeze_before_implementation`
-  - `preserve_hard_approval_zones`
-  - `npm_version_bump_only`
-  - `no_actual_publish`
+  - `cross_project_read_only`
+  - `bounded_timeout_repair`
+  - `scanner_pruning_before_broad_scan`
+  - `no_target_project_writes`
 - selected_skills:
   - `selfdex-autopilot`
-  - `selfdex-commit-gate`
 - selected_agents:
   - `main`
-- subagent_permission: `@selfdex invocation is explicit standing permission for Selfdex to recommend and use Codex native subagents when useful.`
+- subagent_permission: `No @selfdex invocation or explicit delegation request in this thread; keep this repair in the main agent.`
 - subagent_limits:
-  - `Actual npm publish remains a hard approval zone and requires the user's OTP/session.`
-  - `Commit and push remain separate approval-gated closeout actions.`
-- selection_reason: `This is a tiny release-prep metadata change with one write-capable lane; no subagent split is needed.`
+  - `Do not edit C:\lsh\git\daboyeo.`
+  - `Do not edit Codex home or reinstall the plugin unless explicitly approved after the local fix is verified.`
+  - `Do not run destructive cleanup against generated or inaccessible directories.`
+- selection_reason: `The fault is a tightly coupled scanner/runtime performance bug with one source write lane; subagent handoff would add cost without independent write ownership.`
 
 ## Evaluation Plan
 
-- evaluation_need: `release_metadata_check`
+- evaluation_need: `runtime_regression_check`
 - project_invariants:
-  - `Do not run actual npm publish.`
-  - `Do not change source behavior in this slice.`
-  - `Do not change package name.`
-  - `Keep npx selfdex install as the primary public path.`
-  - `Do not run git commit or git push unless explicitly requested after this patch is verified.`
+  - `Selfdex planning against external projects remains read-only.`
+  - `Generated/dependency/build directories must be pruned before traversal, not filtered after recursive descent.`
+  - `Daboyeo local access-denied directories must not make planning hang or fail.`
+  - `Git history analysis must not dominate target-project planning.`
+  - `Do not modify installer behavior, global Codex config, or npm package metadata in this slice.`
 - task_acceptance:
-  - `package.json version is 0.1.3.`
-  - `npm pack --dry-run reports selfdex@0.1.3.`
-  - `npm publish --access public --dry-run reports selfdex@0.1.3 and does not publish.`
-  - `No source behavior changes are made.`
+  - `The daboyeo planning timeout root cause is reproduced and documented.`
+  - `Repository scanners share a pruned, OSError-tolerant file iterator.`
+  - `External refactor planning avoids per-file git history by default.`
+  - `python scripts\plan_external_project.py --root . --project-root C:\lsh\git\daboyeo --project-name daboyeo --format json completes successfully.`
 - non_goals:
-  - `Do not run npm publish for real.`
-  - `Do not add tags or release notes.`
-  - `Do not modify installer behavior.`
+  - `Do not edit daboyeo project files.`
+  - `Do not delete inaccessible temp/build directories.`
+  - `Do not run Selfdex execute mode or create target branches.`
+  - `Do not update the installed C:\Users\pc07-00\selfdex checkout or Codex home unless separately approved.`
 - hard_checks:
-  - `node -p "require('./package.json').version"`
-  - `npm pack --dry-run --json`
-  - `npm publish --access public --dry-run`
+  - `python scripts\plan_external_project.py --root . --project-root C:\lsh\git\daboyeo --project-name daboyeo --format json`
+  - `python -m unittest discover -s tests -p test_repo_scan_excludes.py`
+  - `python -m unittest discover -s tests -p test_repo_metrics_utils.py`
+  - `python -m unittest discover -s tests -p test_candidate_extractors.py`
   - `git diff --check`
-  - `python scripts/check_commit_gate.py --root . --commit-message "chore: bump selfdex to 0.1.3" --format json`
 - evidence_required:
-  - `changed files summary`
-  - `verification command results`
-  - `publish command for the user`
+  - `pre-fix timeout/timing evidence`
+  - `changed scanner paths`
+  - `post-fix planning duration`
+  - `test results`
 
 ## Writer Slot
 
 - writer_slot: `main`
-- write_set: `npm_0_1_3_publish_prep`
+- write_set: `daboyeo_selfdex_planning_timeout_repair`
 - write_sets:
   - `main`:
     - `STATE.md`
     - `STATE.json`
-    - `package.json`
+    - `CAMPAIGN_STATE.md`
+    - `scripts/repo_scan_excludes.py`
+    - `scripts/collect_repo_metrics.py`
+    - `scripts/refactor_metrics_payload.py`
+    - `scripts/feature_file_records.py`
+    - `scripts/extract_test_gap_candidates.py`
+    - `scripts/project_direction_evidence.py`
+    - `tests/test_repo_scan_excludes.py`
+    - `tests/test_repo_metrics_utils.py`
     - `runs/selfdex/`
     - `ERROR_LOG.md`
 - shared_assets_owner: `main`
 
 ## Contract Freeze
 
-- Only bump `package.json` version from `0.1.2` to `0.1.3`.
-- Do not run real `npm publish`.
-- Do not change runtime source files or README content in this slice.
-- Dry-run verification may use npm commands, but actual registry mutation is user-owned.
-- Hard approval zones remain unchanged.
+- Fix Selfdex source scanners so project-session planning prunes excluded directories before descent and tolerates inaccessible directories.
+- Add generated/local artifact excludes seen in daboyeo: `.local`, `.playwright-cli`, `test-results`, and `tmp`.
+- Make external refactor candidate planning skip per-file git history collection so broad project planning stays bounded.
+- Keep daboyeo read-only; no target-project writes, branch changes, cleanup, or execution-mode Selfdex run.
+- Verify with the reproduced daboyeo planning command and focused unit tests.
 
 ## Reviewer
 
 - reviewer: `review_complete`
 - reviewer_mode: `local_verification_plus_diff_review`
-- reviewer_target: `npm version bump only`
-- reviewer_focus: `Does the package version change solve the npm immutability error without touching behavior?`
-- reviewer_result: `Local review confirmed the slice only bumps package.json from 0.1.2 to 0.1.3, which directly resolves npm's immutable-version publish rejection. No runtime behavior changed.`
+- reviewer_target: `scanner pruning and external planning timeout repair`
+- reviewer_focus: `Does the fix avoid broad recursive descent and per-file git log cost without weakening read-only candidate quality too much?`
+- reviewer_result: `Local diff review confirmed scanner changes stay inside read-only planning paths, prune generated directories before descent, and use bounded metrics for external refactor planning.`
 
 ## Last Update
 
-- timestamp: `2026-05-02T14:26:20+09:00`
-- phase: `local_verified`
-- status: `package.json is bumped to 0.1.3 and npm pack/publish dry-run both report selfdex@0.1.3.`
+- timestamp: `2026-05-04T13:28:46+09:00`
+- phase: `completed`
+- status: `Daboyeo Selfdex planning timeout repaired; reproduced 120s timeout now completes in about 6.04s, and installed @selfdex points to C:\lsh\git\selfdex.`
 - verification_result:
-  - `node -p "require('./package.json').version"`: `0.1.3`
-  - `npm pack --dry-run --json`: `pass, selfdex@0.1.3`
-  - `npm publish --access public --dry-run`: `pass, selfdex@0.1.3`
+  - `Measure-Command { python scripts\plan_external_project.py --root . --project-root C:\lsh\git\daboyeo --project-name daboyeo --format json > $null }`: `timed out after 120 seconds`
+  - `collect_repo_metrics.py against daboyeo`: `timed out after 45 seconds`
+  - `python -m unittest discover -s tests -p test_repo_scan_excludes.py`: `pass after approved sandbox escalation, 5 tests`
+  - `python -m unittest discover -s tests -p test_repo_metrics_utils.py`: `pass after approved sandbox escalation, 5 tests`
+  - `python -m unittest discover -s tests -p test_candidate_extractors.py`: `pass after approved sandbox escalation, 5 tests`
+  - `python -m compileall -q scripts tests`: `pass`
+  - `python scripts\collect_repo_metrics.py --root C:\lsh\git\daboyeo --pretty --skip-git-history --skip-duplication`: `pass in about 1.54s`
+  - `python scripts\extract_refactor_candidates.py --root C:\lsh\git\daboyeo --format json`: `pass in about 1.69s`
+  - `python scripts\plan_external_project.py --root . --project-root C:\lsh\git\daboyeo --project-name daboyeo --format json`: `pass in about 6.04s`
+  - `node bin\selfdex.js doctor --install-root C:\lsh\git\selfdex --home C:\Users\pc07-00\.codex --codex-home C:\Users\pc07-00\.codex --format json`: `pass, readiness ready_with_recommended_actions`
   - `git diff --check`: `pass with CRLF warnings only`
-- run_artifact: `runs/selfdex/20260502-142620-npm-0.1.3-publish-prep.md`
+- run_artifact: `runs/selfdex/20260504-132846-daboyeo-selfdex-planning-timeout-repair.md`
 
 ## Retrospective
 
-- task: `npm-0.1.3-publish-prep`
+- task: `daboyeo-selfdex-planning-timeout-repair`
 - evaluation_fit: `matched`
-- runtime_fit: `official_codex_native_subagents`
-- actual_agent_usage: `main implementation; no subagents spawned for this metadata-only slice.`
+- runtime_fit: `main-only scanner repair`
+- actual_agent_usage: `main only`
 - verification_outcome: `pass`
-- next_gate_adjustment: `npm publish can now be retried as 0.1.3 after this version bump is committed; actual publish remains user-owned because OTP is required.`
+- next_gate_adjustment: `External planning scanners should prefer bounded metrics first; full git history or duplicate-block analysis should be opt-in for large target projects.`

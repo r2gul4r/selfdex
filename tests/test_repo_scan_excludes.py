@@ -32,7 +32,20 @@ class RepoScanExcludesTests(unittest.TestCase):
     def test_default_scan_excludes_cover_common_generated_directories(self) -> None:
         excluded = repo_scan_excludes.DEFAULT_SCAN_EXCLUDED_DIRS
 
-        for directory in ("node_modules", "dist", "build", "coverage", ".venv", "venv", ".next", ".codex-backups"):
+        for directory in (
+            "node_modules",
+            "dist",
+            "build",
+            "coverage",
+            ".venv",
+            "venv",
+            ".next",
+            ".codex-backups",
+            ".local",
+            ".playwright-cli",
+            "test-results",
+            "tmp",
+        ):
             self.assertIn(directory, excluded)
 
     def test_path_has_excluded_dir_uses_relative_root_parts(self) -> None:
@@ -45,6 +58,21 @@ class RepoScanExcludesTests(unittest.TestCase):
             )
         )
         self.assertFalse(repo_scan_excludes.path_has_excluded_dir(root / "src" / "index.js", root=root))
+
+    def test_iter_pruned_files_never_descends_into_excluded_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            write_file(root, "src/app.py", "def run():\n    return 1\n")
+            write_file(root, ".local/pip-temp/generated.py", "def generated():\n    return 2\n")
+            write_file(root, "backend/build/tmp/generated.py", "def generated():\n    return 3\n")
+            write_file(root, "test-results/report.txt", "generated\n")
+
+            paths = [
+                path.relative_to(root).as_posix()
+                for path in repo_scan_excludes.iter_pruned_files(root)
+            ]
+
+        self.assertEqual(paths, ["src/app.py"])
 
     def test_collect_repo_metrics_skips_dependency_and_build_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -15,9 +15,9 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 try:
-    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 except ModuleNotFoundError:
-    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, path_has_excluded_dir
+    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 
 
 SCHEMA_VERSION = 1
@@ -202,7 +202,7 @@ def build_record(root: Path, path: Path) -> FileRecord:
 
 
 def build_repo_index(root: Path) -> dict[str, Any]:
-    paths = sorted(path for path in root.rglob("*") if should_scan(path, root=root))
+    paths = sorted(path for path in iter_pruned_files(root, excluded_dirs=SKIP_DIRS) if should_scan(path, root=root))
     records = [build_record(root, path) for path in paths]
     by_path = {record.relative_path: record for record in records}
     return {

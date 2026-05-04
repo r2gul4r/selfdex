@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from repo_scan_excludes import path_has_excluded_dir
+    from repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 except ModuleNotFoundError:
-    from scripts.repo_scan_excludes import path_has_excluded_dir
+    from scripts.repo_scan_excludes import DEFAULT_SCAN_EXCLUDED_DIRS, iter_pruned_files, path_has_excluded_dir
 
 
 MAX_TEXT_BYTES = 80_000
@@ -59,10 +59,11 @@ def safe_read_text(path: Path, max_bytes: int = MAX_TEXT_BYTES) -> str:
 
 def repo_files(root: Path) -> list[Path]:
     files: list[Path] = []
-    for path in root.rglob("*"):
+    excluded_dirs = set(DEFAULT_SCAN_EXCLUDED_DIRS) | LOCAL_ARTIFACT_DIRS
+    for path in iter_pruned_files(root, excluded_dirs=excluded_dirs):
         if len(files) >= MAX_REPO_FILES:
             break
-        if path_has_excluded_dir(path, root=root):
+        if path_has_excluded_dir(path, root=root, excluded_dirs=excluded_dirs):
             continue
         try:
             relative_parts = path.relative_to(root).parts
@@ -70,8 +71,7 @@ def repo_files(root: Path) -> list[Path]:
             relative_parts = path.parts
         if any(part in LOCAL_ARTIFACT_DIRS for part in relative_parts):
             continue
-        if path.is_file():
-            files.append(path)
+        files.append(path)
     return files
 
 
